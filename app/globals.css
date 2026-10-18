@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+/*
+ * Factory · sistema visual
+ * Estructura de la app "Seguimiento de Fallas" (pilares → pestañas) con el lenguaje de una tienda de
+ * producto limpia: fondo gris claro, tarjetas blancas de radio amplio sin borde ni sombra en reposo,
+ * títulos grandes con tracking cerrado, enlaces azules con "›", tira de navegación con iconos.
+ * Severidad: rojo → naranja → amarillo (se conserva de la app original).
+ */
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", var(--font-geist-sans), "Geist", "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", var(--font-geist-mono), "Geist Mono", SFMono-Regular, monospace;
+
+  --radius-caja: 24px;         /* tarjetas */
+  --radius-control: 12px;      /* campos y listas desplegables */
+
+  --color-papel: #f5f5f7;      /* fondo de página y superficies internas de tarjeta */
+  --color-panel: #ffffff;      /* tarjetas */
+  --color-panel-2: #ececf0;    /* hover / pistas */
+  --color-borde: #d2d2d7;      /* campos de formulario */
+  --color-tinta: #1d1d1f;
+  --color-suave: #6e6e73;      /* 4.6:1 sobre #f5f5f7, 5.1:1 sobre blanco */
+  --color-azul: #0071e3;       /* botón principal */
+  --color-enlace: #0066cc;     /* enlaces de texto */
+  --color-nuevo: #b64400;      /* etiqueta pequeña bajo iconos ("3 abiertas") */
+
+  --color-motivo: #f2a900;     /* marca Factory */
+
+  --color-paro: #e5484d;
+  --color-paro-texto: #b3262b;
+  --color-paro-suave: #fdecec;
+  --color-alerta: #f08c00;
+  --color-alerta-texto: #8a4b00;
+  --color-alerta-suave: #fff1dc;
+  --color-ok: #2f9e62;
+  --color-ok-texto: #1f6f43;
+  --color-ok-suave: #e7f5ec;
+  --color-info-texto: #1d4fa8;
+  --color-info-suave: #e8eefb;
+}
+
+html { color-scheme: light; accent-color: var(--color-azul); }
+body {
+  background: var(--color-papel);
+  color: var(--color-tinta);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  scrollbar-color: var(--color-borde) transparent;
+}
+::selection { background: rgb(0 113 227 / 0.2); color: var(--color-tinta); }
+input, textarea { caret-color: var(--color-tinta); }
+table, .tabular-nums { font-variant-numeric: tabular-nums; }
+a { text-underline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--color-azul); outline-offset: 2px; }
+h1, h2, h3 { text-wrap: balance; letter-spacing: -0.022em; font-weight: 600; }
+h1 { letter-spacing: -0.03em; }
+
+@keyframes entrar { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.entrar { animation: entrar 420ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.entrar-2 { animation-delay: 70ms; }
+.entrar-3 { animation-delay: 140ms; }
+.entrar-4 { animation-delay: 210ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-delay: 0ms !important; }
+}
+
+@utility caja { @apply rounded-caja bg-papel; }
+@utility caja-panel { @apply rounded-caja bg-panel; }
+@utility tarjeta-enlace {
+  @apply rounded-caja bg-panel transition-[box-shadow,transform] duration-300 ease-out hover:shadow-[0_4px_28px_rgb(0_0_0/0.08)] motion-safe:hover:scale-[1.01];
+}
+@utility etiqueta { @apply mb-1.5 block text-sm font-medium text-suave; }
+@utility campo {
+  @apply min-h-12 w-full rounded-[var(--radius-control)] border border-borde bg-white px-4 py-2.5 text-[17px] text-tinta outline-none
+    transition-[border-color,box-shadow] duration-150 placeholder:text-[#86868b] hover:border-[#a1a1a6]
+    focus:border-azul focus:ring-4 focus:ring-azul/20 disabled:cursor-not-allowed disabled:bg-papel disabled:text-suave
+    aria-invalid:border-paro aria-invalid:focus:ring-paro/20;
+}
+/* Listas desplegables: sin el control nativo, con chevrón propio y el mismo radio que los campos */
+select.campo, select.selector {
+  appearance: none; -webkit-appearance: none; cursor: pointer; padding-right: 2.75rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%231d1d1f' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 1rem center; background-size: 12px 8px;
+}
+select.campo:disabled { background-image: none; }
+select.campo option { color: var(--color-tinta); }
+@utility selector {
+  @apply min-h-10 rounded-full border border-borde bg-white pl-4 text-[15px] font-medium text-tinta outline-none transition-[border-color,box-shadow] duration-150
+    hover:border-[#a1a1a6] focus:border-azul focus:ring-4 focus:ring-azul/20;
+}
+@utility btn {
+  @apply inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full px-5 text-[17px] font-normal whitespace-nowrap
+    transition-[background-color,color,transform] duration-150 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
+}
+@utility btn-primario { @apply btn bg-azul text-white hover:bg-[#0077ed]; }
+@utility btn-motivo { @apply btn bg-tinta text-white hover:bg-[#3a3a3c]; }
+@utility btn-sec { @apply btn bg-panel-2 text-tinta hover:bg-[#e1e1e6]; }
+@utility btn-peligro { @apply btn bg-paro-suave text-paro-texto hover:bg-[#fbdcdc]; }
+@utility enlace { @apply inline-flex items-center gap-1 text-enlace hover:underline; }
+@utility folio { @apply font-mono text-[15px] font-semibold tracking-tight; }
+@utility chip { @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[13px] font-semibold whitespace-nowrap; }
+@utility esqueleto { @apply animate-pulse rounded-caja bg-panel; }

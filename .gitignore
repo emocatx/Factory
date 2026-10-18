@@ -1,0 +1,18 @@
+node_modules
+.next
+out
+.env
+.env.local
+.env*.local
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+.DS_Store
+supabase/.temp
+
+# Skills instaladas localmente (se reinstalan con skills-lock.json)
+.claude/skills/
+.agents/
+
+# Archivos sueltos
+*.zip
