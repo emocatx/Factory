@@ -3,7 +3,7 @@ import { Marca } from "@/components/Marca";
 
 export const metadata = { title: "Iniciar sesión" };
 
-const PILARES = ["Móviles", "Dorsales", "Sistemas Críticos", "Infraestructura"];
+const PILARES = ["Móviles", "Sistemas Críticos", "Infraestructura"];
 
 export default async function LoginPage({
   searchParams,
@@ -19,7 +19,7 @@ export default async function LoginPage({
           <section>
             <h1 className="text-[44px] font-semibold leading-[1.05] tracking-[-0.03em] md:text-[64px]">Cada paro, registrado. Cada cierre, medido.</h1>
             <p className="mt-5 max-w-lg text-[19px] text-suave md:text-[21px]">
-              Seguimiento de fallas de tus cuatro pilares, con MTTR, MTBF y disponibilidad al momento.
+              Seguimiento de fallas de tus pilares, con MTTR, MTBF y disponibilidad al momento.
             </p>
             <ul className="mt-8 flex flex-wrap gap-2">
               {PILARES.map((p) => (

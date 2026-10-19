@@ -55,7 +55,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
         </p>
       )}
 
-      <ul className="mt-12 grid gap-5 md:grid-cols-2">
+      <ul className="mt-12 grid gap-5 md:grid-cols-3">
         {PILARES.map((p, i) => {
           const e = estadoDe(p.valor);
           const contenido = (

@@ -1,8 +1,8 @@
 import type { EstatusOrden, Pilar, Prioridad, Rol } from "./tipos";
 
+/** Pilares de CAB LOGISTICS (Dorsales se retiró; el valor sigue en la base por compatibilidad). */
 export const PILARES: { valor: Pilar; etiqueta: string; area: string; descripcion: string }[] = [
   { valor: "moviles", etiqueta: "Móviles", area: "Logística móvil", descripcion: "Flota, disponibilidad y registros de equipos móviles." },
-  { valor: "dorsales", etiqueta: "Dorsales", area: "Dorsales", descripcion: "Transportadores entre almacenes: solicitudes por línea y folio." },
   { valor: "criticos", etiqueta: "Críticos", area: "Sistemas críticos", descripcion: "Sistemas críticos y activos de alto impacto." },
   { valor: "infraestructura", etiqueta: "Infraestructura", area: "Infraestructura", descripcion: "Infraestructura, servicios y órdenes de inmuebles." },
 ];

@@ -2,8 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { exigirRol } from "@/lib/sesion";
 import { esAdmin, PILARES, etiquetaPilar } from "@/lib/catalogos";
 import { Aviso, Encabezado } from "@/components/ui";
-import type { Almacen, Linea, Modo, Origen, Pilar } from "@/lib/tipos";
-import { alternarActivo, crearAlmacen, crearLinea, crearModo, crearOrigen, guardarMetas } from "./acciones";
+import type { Almacen, Modo, Origen, Pilar } from "@/lib/tipos";
+import { alternarActivo, crearAlmacen, crearModo, crearOrigen, guardarMetas } from "./acciones";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { diagnosticarLlave } from "@/lib/diagnostico";
 
@@ -13,14 +13,12 @@ export default async function Configuracion({ searchParams }: { searchParams: Pr
   const { perfil, tenant } = await exigirRol(["admin"]);
   const sp = await searchParams;
   const supabase = await createClient();
-  const [a, l, o, m] = await Promise.all([
+  const [a, o, m] = await Promise.all([
     supabase.from("almacenes").select("id_almacen, nombre_almacen, activo").order("nombre_almacen"),
-    supabase.from("lineas_dorsales").select("id_linea, nombre_linea, activo").order("nombre_linea"),
     supabase.from("origenes_falla").select("id_origen, nombre, pilares, orden, activo").order("orden").order("nombre"),
     supabase.from("modos_falla").select("id_modo, nombre, pilares, orden, activo").order("orden").order("nombre"),
   ]);
   const almacenes = (a.data ?? []) as Almacen[];
-  const lineas = (l.data ?? []) as Linea[];
   const origenes = (o.data ?? []) as Origen[];
   const modos = (m.data ?? []) as Modo[];
   const diag = esAdmin(perfil.rol) ? await diagnosticarLlave() : null;
@@ -29,7 +27,7 @@ export default async function Configuracion({ searchParams }: { searchParams: Pr
     <>
       <Encabezado ruta={[{ href: "/", texto: "Pilares" }]} titulo="Configuración" sub="Catálogos compartidos por todos los pilares de tu organización." />
       {sp.bienvenida && (
-        <div className="mb-6"><Aviso tono="alerta">Organización creada. Primeros pasos: almacenes, líneas (si usas Dorsales), revisa los orígenes de falla y después da de alta equipos en cada pilar.</Aviso></div>
+        <div className="mb-6"><Aviso tono="alerta">Organización creada. Primeros pasos: almacenes, revisa los orígenes de falla y después da de alta equipos en cada pilar.</Aviso></div>
       )}
       {sp.ok && <div className="mb-6"><Aviso tono="ok">{sp.ok}</Aviso></div>}
       {sp.error && <div className="mb-6"><Aviso tono="paro">{sp.error}</Aviso></div>}
@@ -49,13 +47,10 @@ export default async function Configuracion({ searchParams }: { searchParams: Pr
         </section>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6">
         <Lista id="almacenes" titulo="Almacenes" sub="CEDIS y sitios donde están los equipos." tabla="almacenes"
           items={almacenes.map((x) => ({ id: x.id_almacen, nombre: x.nombre_almacen, activo: x.activo }))}
           accion={crearAlmacen} placeholder="Ej. CDN1, Tijuana" />
-        <Lista id="lineas" titulo="Líneas dorsales" sub="Tramos de transportadores entre almacenes." tabla="lineas"
-          items={lineas.map((x) => ({ id: x.id_linea, nombre: x.nombre_linea, activo: x.activo }))}
-          accion={crearLinea} placeholder="Ej. Dorsal CDN4 - CDN5" />
       </div>
 
       <div className="mt-6 grid gap-6">

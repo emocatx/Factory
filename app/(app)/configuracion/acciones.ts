@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { exigirRol } from "@/lib/sesion";
-import { esPilar } from "@/lib/catalogos";
+import { esPilar, PILARES } from "@/lib/catalogos";
 
 function volver(msg: string, error = false, ancla = ""): never {
   revalidatePath("/", "layout");
@@ -36,7 +36,7 @@ export async function crearOrigen(form: FormData) {
   const nombre = String(form.get("nombre") ?? "").trim();
   const pilares = form.getAll("pilares").map(String).filter(esPilar);
   if (!nombre) volver("Escribe el nombre de la causa", true, "origenes");
-  const { error } = await (await createClient()).from("origenes_falla").insert({ nombre, pilares: pilares.length === 4 || pilares.length === 0 ? null : pilares, orden: 100 });
+  const { error } = await (await createClient()).from("origenes_falla").insert({ nombre, pilares: pilares.length >= PILARES.length || pilares.length === 0 ? null : pilares, orden: 100 });
   volver(error ? traducir(error.message) : `Causa "${nombre}" agregada`, !!error, "origenes");
 }
 
@@ -45,7 +45,7 @@ export async function crearModo(form: FormData) {
   const nombre = String(form.get("nombre") ?? "").trim();
   const pilares = form.getAll("pilares").map(String).filter(esPilar);
   if (!nombre) volver("Escribe el nombre del componente o modo de falla", true, "modos");
-  const { error } = await (await createClient()).from("modos_falla").insert({ nombre, pilares: pilares.length === 4 || pilares.length === 0 ? null : pilares, orden: 100 });
+  const { error } = await (await createClient()).from("modos_falla").insert({ nombre, pilares: pilares.length >= PILARES.length || pilares.length === 0 ? null : pilares, orden: 100 });
   volver(error ? traducir(error.message) : `Componente "${nombre}" agregado`, !!error, "modos");
 }
 
