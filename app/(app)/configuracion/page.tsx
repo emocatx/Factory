@@ -5,6 +5,7 @@ import { Aviso, Encabezado } from "@/components/ui";
 import type { Almacen, Linea, Modo, Origen, Pilar } from "@/lib/tipos";
 import { alternarActivo, crearAlmacen, crearLinea, crearModo, crearOrigen, guardarMetas } from "./acciones";
 import { BotonEnviar } from "@/components/BotonEnviar";
+import { diagnosticarLlave } from "@/lib/diagnostico";
 
 export const metadata = { title: "Configuración" };
 
@@ -22,6 +23,7 @@ export default async function Configuracion({ searchParams }: { searchParams: Pr
   const lineas = (l.data ?? []) as Linea[];
   const origenes = (o.data ?? []) as Origen[];
   const modos = (m.data ?? []) as Modo[];
+  const diag = esAdmin(perfil.rol) ? await diagnosticarLlave() : null;
 
   return (
     <>
@@ -31,6 +33,21 @@ export default async function Configuracion({ searchParams }: { searchParams: Pr
       )}
       {sp.ok && <div className="mb-6"><Aviso tono="ok">{sp.ok}</Aviso></div>}
       {sp.error && <div className="mb-6"><Aviso tono="paro">{sp.error}</Aviso></div>}
+
+      {diag && (
+        <section id="conexion" className="caja-panel mb-6 scroll-mt-24 p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold">Conexión para administrar usuarios</h2>
+            <span className={`chip ${diag.ok ? "bg-ok-suave text-ok-texto" : "bg-paro-suave text-paro-texto"}`}>{diag.ok ? "Lista" : "Revisar"}</span>
+          </div>
+          <p className="mt-1 text-[15px] text-suave">Revisa la llave SUPABASE_SERVICE_ROLE_KEY de Vercel sin mostrarla.</p>
+          <ul className="mt-4 space-y-1.5 text-[15px]">
+            {diag.lineas.map((l, i) => (
+              <li key={i} className="flex gap-2"><span aria-hidden="true" className={l.estado === "ok" ? "text-ok-texto" : l.estado === "mal" ? "text-paro-texto" : "text-alerta-texto"}>{l.estado === "ok" ? "✓" : l.estado === "mal" ? "✕" : "!"}</span><span>{l.texto}</span></li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Lista id="almacenes" titulo="Almacenes" sub="CEDIS y sitios donde están los equipos." tabla="almacenes"
