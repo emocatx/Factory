@@ -75,3 +75,61 @@ export async function moverEquipos(form: FormData) {
   const { error } = await supabase.from("equipos").update(cambio).in("id_equipo", ids);
   volver(pilar, error ? traducir(error.message) : `${ids.length} equipo${ids.length === 1 ? "" : "s"} actualizado${ids.length === 1 ? "" : "s"}`, !!error);
 }
+
+/**
+ * Alta masiva de equipos de un pilar. El almacén se indica por nombre.
+ * Omite series SAP o claves que ya existen en la organización; opcionalmente crea los almacenes que falten.
+ */
+export async function importarEquipos(
+  pilar: string,
+  filas: Record<string, string>[],
+  crearAlmacenes: boolean,
+): Promise<{ ok: boolean; mensaje: string; detalle?: string[] }> {
+  await exigirRol(["admin"]);
+  if (!esPilar(pilar)) return { ok: false, mensaje: "Pilar inválido." };
+  const supabase = await createClient();
+  const clave = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+
+  const [{ data: alm }, { data: eqs }] = await Promise.all([
+    supabase.from("almacenes").select("id_almacen, nombre_almacen"),
+    supabase.from("equipos").select("sap_id, clave_id").range(0, 49999),
+  ]);
+  const almacenes = new Map((alm ?? []).map((a) => [clave(a.nombre_almacen as string), a.id_almacen as string]));
+  const saps = new Set((eqs ?? []).map((e) => e.sap_id as string | null).filter(Boolean).map((s) => clave(s!)));
+  const claves = new Set((eqs ?? []).map((e) => e.clave_id as string | null).filter(Boolean).map((s) => clave(s!)));
+
+  const lote = filas.slice(0, 2000);
+  // Almacenes faltantes
+  const faltan = [...new Set(lote.map((f) => String(f.almacen ?? "").trim().replace(/\s+/g, " ")).filter((n) => n && !almacenes.has(clave(n))))];
+  if (faltan.length && crearAlmacenes) {
+    const { data: creados, error } = await supabase.from("almacenes").insert(faltan.map((n) => ({ nombre_almacen: n }))).select("id_almacen, nombre_almacen");
+    if (error) return { ok: false, mensaje: traducir(error.message) };
+    (creados ?? []).forEach((a) => almacenes.set(clave(a.nombre_almacen as string), a.id_almacen as string));
+  }
+
+  const detalle: string[] = [];
+  const nuevos: { nombre_equipo: string; sap_id: string | null; clave_id: string | null; id_almacen: string; tipo_pilar: string }[] = [];
+  lote.forEach((f, i) => {
+    const n = i + 1;
+    const nombre = String(f.nombre ?? "").trim();
+    const sap = String(f.sap ?? "").trim() || null;
+    const cl = String(f.clave ?? "").trim() || null;
+    const a = String(f.almacen ?? "").trim().replace(/\s+/g, " ");
+    if (!nombre || !a) { detalle.push(`Fila ${n}: falta nombre o almacén.`); return; }
+    const idAlm = almacenes.get(clave(a));
+    if (!idAlm) { detalle.push(`Fila ${n} (${nombre}): el almacén "${a}" no existe.`); return; }
+    if (sap && saps.has(clave(sap))) { detalle.push(`Fila ${n} (${nombre}): la serie SAP ${sap} ya existe; se omitió.`); return; }
+    if (cl && claves.has(clave(cl))) { detalle.push(`Fila ${n} (${nombre}): la clave ${cl} ya existe; se omitió.`); return; }
+    if (sap) saps.add(clave(sap));
+    if (cl) claves.add(clave(cl));
+    nuevos.push({ nombre_equipo: nombre, sap_id: sap, clave_id: cl, id_almacen: idAlm, tipo_pilar: pilar });
+  });
+
+  for (let i = 0; i < nuevos.length; i += 500) {
+    const { error } = await supabase.from("equipos").insert(nuevos.slice(i, i + 500));
+    if (error) return { ok: false, mensaje: `Se detuvo en el bloque ${i / 500 + 1}: ${traducir(error.message)}`, detalle };
+  }
+  revalidatePath(`/p/${pilar}`, "layout");
+  const creadosAlm = crearAlmacenes && faltan.length ? ` y ${faltan.length} almacén(es) nuevos` : "";
+  return { ok: true, mensaje: `${nuevos.length} equipo(s) dados de alta${creadosAlm}${detalle.length ? `; ${detalle.length} fila(s) omitidas` : ""}.`, detalle };
+}

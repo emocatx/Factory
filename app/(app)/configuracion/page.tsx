@@ -3,7 +3,8 @@ import { exigirRol } from "@/lib/sesion";
 import { esAdmin, esPilar, PILARES, etiquetaPilar } from "@/lib/catalogos";
 import { Aviso, Encabezado } from "@/components/ui";
 import type { Almacen, Modo, Origen, Pilar } from "@/lib/tipos";
-import { alternarActivo, crearAlmacen, crearModo, crearOrigen, guardarMetas } from "./acciones";
+import { alternarActivo, crearAlmacen, crearModo, crearOrigen, guardarMetas, importarAlmacenes } from "./acciones";
+import { ImportarAlmacenes } from "@/components/importar/ImportarAlmacenes";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { diagnosticarLlave } from "@/lib/diagnostico";
 
@@ -49,6 +50,7 @@ export default async function Configuracion({ searchParams }: { searchParams: Pr
         </section>
       )}
 
+      <ImportarAlmacenes importar={importarAlmacenes} />
       <div className="grid gap-6">
         <Lista id="almacenes" titulo="Almacenes" sub="CEDIS y sitios donde están los equipos." tabla="almacenes"
           items={almacenes.map((x) => ({ id: x.id_almacen, nombre: x.nombre_almacen, activo: x.activo }))}

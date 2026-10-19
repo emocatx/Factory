@@ -80,3 +80,33 @@ export async function guardarMetas(form: FormData) {
     .eq("id", tenant.id);
   volver(error ? traducir(error.message) : "Metas y pilares guardados", !!error, "metas");
 }
+
+/** Alta masiva de almacenes. Omite los que ya existen (sin distinguir mayúsculas ni espacios). */
+export async function importarAlmacenes(filas: Record<string, string>[]): Promise<{ ok: boolean; mensaje: string; detalle?: string[] }> {
+  await exigirRol(["admin"]);
+  const supabase = await createClient();
+  const { data } = await supabase.from("almacenes").select("nombre_almacen");
+  const clave = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+  const existentes = new Set((data ?? []).map((a) => clave(a.nombre_almacen as string)));
+  const vistos = new Set<string>();
+  const nuevos: { nombre_almacen: string }[] = [];
+  const omitidos: string[] = [];
+  for (const f of filas.slice(0, 2000)) {
+    const nombre = String(f.nombre ?? "").trim().replace(/\s+/g, " ");
+    if (!nombre) continue;
+    const k = clave(nombre);
+    if (existentes.has(k) || vistos.has(k)) { omitidos.push(nombre); continue; }
+    vistos.add(k);
+    nuevos.push({ nombre_almacen: nombre });
+  }
+  if (nuevos.length) {
+    const { error } = await supabase.from("almacenes").insert(nuevos);
+    if (error) return { ok: false, mensaje: traducir(error.message) };
+  }
+  revalidatePath("/", "layout");
+  return {
+    ok: true,
+    mensaje: `${nuevos.length} almacén(es) creados${omitidos.length ? `, ${omitidos.length} ya existían y se omitieron` : ""}.`,
+    detalle: omitidos.length ? omitidos.slice(0, 50).map((o) => `Ya existía: ${o}`) : undefined,
+  };
+}

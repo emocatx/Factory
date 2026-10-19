@@ -6,7 +6,8 @@ import { esUuid } from "@/lib/filtros";
 import { puedeAdministrar } from "@/lib/catalogos";
 import { Aviso, ChipEquipo, Encabezado, Vacio } from "@/components/ui";
 import type { Equipo } from "@/lib/tipos";
-import { cambiarBaja, guardarEquipo, moverEquipos } from "./acciones";
+import { cambiarBaja, guardarEquipo, importarEquipos, moverEquipos } from "./acciones";
+import { ImportarEquipos } from "@/components/importar/ImportarEquipos";
 import { BotonEnviar } from "@/components/BotonEnviar";
 
 export const metadata = { title: "Equipos" };
@@ -45,6 +46,8 @@ export default async function Equipos({
       />
       {f.ok && <div className="mb-6"><Aviso tono="ok">{f.ok}</Aviso></div>}
       {f.error && <div className="mb-6"><Aviso tono="paro">{f.error}</Aviso></div>}
+
+      <ImportarEquipos pilar={pilar} almacenes={cat.almacenes.map((a) => a.nombre_almacen)} importar={importarEquipos} />
 
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="min-w-0">
