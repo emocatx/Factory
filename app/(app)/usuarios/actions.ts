@@ -38,7 +38,16 @@ export async function invitarUsuario(form: FormData) {
     data: { nombre },
     redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/confirmar`,
   });
-  if (error) volver(error.message.includes("already") ? "Ese correo ya tiene cuenta en Factory" : error.message, true);
+  if (error) {
+    const m = error.message.toLowerCase();
+    volver(
+      m.includes("already") ? "Ese correo ya tiene cuenta en Factory"
+      : m.includes("rate limit") ? "Se alcanzó el límite de correos de Supabase. Espera e inténtalo de nuevo, o configura un SMTP propio."
+      : m.includes("not authorized") ? "El correo de prueba de Supabase solo envía al equipo del proyecto. Configura un SMTP propio para invitar a otras personas."
+      : error.message,
+      true,
+    );
+  }
 
   const { error: e2 } = await admin.auth.admin.updateUserById(data.user.id, {
     app_metadata: { tenant_id: perfil.tenant_id, rol, pilares },

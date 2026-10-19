@@ -28,7 +28,7 @@ export default async function LoginPage({
             </ul>
           </section>
           <section className="caja-panel p-8">
-            <FormLogin siguiente={next ?? "/"} errorInicial={error === "inactivo" ? "Tu usuario está desactivado. Pide a tu administrador que lo reactive." : undefined} />
+            <FormLogin siguiente={next ?? "/"} errorInicial={error === "inactivo" ? "Tu usuario está desactivado. Pide a tu administrador que lo reactive." : error === "enlace" ? "Ese enlace ya se usó o venció. Si ya confirmaste, inicia sesión; si no, pide un correo nuevo." : undefined} />
           </section>
         </div>
         <p className="mt-16 text-[13px] text-suave">Factory · Anacronyc y JRia</p>
