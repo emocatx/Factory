@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Marca } from "@/components/Marca";
+import { marcarContrasenaCambiada } from "../acciones";
 
 export default function NuevaContrasena() {
   const router = useRouter();
@@ -17,7 +18,8 @@ export default function NuevaContrasena() {
     setPend(true);
     const { error } = await createClient().auth.updateUser({ password: c });
     setPend(false);
-    if (error) return setError(error.message);
+    if (error) return setError(error.message.includes("different from the old") ? "Usa una contraseña distinta a la temporal." : error.message);
+    await marcarContrasenaCambiada();
     router.replace("/");
     router.refresh();
   }
@@ -26,7 +28,10 @@ export default function NuevaContrasena() {
     <main className="flex min-h-dvh items-center justify-center p-6">
       <form action={guardar} className="w-full max-w-sm space-y-5">
         <Marca />
-        <h1 className="text-[34px] font-semibold leading-tight">Define tu contraseña</h1>
+        <div>
+          <h1 className="text-[34px] font-semibold leading-tight">Define tu contraseña</h1>
+          <p className="mt-2 text-[15px] text-suave">Elige una contraseña propia de al menos 8 caracteres. La temporal deja de servir.</p>
+        </div>
         <div>
           <label className="etiqueta" htmlFor="c">Nueva contraseña</label>
           <input id="c" name="c" type="password" className="campo" autoComplete="new-password" required />

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { exigirRol } from "@/lib/sesion";
 import { esPilar, rolesQueOtorga } from "@/lib/catalogos";
+import { randomInt } from "node:crypto";
 import type { Pilar, Rol } from "@/lib/tipos";
 
 
@@ -87,3 +88,60 @@ export async function actualizarUsuario(form: FormData) {
   if (!data?.length) volver("No tienes permiso para modificar a esta persona.", true);
   volver("Usuario actualizado");
 }
+
+export type EstadoAlta = { ok?: string; error?: string; clave?: string; correo?: string } | undefined;
+
+/** Contraseña temporal legible (sin 0/O, 1/l/I) de 12 caracteres. */
+function claveTemporal() {
+  const a = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+  return Array.from({ length: 12 }, () => a[randomInt(a.length)]).join("");
+}
+
+/**
+ * Alta sin correo: crea la cuenta con contraseña temporal (o adopta una cuenta ya registrada que aún
+ * no pertenece a ninguna organización) y la liga a la organización con su rol y pilares.
+ * En su primer ingreso se le pide cambiar la contraseña.
+ */
+export async function crearConContrasena(_: EstadoAlta, form: FormData): Promise<EstadoAlta> {
+  const { perfil, pilares: misPilares } = await exigirRol(["admin", "coordinador"]);
+  const correo = String(form.get("correo") ?? "").trim().toLowerCase();
+  const nombre = String(form.get("nombre") ?? "").trim() || correo.split("@")[0];
+  const rol = String(form.get("rol") ?? "tecnico") as Rol;
+  const pilares = leerPilares(form);
+  if (!/^\S+@\S+\.\S+$/.test(correo)) return { error: "Escribe un correo válido, por ejemplo nombre@empresa.com" };
+  if (!rolesQueOtorga(perfil.rol).includes(rol)) return { error: "No puedes otorgar ese rol." };
+  if (rol !== "admin" && rol !== "gerente" && pilares.length === 0) return { error: "Marca al menos un pilar para este usuario." };
+  if (perfil.rol === "coordinador" && pilares.some((p) => !misPilares.includes(p))) return { error: "Solo puedes asignar los pilares que tú tienes." };
+
+  let admin;
+  try {
+    admin = createServiceClient();
+  } catch {
+    return { error: "Falta configurar SUPABASE_SERVICE_ROLE_KEY en Vercel." };
+  }
+
+  const clave = claveTemporal();
+  const meta = { tenant_id: perfil.tenant_id, rol, pilares, cambiar_contrasena: true };
+  const { data: existente } = await admin.rpc("buscar_usuario_auth", { p_correo: correo });
+  const fila = (existente as { id: string; tenant_id: string | null }[] | null)?.[0];
+  let id: string;
+
+  if (fila) {
+    if (fila.tenant_id && fila.tenant_id !== perfil.tenant_id) return { error: "Ese correo pertenece a otra organización." };
+    if (fila.tenant_id === perfil.tenant_id) return { error: "Esa persona ya está en tu organización; edítala en la lista de abajo." };
+    // Cuenta registrada sin organización: se adopta y se le asigna contraseña temporal.
+    const { error } = await admin.auth.admin.updateUserById(fila.id, { password: clave, email_confirm: true, app_metadata: meta, user_metadata: { nombre } });
+    if (error) return { error: error.message };
+    id = fila.id;
+  } else {
+    const { data, error } = await admin.auth.admin.createUser({ email: correo, password: clave, email_confirm: true, app_metadata: meta, user_metadata: { nombre } });
+    if (error || !data.user) return { error: error?.message ?? "No se pudo crear la cuenta." };
+    id = data.user.id;
+  }
+
+  const { error: e2 } = await admin.from("usuarios_perfiles").upsert({ id, tenant_id: perfil.tenant_id, nombre, correo, rol, pilares, activo: true });
+  if (e2) return { error: e2.message };
+  revalidatePath("/usuarios");
+  return { ok: `${nombre} quedó dado de alta. Compártele estos datos; en su primer ingreso definirá su propia contraseña.`, clave, correo };
+}
+

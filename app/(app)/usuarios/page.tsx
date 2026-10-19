@@ -2,7 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { exigirRol } from "@/lib/sesion";
 import { Aviso, Encabezado } from "@/components/ui";
 import { etiquetaPilar, etiquetaRol, PILARES, ROLES, rolesQueOtorga } from "@/lib/catalogos";
-import { actualizarUsuario, invitarUsuario } from "./actions";
+import { actualizarUsuario } from "./actions";
+import { FormAlta } from "./FormAlta";
 import type { Perfil, Pilar } from "@/lib/tipos";
 import { BotonEnviar } from "@/components/BotonEnviar";
 
@@ -39,23 +40,11 @@ export default async function Usuarios({ searchParams }: { searchParams: Promise
       {sp.ok && <div className="mb-6"><Aviso tono="ok">{sp.ok}</Aviso></div>}
       {sp.error && <div className="mb-6" role="alert"><Aviso tono="paro">{sp.error}</Aviso></div>}
 
+      <FormAlta roles={otorga} disponibles={disponibles} rolInicial={yo.rol === "coordinador" ? "supervisor" : "tecnico"} esCoordinador={yo.rol === "coordinador"} sitio={process.env.NEXT_PUBLIC_SITE_URL ?? ""} />
+
       <section className="caja-panel mb-6 p-6">
-        <h2 className="text-xl font-semibold">Invitar a alguien</h2>
-        <p className="mt-1 text-[15px] text-suave">Recibirá un correo para crear su contraseña.{yo.rol === "coordinador" ? " Como coordinador das de alta y editas supervisores, técnicos, operaciones y lectores de tus pilares." : " Operaciones solo levanta y sigue sus solicitudes."}</p>
-        <form action={invitarUsuario} className="mt-5 grid gap-4 md:grid-cols-[1fr_1fr_200px]">
-          <label><span className="etiqueta">Nombre</span><input name="nombre" className="campo" placeholder="Nombre y apellido" /></label>
-          <label><span className="etiqueta">Correo</span><input name="correo" type="email" className="campo" placeholder="nombre@empresa.com" required /></label>
-          <label><span className="etiqueta">Rol</span>
-            <select name="rol" className="campo" defaultValue={yo.rol === "coordinador" ? "supervisor" : "tecnico"}>
-              {otorga.map((r) => <option key={r.valor} value={r.valor}>{r.etiqueta}</option>)}
-            </select></label>
-          <fieldset className="md:col-span-2">
-            <legend className="etiqueta">Pilares (administrador y gerente ven todos)</legend>
-            <Pilares marcados={disponibles} prefijo="nuevo" disponibles={disponibles} />
-          </fieldset>
-          <div className="flex items-end"><BotonEnviar className="btn-primario w-full" pendiente="Enviando…">Enviar invitación</BotonEnviar></div>
-        </form>
-        <dl className="mt-6 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-5">
+        <h2 className="text-xl font-semibold">Qué hace cada rol</h2>
+        <dl className="mt-4 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-5">
           {ROLES.map((r) => (
             <div key={r.valor}><dt className="font-semibold">{r.etiqueta}</dt><dd className="text-suave">{r.descripcion}</dd></div>
           ))}

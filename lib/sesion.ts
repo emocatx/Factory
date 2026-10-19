@@ -12,6 +12,8 @@ export const obtenerSesion = cache(async (): Promise<Sesion> => {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+  // Alta con contraseña temporal: primero debe definir la suya.
+  if (user.app_metadata?.cambiar_contrasena) redirect("/auth/contrasena");
 
   const { data: perfil } = await supabase
     .from("usuarios_perfiles")
