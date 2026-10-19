@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { exigirRol } from "@/lib/sesion";
-import { esAdmin, PILARES, etiquetaPilar } from "@/lib/catalogos";
+import { esAdmin, esPilar, PILARES, etiquetaPilar } from "@/lib/catalogos";
 import { Aviso, Encabezado } from "@/components/ui";
 import type { Almacen, Modo, Origen, Pilar } from "@/lib/tipos";
 import { alternarActivo, crearAlmacen, crearModo, crearOrigen, guardarMetas } from "./acciones";
@@ -19,8 +19,10 @@ export default async function Configuracion({ searchParams }: { searchParams: Pr
     supabase.from("modos_falla").select("id_modo, nombre, pilares, orden, activo").order("orden").order("nombre"),
   ]);
   const almacenes = (a.data ?? []) as Almacen[];
-  const origenes = (o.data ?? []) as Origen[];
-  const modos = (m.data ?? []) as Modo[];
+  // Se ocultan los que solo aplicaban a pilares retirados (p. ej. Dorsales)
+  const vigente = (x: { pilares: Pilar[] | null }) => !x.pilares || x.pilares.some(esPilar);
+  const origenes = ((o.data ?? []) as Origen[]).filter(vigente);
+  const modos = ((m.data ?? []) as Modo[]).filter(vigente);
   const diag = esAdmin(perfil.rol) ? await diagnosticarLlave() : null;
 
   return (
@@ -156,7 +158,7 @@ function CatalogoFalla({ id, titulo, sub, tabla, items, accion, placeholder }: {
           <li key={x.id} className="flex items-center justify-between gap-3 rounded-xl bg-papel px-4 py-3">
             <div className="min-w-0">
               <p className={x.activo ? "font-medium" : "text-suave line-through"}>{x.nombre}</p>
-              <p className="text-[13px] text-suave">{x.pilares ? x.pilares.map(etiquetaPilar).join(", ") : "Todos los pilares"}</p>
+              <p className="text-[13px] text-suave">{x.pilares ? x.pilares.filter(esPilar).map(etiquetaPilar).join(", ") || "Ningún pilar activo" : "Todos los pilares"}</p>
             </div>
             <Alternar tabla={tabla} id={x.id} activo={x.activo} />
           </li>

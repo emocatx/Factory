@@ -9,7 +9,8 @@ export const PILARES: { valor: Pilar; etiqueta: string; area: string; descripcio
 
 export const esPilar = (v: string): v is Pilar => PILARES.some((p) => p.valor === v);
 export const infoPilar = (p: Pilar) => PILARES.find((x) => x.valor === p)!;
-export const etiquetaPilar = (p: Pilar) => infoPilar(p).etiqueta;
+/** Tolera pilares retirados (p. ej. Dorsales en datos viejos) para no romper la pantalla. */
+export const etiquetaPilar = (p: Pilar) => PILARES.find((x) => x.valor === p)?.etiqueta ?? (p === "dorsales" ? "Dorsales (retirado)" : p);
 
 export const ESTADOS: Record<EstatusOrden, { etiqueta: string; clase: string }> = {
   pendiente:  { etiqueta: "Pendiente",  clase: "bg-alerta-suave text-alerta-texto" },
