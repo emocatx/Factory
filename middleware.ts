@@ -18,6 +18,15 @@ function faltaConfiguracion(faltan: string[]) {
 }
 
 export async function middleware(request: NextRequest) {
+  // Supabase manda los enlaces de correo a la Site URL cuando el destino no está en "Redirect URLs".
+  // Si llega un ?code= o ?token_hash= a cualquier página, se procesa en /auth/confirmar.
+  const q = request.nextUrl.searchParams;
+  if ((q.has("code") || q.has("token_hash")) && request.nextUrl.pathname !== "/auth/confirmar") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/confirmar";
+    return NextResponse.redirect(url);
+  }
+
   let response = NextResponse.next({ request });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
