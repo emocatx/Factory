@@ -27,8 +27,10 @@ export const PRIORIDADES: { valor: Prioridad; etiqueta: string }[] = [
 ];
 
 export const ROLES: { valor: Rol; etiqueta: string; descripcion: string }[] = [
-  { valor: "admin", etiqueta: "Administrador", descripcion: "Todo, incluidos usuarios y configuración" },
-  { valor: "supervisor", etiqueta: "Supervisor", descripcion: "Atiende órdenes y administra catálogos" },
+  { valor: "admin", etiqueta: "Administrador", descripcion: "Todo: usuarios, almacenes, equipos, catálogos y metas" },
+  { valor: "gerente", etiqueta: "Gerente", descripcion: "Consulta indicadores, análisis e historial de todos los pilares" },
+  { valor: "supervisor", etiqueta: "Supervisor", descripcion: "Registra, asigna, atiende y cierra órdenes" },
+  { valor: "coordinador", etiqueta: "Coordinador", descripcion: "Registra, asigna y da seguimiento; da de alta a su equipo" },
   { valor: "tecnico", etiqueta: "Técnico", descripcion: "Registra, inicia y cierra órdenes" },
   { valor: "operaciones", etiqueta: "Operaciones", descripcion: "Levanta solicitudes y les da seguimiento" },
   { valor: "lector", etiqueta: "Solo lectura", descripcion: "Consulta tableros e historial" },
@@ -36,9 +38,19 @@ export const ROLES: { valor: Rol; etiqueta: string; descripcion: string }[] = [
 export const etiquetaRol = (r: Rol) => ROLES.find((x) => x.valor === r)?.etiqueta ?? r;
 
 export const puedeAtender = (r: Rol) => r === "admin" || r === "supervisor" || r === "tecnico";
-export const puedeSolicitar = (r: Rol) => r !== "lector";
-export const puedeAdministrar = (r: Rol) => r === "admin" || r === "supervisor";
+export const puedeSolicitar = (r: Rol) => r !== "lector" && r !== "gerente";
+/** Almacenes, líneas, equipos, catálogos de falla y configuración: solo el administrador. */
+export const puedeAdministrar = (r: Rol) => r === "admin";
+/** Ve todos los pilares sin que se los asignen. */
+export const veTodosLosPilares = (r: Rol) => r === "admin" || r === "gerente";
 export const esAdmin = (r: Rol) => r === "admin";
+/** Asignar, reasignar y cancelar órdenes. */
+export const puedeAsignar = (r: Rol) => r === "admin" || r === "supervisor" || r === "coordinador";
+/** Ver y administrar usuarios (el coordinador solo a su equipo). */
+export const puedeGestionarUsuarios = (r: Rol) => r === "admin" || r === "coordinador";
+/** Roles que cada quien puede otorgar. */
+export const rolesQueOtorga = (r: Rol): Rol[] =>
+  r === "admin" ? ROLES.map((x) => x.valor) : r === "coordinador" ? ["supervisor", "tecnico", "operaciones", "lector"] : [];
 
 /** Pestañas de un pilar según el rol (Operaciones ve su propio espacio, como en la app de Power Apps). */
 export function pestanasPilar(pilar: Pilar, rol: Rol) {
@@ -53,7 +65,7 @@ export function pestanasPilar(pilar: Pilar, rol: Rol) {
   const t = [
     { href: `${base}/ordenes`, texto: "Órdenes abiertas" },
     { href: `${base}/resumen`, texto: "Resumen de órdenes" },
-    ...(rol !== "lector" ? [{ href: `${base}/registro`, texto: "Registro" }] : []),
+    ...(puedeSolicitar(rol) ? [{ href: `${base}/registro`, texto: "Registro" }] : []),
     { href: `${base}/indicadores`, texto: "Indicadores" },
     { href: `${base}/analisis`, texto: "Análisis de falla" },
     { href: `${base}/cerradas`, texto: "Cerradas" },

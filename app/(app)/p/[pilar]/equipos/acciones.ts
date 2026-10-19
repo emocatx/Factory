@@ -29,7 +29,7 @@ function leer(form: FormData) {
 }
 
 export async function guardarEquipo(form: FormData) {
-  await exigirRol(["admin", "supervisor"]);
+  await exigirRol(["admin"]);
   const pilar = String(form.get("pilar"));
   if (!esPilar(pilar)) return;
   const id = String(form.get("id_equipo") ?? "");
@@ -43,7 +43,7 @@ export async function guardarEquipo(form: FormData) {
 }
 
 export async function cambiarBaja(form: FormData) {
-  await exigirRol(["admin", "supervisor"]);
+  await exigirRol(["admin"]);
   const pilar = String(form.get("pilar"));
   if (!esPilar(pilar)) return;
   const id = String(form.get("id_equipo"));
@@ -60,7 +60,7 @@ export async function cambiarBaja(form: FormData) {
 
 /** Cambio masivo: mover varios equipos a otro almacén (y línea, en Dorsales). */
 export async function moverEquipos(form: FormData) {
-  await exigirRol(["admin", "supervisor"]);
+  await exigirRol(["admin"]);
   const pilar = String(form.get("pilar"));
   if (!esPilar(pilar)) return;
   const ids = form.getAll("sel").map(String).filter(Boolean);

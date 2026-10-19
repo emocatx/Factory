@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { obtenerSesion } from "@/lib/sesion";
-import { esAdmin, etiquetaRol, puedeAdministrar } from "@/lib/catalogos";
+import { etiquetaRol, puedeAdministrar, puedeGestionarUsuarios } from "@/lib/catalogos";
 import { Marca } from "@/components/Marca";
 import { EnVivo } from "@/components/EnVivo";
 import { cerrarSesion } from "@/app/login/actions";
@@ -11,7 +11,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const enlaces = [
     { href: "/historial", texto: "Historial", ver: perfil.rol !== "operaciones" },
     { href: "/configuracion", texto: "Configuración", ver: puedeAdministrar(perfil.rol) },
-    { href: "/usuarios", texto: "Usuarios", ver: esAdmin(perfil.rol) },
+    { href: "/usuarios", texto: "Usuarios", ver: puedeGestionarUsuarios(perfil.rol) },
   ].filter((e) => e.ver);
 
   return (

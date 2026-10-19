@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { sesionDePilar } from "@/lib/sesion";
 import { catalogosPilar, tecnicosPilar } from "@/lib/datos";
 import { esUuid } from "@/lib/filtros";
-import { ESTADOS, puedeAtender } from "@/lib/catalogos";
+import { ESTADOS, puedeAsignar } from "@/lib/catalogos";
 import { Encabezado } from "@/components/ui";
 import { BarraFiltros } from "@/components/BarraFiltros";
 import { PanelOrdenes } from "./PanelOrdenes";
@@ -33,7 +33,7 @@ export default async function OrdenesAbiertas({
     .limit(300);
   if (esUuid(f.linea)) q = q.eq("id_linea", f.linea);
   if (f.estado && f.estado in ESTADOS) q = q.eq("estatus_orden", f.estado as EstatusOrden);
-  const [{ data }, cat, tecnicos] = await Promise.all([q, catalogosPilar(pilar), puedeAtender(perfil.rol) ? tecnicosPilar(pilar) : []]);
+  const [{ data }, cat, tecnicos] = await Promise.all([q, catalogosPilar(pilar), puedeAsignar(perfil.rol) ? tecnicosPilar(pilar) : []]);
 
   let ordenes = (data ?? []) as OrdenDetalle[];
   // prioridad: alta primero (el enum ordena baja<media<alta, así que invertimos aquí)

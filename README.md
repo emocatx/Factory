@@ -37,13 +37,17 @@ Las vistas se actualizan solas vía Supabase Realtime (indicador "En vivo").
 - La bitácora la escriben triggers; los usuarios solo la leen.
 - Invitaciones: el `tenant_id` va en `app_metadata` (solo editable con service role).
 
-| Rol | Ver | Levantar solicitudes | Atender / cerrar | Equipos y configuración | Usuarios y metas |
-|---|---|---|---|---|---|
-| admin | todos los pilares | ✔ | ✔ | ✔ | ✔ |
-| supervisor | sus pilares | ✔ | ✔ | ✔ | — |
-| tecnico | sus pilares | ✔ | ✔ | — | — |
-| operaciones | sus solicitudes | ✔ (quedan *Pendiente*) | — | — | — |
-| lector | sus pilares | — | — | — | — |
+| Rol | Ve | Registra | Asigna / cancela | Inicia / cierra | Almacenes, equipos y catálogos | Usuarios | Metas |
+|---|---|---|---|---|---|---|---|
+| Administrador | todos los pilares | ✔ | ✔ | ✔ | ✔ | todos | ✔ |
+| Gerente | todos los pilares | — | — | — | — | — | — |
+| Coordinador | sus pilares | ✔ | ✔ | — | — | su equipo* | — |
+| Supervisor | sus pilares | ✔ | ✔ | ✔ | — | — | — |
+| Técnico | sus pilares | ✔ | — | ✔ | — | — | — |
+| Operaciones | sus pilares | solo solicitudes (*Pendiente*) | las suyas pendientes | — | — | — | — |
+| Solo lectura | sus pilares | — | — | — | — | — | — |
+
+\* El coordinador invita y edita supervisores, técnicos, operaciones y lectores, solo con los pilares que él tiene.
 
 ## Puesta en marcha
 

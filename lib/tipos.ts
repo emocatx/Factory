@@ -1,5 +1,5 @@
 export type Pilar = "moviles" | "dorsales" | "criticos" | "infraestructura";
-export type Rol = "admin" | "supervisor" | "tecnico" | "operaciones" | "lector";
+export type Rol = "admin" | "gerente" | "supervisor" | "coordinador" | "tecnico" | "operaciones" | "lector";
 export type EstatusEquipo = "activo" | "en_paro" | "baja";
 export type EstatusOrden = "pendiente" | "asignada" | "en_proceso" | "cerrada" | "cancelada";
 export type Prioridad = "baja" | "media" | "alta";

@@ -28,7 +28,7 @@ export const obtenerSesion = cache(async (): Promise<Sesion> => {
     .single();
 
   const activos = (tenant?.pilares_activos ?? []) as Pilar[];
-  const propios = perfil.rol === "admin" ? activos : (perfil.pilares as Pilar[]).filter((p) => activos.includes(p));
+  const propios = perfil.rol === "admin" || perfil.rol === "gerente" ? activos : (perfil.pilares as Pilar[]).filter((p) => activos.includes(p));
   return { perfil, tenant, pilares: propios } as Sesion;
 });
 

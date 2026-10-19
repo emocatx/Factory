@@ -4,10 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { exigirRol } from "@/lib/sesion";
-import { esPilar, ROLES } from "@/lib/catalogos";
+import { esPilar, rolesQueOtorga } from "@/lib/catalogos";
 import type { Pilar, Rol } from "@/lib/tipos";
 
-const ROLES_VALIDOS = ROLES.map((r) => r.valor);
 
 function volver(msg: string, error = false): never {
   revalidatePath("/usuarios");
@@ -16,15 +15,21 @@ function volver(msg: string, error = false): never {
 
 const leerPilares = (form: FormData) => form.getAll("pilares").map(String).filter(esPilar) as Pilar[];
 
+/** Valida rol y pilares contra lo que quien edita puede otorgar (el coordinador: su equipo y sus pilares). */
+function validar(quien: Rol, misPilares: Pilar[], rol: Rol, pilares: Pilar[]) {
+  if (!rolesQueOtorga(quien).includes(rol)) volver(quien === "coordinador" ? "Como coordinador puedes dar de alta supervisores, técnicos, operaciones y lectores." : "Elige un rol de la lista", true);
+  if (rol !== "admin" && rol !== "gerente" && pilares.length === 0) volver("Marca al menos un pilar para este usuario", true);
+  if (quien === "coordinador" && pilares.some((p) => !misPilares.includes(p))) volver("Solo puedes asignar los pilares que tú tienes.", true);
+}
+
 export async function invitarUsuario(form: FormData) {
-  const { perfil } = await exigirRol(["admin"]);
+  const { perfil, pilares: misPilares } = await exigirRol(["admin", "coordinador"]);
   const correo = String(form.get("correo") ?? "").trim().toLowerCase();
   const nombre = String(form.get("nombre") ?? "").trim();
   const rol = String(form.get("rol") ?? "tecnico") as Rol;
   const pilares = leerPilares(form);
   if (!/^\S+@\S+\.\S+$/.test(correo)) volver("Escribe un correo válido, por ejemplo nombre@empresa.com", true);
-  if (!ROLES_VALIDOS.includes(rol)) volver("Elige un rol de la lista", true);
-  if (rol !== "admin" && pilares.length === 0) volver("Marca al menos un pilar para este usuario", true);
+  validar(perfil.rol, misPilares, rol, pilares);
 
   let admin;
   try {
@@ -68,15 +73,17 @@ export async function invitarUsuario(form: FormData) {
 }
 
 export async function actualizarUsuario(form: FormData) {
-  const { perfil } = await exigirRol(["admin"]);
+  const { perfil, pilares: misPilares } = await exigirRol(["admin", "coordinador"]);
   const id = String(form.get("id"));
   const rol = String(form.get("rol")) as Rol;
   const activo = form.get("activo") === "on";
   const pilares = leerPilares(form);
-  if (id === perfil.id && (rol !== "admin" || !activo)) volver("No puedes quitarte tu propio rol de administrador", true);
-  if (!ROLES_VALIDOS.includes(rol)) volver("Elige un rol de la lista", true);
-  if (rol !== "admin" && pilares.length === 0) volver("Marca al menos un pilar para este usuario", true);
+  if (id === perfil.id) volver(perfil.rol === "admin" && (rol !== "admin" || !activo) ? "No puedes quitarte tu propio rol de administrador" : "Tu propio rol lo cambia un administrador", true);
+  validar(perfil.rol, misPilares, rol, pilares);
 
-  const { error } = await (await createClient()).from("usuarios_perfiles").update({ rol, activo, pilares }).eq("id", id);
-  volver(error ? error.message : "Usuario actualizado", !!error);
+  // RLS decide qué filas puede tocar cada quien; si no devolvió fila, no tenía permiso sobre esa persona.
+  const { data, error } = await (await createClient()).from("usuarios_perfiles").update({ rol, activo, pilares }).eq("id", id).select("id");
+  if (error) volver(error.message.includes("row-level security") ? "No tienes permiso para dar ese rol o esos pilares." : error.message, true);
+  if (!data?.length) volver("No tienes permiso para modificar a esta persona.", true);
+  volver("Usuario actualizado");
 }

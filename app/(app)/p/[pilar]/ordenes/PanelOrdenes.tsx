@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { PRIORIDADES, puedeAtender } from "@/lib/catalogos";
+import { PRIORIDADES, puedeAsignar, puedeAtender } from "@/lib/catalogos";
 import { ahoraLocalInput, fechaHora, horas } from "@/lib/formato";
 import { Aviso, ChipEstado, ChipPrioridad, Vacio } from "@/components/ui";
 import type { Almacen, Equipo, Modo, OrdenDetalle, Origen, Pilar, Prioridad, Rol } from "@/lib/tipos";
@@ -90,7 +90,7 @@ export function PanelOrdenes(props: Props) {
           <Detalle key={actual.id_orden} o={actual} {...props} onListo={() => setSel(null)} />
         ) : (
           <div className="caja-panel hidden p-8 text-[15px] text-suave lg:block">
-            Elige una orden para ver el detalle{puedeAtender(props.rol) ? ", asignarla, iniciar la atención o concluirla." : "."}
+            Elige una orden para ver el detalle{puedeAtender(props.rol) ? ", asignarla, iniciar la atención o concluirla." : puedeAsignar(props.rol) ? ", asignarla o darle seguimiento." : "."}
           </div>
         )}
       </aside>
@@ -103,7 +103,8 @@ function Detalle({ o, pilar, rol, miId, tz, tecnicos, origenes, modos, almacenes
   const [res, setRes] = useState<Resultado | null>(null);
   const [modo, setModo] = useState<"ver" | "asignar" | "cerrar" | "cancelar">("ver");
   const atiende = puedeAtender(rol);
-  const puedeCancelar = rol === "admin" || rol === "supervisor" || (o.solicitante_id === miId && o.estatus_orden === "pendiente");
+  const asigna = puedeAsignar(rol);
+  const puedeCancelar = asigna || (o.solicitante_id === miId && o.estatus_orden === "pendiente");
 
   function correr(fn: () => Promise<Resultado>) {
     setRes(null);
@@ -162,9 +163,9 @@ function Detalle({ o, pilar, rol, miId, tz, tecnicos, origenes, modos, almacenes
               </button>
             )}
             {atiende && <button className="btn-motivo" onClick={() => setModo("cerrar")}>Concluir solicitud</button>}
-            {atiende && <button className="btn-sec" onClick={() => setModo("asignar")}>{o.asignado_a ? "Reasignar" : "Asignar"}</button>}
+            {asigna && <button className="btn-sec" onClick={() => setModo("asignar")}>{o.asignado_a ? "Reasignar" : "Asignar"}</button>}
             {puedeCancelar && <button className="btn-peligro" onClick={() => setModo("cancelar")}>Cancelar</button>}
-            {!atiende && !puedeCancelar && <p className="text-[15px] text-suave">Mantenimiento ya tiene esta solicitud.</p>}
+            {!atiende && !asigna && !puedeCancelar && <p className="text-[15px] text-suave">Mantenimiento ya tiene esta solicitud.</p>}
           </div>
         )}
 

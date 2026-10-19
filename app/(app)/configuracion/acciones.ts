@@ -16,7 +16,7 @@ const traducir = (m: string) =>
   m.includes("foreign key") ? "Está en uso; desactívalo en lugar de borrarlo." : m;
 
 export async function crearAlmacen(form: FormData) {
-  await exigirRol(["admin", "supervisor"]);
+  await exigirRol(["admin"]);
   const nombre = String(form.get("nombre") ?? "").trim();
   if (!nombre) volver("Escribe el nombre del almacén", true, "almacenes");
   const { error } = await (await createClient()).from("almacenes").insert({ nombre_almacen: nombre });
@@ -24,7 +24,7 @@ export async function crearAlmacen(form: FormData) {
 }
 
 export async function crearLinea(form: FormData) {
-  await exigirRol(["admin", "supervisor"]);
+  await exigirRol(["admin"]);
   const nombre = String(form.get("nombre") ?? "").trim();
   if (!nombre) volver("Escribe el nombre de la línea", true, "lineas");
   const { error } = await (await createClient()).from("lineas_dorsales").insert({ nombre_linea: nombre });
@@ -32,7 +32,7 @@ export async function crearLinea(form: FormData) {
 }
 
 export async function crearOrigen(form: FormData) {
-  await exigirRol(["admin", "supervisor"]);
+  await exigirRol(["admin"]);
   const nombre = String(form.get("nombre") ?? "").trim();
   const pilares = form.getAll("pilares").map(String).filter(esPilar);
   if (!nombre) volver("Escribe el nombre de la causa", true, "origenes");
@@ -41,7 +41,7 @@ export async function crearOrigen(form: FormData) {
 }
 
 export async function crearModo(form: FormData) {
-  await exigirRol(["admin", "supervisor"]);
+  await exigirRol(["admin"]);
   const nombre = String(form.get("nombre") ?? "").trim();
   const pilares = form.getAll("pilares").map(String).filter(esPilar);
   if (!nombre) volver("Escribe el nombre del componente o modo de falla", true, "modos");
@@ -50,7 +50,7 @@ export async function crearModo(form: FormData) {
 }
 
 export async function alternarActivo(form: FormData) {
-  await exigirRol(["admin", "supervisor"]);
+  await exigirRol(["admin"]);
   const tabla = String(form.get("tabla"));
   const id = String(form.get("id"));
   const activo = form.get("activo") === "1";

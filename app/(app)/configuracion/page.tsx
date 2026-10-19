@@ -9,7 +9,7 @@ import { BotonEnviar } from "@/components/BotonEnviar";
 export const metadata = { title: "Configuración" };
 
 export default async function Configuracion({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string; bienvenida?: string }> }) {
-  const { perfil, tenant } = await exigirRol(["admin", "supervisor"]);
+  const { perfil, tenant } = await exigirRol(["admin"]);
   const sp = await searchParams;
   const supabase = await createClient();
   const [a, l, o, m] = await Promise.all([
