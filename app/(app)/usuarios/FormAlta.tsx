@@ -4,6 +4,8 @@ import { useActionState, useState } from "react";
 import { PILARES } from "@/lib/catalogos";
 import type { Pilar, Rol } from "@/lib/tipos";
 import { crearConContrasena, invitarUsuario } from "./actions";
+import { Desplegable } from "@/components/Desplegable";
+import { IcoPersona } from "@/components/Iconos";
 
 type Props = { roles: { valor: Rol; etiqueta: string }[]; disponibles: Pilar[]; rolInicial: Rol; esCoordinador: boolean; sitio: string };
 
@@ -39,10 +41,9 @@ export function FormAlta({ roles, disponibles, rolInicial, esCoordinador, sitio 
       <form action={modo === "clave" ? accion : invitarUsuario} className="mt-5 grid gap-4 md:grid-cols-[1fr_1fr_200px]">
         <label><span className="etiqueta">Nombre</span><input name="nombre" className="campo" placeholder="Nombre y apellido" /></label>
         <label><span className="etiqueta">Correo</span><input name="correo" type="email" className="campo" placeholder="nombre@empresa.com" required /></label>
-        <label><span className="etiqueta">Rol</span>
-          <select name="rol" className="campo" defaultValue={rolInicial}>
-            {roles.map((r) => <option key={r.valor} value={r.valor}>{r.etiqueta}</option>)}
-          </select></label>
+        <div><label htmlFor="alta-rol" className="etiqueta">Rol</label>
+          <Desplegable id="alta-rol" name="rol" defaultValue={rolInicial} icono={<IcoPersona />}
+            opciones={roles.map((r) => ({ valor: r.valor, etiqueta: r.etiqueta }))} /></div>
         <fieldset className="md:col-span-2">
           <legend className="etiqueta">Pilares (administrador y gerente ven todos)</legend>
           <div className="flex flex-wrap gap-1.5">

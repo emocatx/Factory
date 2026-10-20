@@ -9,6 +9,8 @@ import type { Equipo } from "@/lib/tipos";
 import { cambiarBaja, guardarEquipo, importarEquipos, moverEquipos } from "./acciones";
 import { ImportarEquipos } from "@/components/importar/ImportarEquipos";
 import { BotonEnviar } from "@/components/BotonEnviar";
+import { Desplegable } from "@/components/Desplegable";
+import { IcoAlmacen } from "@/components/Iconos";
 
 export const metadata = { title: "Equipos" };
 
@@ -101,21 +103,17 @@ export default async function Equipos({
               <fieldset className="flex flex-wrap items-end gap-3 bg-papel p-5">
                 <legend className="sr-only">Cambio masivo</legend>
                 <p className="w-full text-[15px] font-semibold">Cambio masivo a los seleccionados</p>
-                <label>
-                  <span className="etiqueta">Mover a almacén</span>
-                  <select name="destino_almacen" className="campo min-h-11 w-auto pr-10" defaultValue="">
-                    <option value="">Sin cambio</option>
-                    {cat.almacenes.map((a) => <option key={a.id_almacen} value={a.id_almacen}>{a.nombre_almacen}</option>)}
-                  </select>
-                </label>
+                <div>
+                  <label htmlFor="destino-almacen" className="etiqueta">Mover a almacén</label>
+                  <Desplegable id="destino-almacen" name="destino_almacen" defaultValue="" compacto icono={<IcoAlmacen />}
+                    opciones={[{ valor: "", etiqueta: "Sin cambio" }, ...cat.almacenes.map((a) => ({ valor: a.id_almacen, etiqueta: a.nombre_almacen }))]} />
+                </div>
                 {dorsal && (
-                  <label>
-                    <span className="etiqueta">Mover a línea</span>
-                    <select name="destino_linea" className="campo min-h-11 w-auto pr-10" defaultValue="">
-                      <option value="">Sin cambio</option>
-                      {cat.lineas.map((l) => <option key={l.id_linea} value={l.id_linea}>{l.nombre_linea}</option>)}
-                    </select>
-                  </label>
+                  <div>
+                    <label htmlFor="destino-linea" className="etiqueta">Mover a línea</label>
+                    <Desplegable id="destino-linea" name="destino_linea" defaultValue="" compacto
+                      opciones={[{ valor: "", etiqueta: "Sin cambio" }, ...cat.lineas.map((l) => ({ valor: l.id_linea, etiqueta: l.nombre_linea }))]} />
+                  </div>
                 )}
                 <BotonEnviar className="btn-sec min-h-11" pendiente="Aplicando…">Aplicar cambio</BotonEnviar>
               </fieldset>
@@ -134,17 +132,14 @@ export default async function Equipos({
               <input name="sap_id" defaultValue={editar?.sap_id ?? ""} className="campo font-mono" /></label>
             <label className="block"><span className="etiqueta">Clave interna (opcional)</span>
               <input name="clave_id" defaultValue={editar?.clave_id ?? ""} className="campo font-mono" /></label>
-            <label className="block"><span className="etiqueta">Almacén</span>
-              <select name="id_almacen" required defaultValue={editar?.id_almacen ?? ""} className="campo">
-                <option value="" disabled>Selecciona almacén</option>
-                {cat.almacenes.map((a) => <option key={a.id_almacen} value={a.id_almacen}>{a.nombre_almacen}</option>)}
-              </select></label>
+            <div><label htmlFor="equipo-almacen" className="etiqueta">Almacén</label>
+              <Desplegable key={`alm-${editar?.id_equipo ?? "nuevo"}`} id="equipo-almacen" name="id_almacen" required defaultValue={editar?.id_almacen ?? ""}
+                placeholder="Selecciona almacén" icono={<IcoAlmacen />}
+                opciones={cat.almacenes.map((a) => ({ valor: a.id_almacen, etiqueta: a.nombre_almacen }))} /></div>
             {dorsal && (
-              <label className="block"><span className="etiqueta">Línea</span>
-                <select name="id_linea" defaultValue={editar?.id_linea ?? ""} className="campo">
-                  <option value="">Sin línea</option>
-                  {cat.lineas.map((l) => <option key={l.id_linea} value={l.id_linea}>{l.nombre_linea}</option>)}
-                </select></label>
+              <div><label htmlFor="equipo-linea" className="etiqueta">Línea</label>
+                <Desplegable key={`lin-${editar?.id_equipo ?? "nuevo"}`} id="equipo-linea" name="id_linea" defaultValue={editar?.id_linea ?? ""}
+                  opciones={[{ valor: "", etiqueta: "Sin línea" }, ...cat.lineas.map((l) => ({ valor: l.id_linea, etiqueta: l.nombre_linea }))]} /></div>
             )}
             {cat.almacenes.length === 0 && <Aviso tono="alerta">Primero da de alta almacenes en Configuración.</Aviso>}
             <BotonEnviar className="btn-primario w-full">{editar ? "Guardar cambios" : "Dar de alta"}</BotonEnviar>

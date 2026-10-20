@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { PERIODOS } from "@/lib/filtros";
+import { Desplegable } from "./Desplegable";
+import { IcoCalendario, IcoEquipo, IcoFiltro } from "./Iconos";
 import type { Equipo, Linea } from "@/lib/tipos";
 
 /**
@@ -40,41 +42,32 @@ export function BarraFiltros({
           </label>
         )}
         {lineas && lineas.length > 0 && (
-          <label>
-            <span className="etiqueta">Línea</span>
-            <select name="linea" defaultValue={valores.linea ?? ""} className="campo min-h-11 w-auto pr-10">
-              <option value="">Todas las líneas</option>
-              {lineas.map((l) => <option key={l.id_linea} value={l.id_linea}>{l.nombre_linea}</option>)}
-            </select>
-          </label>
+          <div>
+            <label htmlFor="f-linea" className="etiqueta">Línea</label>
+            <Desplegable id="f-linea" name="linea" compacto defaultValue={valores.linea ?? ""}
+              opciones={[{ valor: "", etiqueta: "Todas las líneas" }, ...lineas.map((l) => ({ valor: l.id_linea, etiqueta: l.nombre_linea }))]} />
+          </div>
         )}
         {equipos && equipos.length > 0 && (
-          <label>
-            <span className="etiqueta">Equipo</span>
-            <select name="equipo" defaultValue={valores.equipo ?? ""} className="campo min-h-11 w-auto max-w-[260px] pr-10">
-              <option value="">Todos los equipos</option>
-              {equipos.map((e) => (
-                <option key={e.id_equipo} value={e.id_equipo}>{e.nombre_equipo}{e.sap_id ? ` · ${e.sap_id}` : ""}</option>
-              ))}
-            </select>
-          </label>
+          <div className="max-w-[300px]">
+            <label htmlFor="f-equipo" className="etiqueta">Equipo</label>
+            <Desplegable id="f-equipo" name="equipo" compacto defaultValue={valores.equipo ?? ""} icono={<IcoEquipo />}
+              opciones={[{ valor: "", etiqueta: "Todos los equipos" }, ...equipos.map((e) => ({ valor: e.id_equipo, etiqueta: e.nombre_equipo, detalle: e.sap_id ? `SAP ${e.sap_id}` : undefined }))]} />
+          </div>
         )}
         {estados && (
-          <label>
-            <span className="etiqueta">Estado</span>
-            <select name="estado" defaultValue={valores.estado ?? ""} className="campo min-h-11 w-auto pr-10">
-              <option value="">Todos los estados</option>
-              {estados.map((e) => <option key={e.v} value={e.v}>{e.t}</option>)}
-            </select>
-          </label>
+          <div>
+            <label htmlFor="f-estado" className="etiqueta">Estado</label>
+            <Desplegable id="f-estado" name="estado" compacto defaultValue={valores.estado ?? ""} icono={<IcoFiltro />}
+              opciones={[{ valor: "", etiqueta: "Todos los estados" }, ...estados.map((e) => ({ valor: e.v, etiqueta: e.t }))]} />
+          </div>
         )}
         {mostrarPeriodo && (
-          <label>
-            <span className="etiqueta">Periodo</span>
-            <select name="periodo" defaultValue={valores.periodo ?? "30d"} className="campo min-h-11 w-auto pr-10">
-              {PERIODOS.map((p) => <option key={p.v} value={p.v}>{p.t}</option>)}
-            </select>
-          </label>
+          <div>
+            <label htmlFor="f-periodo" className="etiqueta">Periodo</label>
+            <Desplegable id="f-periodo" name="periodo" compacto defaultValue={valores.periodo ?? periodoDefecto} icono={<IcoCalendario />}
+              opciones={PERIODOS.map((p) => ({ valor: p.v, etiqueta: p.t }))} />
+          </div>
         )}
         <button className="btn-primario min-h-11">Aplicar</button>
       </div>

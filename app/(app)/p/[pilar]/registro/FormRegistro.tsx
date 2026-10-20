@@ -6,6 +6,8 @@ import { PRIORIDADES } from "@/lib/catalogos";
 import { ahoraLocalInput } from "@/lib/formato";
 import { Aviso } from "@/components/ui";
 import { Diente } from "@/components/Sierra";
+import { Desplegable } from "@/components/Desplegable";
+import { IcoAlmacen, IcoCapas, IcoEquipo } from "@/components/Iconos";
 import type { Almacen, Equipo, Linea, Origen, Pilar, Prioridad } from "@/lib/tipos";
 import { registrarSolicitud, validarFolio, type Resultado } from "../acciones";
 
@@ -17,6 +19,8 @@ type Props = {
   lineas: Linea[];
   equipos: Equipo[];
   origenes: Origen[];
+  /** Folio de la orden abierta que tiene detenido a cada equipo. */
+  detenidos: Record<string, string>;
 };
 
 const ETIQUETAS: Record<string, string> = {
@@ -27,7 +31,7 @@ const ETIQUETAS: Record<string, string> = {
   descripcion: "Descripción",
 };
 
-export function FormRegistro({ pilar, operaciones, usuario, almacenes, lineas, equipos, origenes }: Props) {
+export function FormRegistro({ pilar, operaciones, usuario, almacenes, lineas, equipos, origenes, detenidos }: Props) {
   const dorsal = pilar === "dorsales";
   const vacio = {
     folio: "", id_linea: "", id_almacen: "", id_equipo: "", id_origen: "",
@@ -48,6 +52,19 @@ export function FormRegistro({ pilar, operaciones, usuario, almacenes, lineas, e
     () => equipos.filter((e) => (dorsal ? !d.id_linea || e.id_linea === d.id_linea || !e.id_linea : e.id_almacen === d.id_almacen)),
     [equipos, dorsal, d.id_linea, d.id_almacen],
   );
+
+  /** Un equipo detenido (con orden abierta) no admite otra orden: aparece deshabilitado con su folio. */
+  const opcEquipos = opcionesEquipo.map((e) => {
+    const folio = detenidos[e.id_equipo];
+    return {
+      valor: e.id_equipo,
+      etiqueta: e.nombre_equipo,
+      detalle: [e.sap_id ? `SAP ${e.sap_id}` : null, folio ? `Detenido · orden ${folio}` : "Disponible"].filter(Boolean).join(" · "),
+      deshabilitada: !!folio || e.estatus === "en_paro",
+      tono: (folio || e.estatus === "en_paro" ? "paro" : "ok") as "paro" | "ok",
+    };
+  }).sort((x, y) => Number(x.deshabilitada) - Number(y.deshabilitada));
+  const disponibles = opcEquipos.filter((o) => !o.deshabilitada).length;
 
   async function revisarFolio() {
     if (autoFolio || !d.folio.trim()) return setFolioMsg(null);
@@ -108,39 +125,24 @@ export function FormRegistro({ pilar, operaciones, usuario, almacenes, lineas, e
                 </label>
               </Campo>
               <Campo id="id_linea" etiqueta="Línea" error={err("id_linea")}>
-                <select id="id_linea" className="campo" value={d.id_linea} onChange={(e) => { set("id_linea", e.target.value); set("id_equipo", ""); }} aria-invalid={!!err("id_linea")}>
-                  <option value="">Selecciona línea</option>
-                  {lineas.map((l) => <option key={l.id_linea} value={l.id_linea}>{l.nombre_linea}</option>)}
-                </select>
+                <Desplegable id="id_linea" value={d.id_linea} onChange={(v) => { set("id_linea", v); set("id_equipo", ""); }} invalido={!!err("id_linea")}
+                  icono={<IcoCapas />} placeholder="Selecciona línea" opciones={lineas.map((l) => ({ valor: l.id_linea, etiqueta: l.nombre_linea }))} />
               </Campo>
               <Campo id="id_equipo" etiqueta="Equipo (opcional)" ayuda="Si operaciones no sabe qué equipo es, mantenimiento lo define al cerrar.">
-                <select id="id_equipo" className="campo" value={d.id_equipo} onChange={(e) => set("id_equipo", e.target.value)}>
-                  <option value="">Sin equipo específico</option>
-                  {opcionesEquipo.map((e) => (
-                    <option key={e.id_equipo} value={e.id_equipo} disabled={e.estatus === "en_paro"}>
-                      {e.nombre_equipo}{e.sap_id ? ` · ${e.sap_id}` : ""}{e.estatus === "en_paro" ? " (en paro)" : ""}
-                    </option>
-                  ))}
-                </select>
+                <Desplegable id="id_equipo" value={d.id_equipo} onChange={(v) => set("id_equipo", v)} icono={<IcoEquipo />}
+                  opciones={[{ valor: "", etiqueta: "Sin equipo específico" }, ...opcEquipos]} />
               </Campo>
             </>
           ) : (
             <>
               <Campo id="id_almacen" etiqueta="Almacén">
-                <select id="id_almacen" className="campo" value={d.id_almacen} onChange={(e) => { set("id_almacen", e.target.value); set("id_equipo", ""); }}>
-                  <option value="">Selecciona almacén</option>
-                  {almacenes.map((a) => <option key={a.id_almacen} value={a.id_almacen}>{a.nombre_almacen}</option>)}
-                </select>
+                <Desplegable id="id_almacen" value={d.id_almacen} onChange={(v) => { set("id_almacen", v); set("id_equipo", ""); }} icono={<IcoAlmacen />}
+                  placeholder="Selecciona almacén" opciones={almacenes.map((a) => ({ valor: a.id_almacen, etiqueta: a.nombre_almacen }))} />
               </Campo>
-              <Campo id="id_equipo" etiqueta="Equipo" error={err("id_equipo")}>
-                <select id="id_equipo" className="campo" value={d.id_equipo} disabled={!d.id_almacen} onChange={(e) => set("id_equipo", e.target.value)} aria-invalid={!!err("id_equipo")}>
-                  <option value="">{d.id_almacen ? (opcionesEquipo.length ? "Selecciona equipo" : "Este almacén no tiene equipos de este pilar") : "Primero elige el almacén"}</option>
-                  {opcionesEquipo.map((e) => (
-                    <option key={e.id_equipo} value={e.id_equipo} disabled={e.estatus === "en_paro"}>
-                      {e.nombre_equipo}{e.sap_id ? ` · ${e.sap_id}` : ""}{e.estatus === "en_paro" ? " (ya en paro)" : ""}
-                    </option>
-                  ))}
-                </select>
+              <Campo id="id_equipo" etiqueta="Equipo" error={err("id_equipo")} ayuda={d.id_almacen && opcEquipos.length ? `${disponibles} disponible${disponibles === 1 ? "" : "s"} de ${opcEquipos.length}. Los detenidos ya tienen una orden abierta: libéralos desde Órdenes abiertas.` : undefined}>
+                <Desplegable id="id_equipo" value={d.id_equipo} disabled={!d.id_almacen} onChange={(v) => set("id_equipo", v)} invalido={!!err("id_equipo")} icono={<IcoEquipo />}
+                  placeholder={d.id_almacen ? (opcEquipos.length ? (disponibles ? "Selecciona equipo" : "Todos los equipos de este almacén están detenidos") : "Este almacén no tiene equipos de este pilar") : "Primero elige el almacén"}
+                  opciones={opcEquipos} />
               </Campo>
               <Campo id="fecha_ingreso" etiqueta="Fecha y hora del ingreso">
                 <input id="fecha_ingreso" type="datetime-local" className="campo" value={d.fecha_ingreso} max={ahoraLocalInput()} onChange={(e) => set("fecha_ingreso", e.target.value)} />
@@ -152,10 +154,8 @@ export function FormRegistro({ pilar, operaciones, usuario, almacenes, lineas, e
         <Bloque titulo="Falla">
           {!operaciones && (
             <Campo id="id_origen" etiqueta="Causa probable (opcional)" ayuda="Mantenimiento la confirma al cerrar junto con el componente que falló.">
-              <select id="id_origen" className="campo" value={d.id_origen} onChange={(e) => set("id_origen", e.target.value)}>
-                <option value="">Por definir</option>
-                {origenes.map((o) => <option key={o.id_origen} value={o.id_origen}>{o.nombre}</option>)}
-              </select>
+              <Desplegable id="id_origen" value={d.id_origen} onChange={(v) => set("id_origen", v)}
+                opciones={[{ valor: "", etiqueta: "Por definir" }, ...origenes.map((o) => ({ valor: o.id_origen, etiqueta: o.nombre }))]} />
             </Campo>
           )}
           <Campo id="descripcion" etiqueta="Descripción" error={err("descripcion")} completo>

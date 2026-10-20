@@ -5,6 +5,7 @@ import { Encabezado, ChipEstado, Vacio } from "@/components/ui";
 import { ESTADOS, etiquetaPilar, PILARES } from "@/lib/catalogos";
 import { fechaHora, horas } from "@/lib/formato";
 import type { EventoBitacora, Linea, OrdenDetalle } from "@/lib/tipos";
+import { Desplegable } from "@/components/Desplegable";
 
 export const metadata = { title: "Historial" };
 
@@ -104,25 +105,18 @@ export default async function Historial({ searchParams }: { searchParams: Promis
           <>
             <div>
               <label className="etiqueta" htmlFor="linea">Línea</label>
-              <select id="linea" name="linea" className="campo" defaultValue={f.linea ?? ""}>
-                <option value="">Todas</option>
-                {lineas.map((l) => <option key={l.id_linea} value={l.id_linea}>{l.nombre_linea}</option>)}
-              </select>
+              <Desplegable id="linea" name="linea" defaultValue={f.linea ?? ""}
+                opciones={[{ valor: "", etiqueta: "Todas" }, ...lineas.map((l) => ({ valor: l.id_linea, etiqueta: l.nombre_linea }))]} />
             </div>
             <div>
               <label className="etiqueta" htmlFor="estado">Estado</label>
-              <select id="estado" name="estado" className="campo" defaultValue={f.estado ?? ""}>
-                <option value="">Todos</option>
-                <option value="abiertas">Abiertas (todas)</option>
-                {Object.entries(ESTADOS).map(([v, e]) => <option key={v} value={v}>{e.etiqueta}</option>)}
-              </select>
+              <Desplegable id="estado" name="estado" defaultValue={f.estado ?? ""}
+                opciones={[{ valor: "", etiqueta: "Todos" }, { valor: "abiertas", etiqueta: "Abiertas (todas)" }, ...Object.entries(ESTADOS).map(([v, e]) => ({ valor: v, etiqueta: e.etiqueta }))]} />
             </div>
             <div>
               <label className="etiqueta" htmlFor="pilar">Pilar</label>
-              <select id="pilar" name="pilar" className="campo" defaultValue={f.pilar ?? ""}>
-                <option value="">Todos</option>
-                {PILARES.map((p) => <option key={p.valor} value={p.valor}>{p.etiqueta}</option>)}
-              </select>
+              <Desplegable id="pilar" name="pilar" defaultValue={f.pilar ?? ""}
+                opciones={[{ valor: "", etiqueta: "Todos" }, ...PILARES.map((p) => ({ valor: p.valor, etiqueta: p.etiqueta }))]} />
             </div>
           </>
         )}

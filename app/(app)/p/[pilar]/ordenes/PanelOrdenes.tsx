@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { PRIORIDADES, puedeAsignar, puedeAtender } from "@/lib/catalogos";
+import { Desplegable } from "@/components/Desplegable";
+import { IcoAlerta, IcoAlmacen, IcoEquipo, IcoPersona } from "@/components/Iconos";
 import { ahoraLocalInput, fechaHora, horas } from "@/lib/formato";
 import { Aviso, ChipEstado, ChipPrioridad, Vacio } from "@/components/ui";
 import type { Almacen, Equipo, Modo, OrdenDetalle, Origen, Pilar, Prioridad, Rol } from "@/lib/tipos";
@@ -162,7 +164,7 @@ function Detalle({ o, pilar, rol, miId, tz, tecnicos, origenes, modos, almacenes
                 {pend ? "Iniciando…" : "Iniciar atención"}
               </button>
             )}
-            {atiende && <button className="btn-motivo" onClick={() => setModo("cerrar")}>Concluir solicitud</button>}
+            {atiende && <button className="btn-motivo" onClick={() => setModo("cerrar")}>{o.id_equipo ? "Liberar equipo" : "Concluir solicitud"}</button>}
             {asigna && <button className="btn-sec" onClick={() => setModo("asignar")}>{o.asignado_a ? "Reasignar" : "Asignar"}</button>}
             {puedeCancelar && <button className="btn-peligro" onClick={() => setModo("cancelar")}>Cancelar</button>}
             {!atiende && !asigna && !puedeCancelar && <p className="text-[15px] text-suave">Mantenimiento ya tiene esta solicitud.</p>}
@@ -200,13 +202,11 @@ function FormAsignar({ o, tecnicos, pend, res, onEnviar, onCancelar }: {
   const [p, setP] = useState<Prioridad>(o.prioridad);
   return (
     <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); onEnviar(t, p); }}>
-      <label className="block">
-        <span className="etiqueta">Asignar a</span>
-        <select className="campo" value={t} onChange={(e) => setT(e.target.value)} required aria-invalid={!!errorDe(res, "tecnico")}>
-          <option value="">Selecciona…</option>
-          {tecnicos.map((x) => <option key={x.id} value={x.id}>{x.nombre}</option>)}
-        </select>
-      </label>
+      <div>
+        <label htmlFor="asignar-a" className="etiqueta">Asignar a</label>
+        <Desplegable id="asignar-a" value={t} onChange={setT} required invalido={!!errorDe(res, "tecnico")} icono={<IcoPersona />}
+          opciones={tecnicos.map((x) => ({ valor: x.id, etiqueta: x.nombre }))} />
+      </div>
       <fieldset>
         <legend className="etiqueta">Prioridad</legend>
         <div className="flex gap-2">
@@ -244,38 +244,30 @@ function FormCerrar({ o, pilar, origenes, modos, almacenes, equipos, pend, res, 
       e.preventDefault();
       onEnviar({ id_origen: origen, id_modo: modo, id_almacen: almacen, id_equipo: equipo, notas, fecha_cierre: fecha ? new Date(fecha).toISOString() : "" });
     }}>
-      <label className="block">
-        <span className="etiqueta">Qué falló (componente o modo)</span>
-        <select className="campo" value={modo} onChange={(e) => setModo(e.target.value)} required aria-invalid={!!errorDe(res, "id_modo")} aria-describedby="err-modo">
-          <option value="">Selecciona…</option>
-          {modos.map((x) => <option key={x.id_modo} value={x.id_modo}>{x.nombre}</option>)}
-        </select>
+      <div>
+        <label htmlFor="cierre-modo" className="etiqueta">Qué falló (componente o modo)</label>
+        <Desplegable id="cierre-modo" value={modo} onChange={setModo} required invalido={!!errorDe(res, "id_modo")} describedBy="err-modo" icono={<IcoEquipo />}
+          opciones={modos.map((x) => ({ valor: x.id_modo, etiqueta: x.nombre }))} />
         {errorDe(res, "id_modo") && <span id="err-modo" className="mt-1 block text-sm text-paro-texto">{errorDe(res, "id_modo")}</span>}
-      </label>
-      <label className="block">
-        <span className="etiqueta">Por qué falló (causa)</span>
-        <select className="campo" value={origen} onChange={(e) => setOrigen(e.target.value)} required aria-invalid={!!errorDe(res, "id_origen")} aria-describedby="err-origen">
-          <option value="">Selecciona…</option>
-          {origenes.map((x) => <option key={x.id_origen} value={x.id_origen}>{x.nombre}</option>)}
-        </select>
+      </div>
+      <div>
+        <label htmlFor="cierre-causa" className="etiqueta">Por qué falló (causa)</label>
+        <Desplegable id="cierre-causa" value={origen} onChange={setOrigen} required invalido={!!errorDe(res, "id_origen")} describedBy="err-origen" icono={<IcoAlerta />}
+          opciones={origenes.map((x) => ({ valor: x.id_origen, etiqueta: x.nombre }))} />
         {errorDe(res, "id_origen") && <span id="err-origen" className="mt-1 block text-sm text-paro-texto">{errorDe(res, "id_origen")}</span>}
-      </label>
+      </div>
       {pilar === "dorsales" && (
         <>
-          <label className="block">
-            <span className="etiqueta">Almacén</span>
-            <select className="campo" value={almacen} onChange={(e) => setAlmacen(e.target.value)} required aria-invalid={!!errorDe(res, "id_almacen")}>
-              <option value="">Selecciona…</option>
-              {almacenes.map((x) => <option key={x.id_almacen} value={x.id_almacen}>{x.nombre_almacen}</option>)}
-            </select>
-          </label>
-          <label className="block">
-            <span className="etiqueta">Equipo atendido (opcional)</span>
-            <select className="campo" value={equipo} onChange={(e) => setEquipo(e.target.value)}>
-              <option value="">Sin equipo específico</option>
-              {equiposLinea.map((x) => <option key={x.id_equipo} value={x.id_equipo}>{x.nombre_equipo}{x.sap_id ? ` · ${x.sap_id}` : ""}</option>)}
-            </select>
-          </label>
+          <div>
+            <label htmlFor="cierre-almacen" className="etiqueta">Almacén</label>
+            <Desplegable id="cierre-almacen" value={almacen} onChange={setAlmacen} required invalido={!!errorDe(res, "id_almacen")} icono={<IcoAlmacen />}
+              opciones={almacenes.map((x) => ({ valor: x.id_almacen, etiqueta: x.nombre_almacen }))} />
+          </div>
+          <div>
+            <label htmlFor="cierre-equipo" className="etiqueta">Equipo atendido (opcional)</label>
+            <Desplegable id="cierre-equipo" value={equipo} onChange={setEquipo} icono={<IcoEquipo />}
+              opciones={[{ valor: "", etiqueta: "Sin equipo específico" }, ...equiposLinea.map((x) => ({ valor: x.id_equipo, etiqueta: x.nombre_equipo, detalle: x.sap_id ? `SAP ${x.sap_id}` : undefined }))]} />
+          </div>
         </>
       )}
       <label className="block">
@@ -287,7 +279,7 @@ function FormCerrar({ o, pilar, origenes, modos, almacenes, equipos, pend, res, 
         <textarea rows={3} className="campo" value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Refacciones, ajustes, causa raíz…" />
       </label>
       <div className="flex gap-2">
-        <button className="btn-motivo flex-1" disabled={pend}>{pend ? "Cerrando…" : "Concluir solicitud"}</button>
+        <button className="btn-motivo flex-1" disabled={pend}>{pend ? "Liberando…" : o.id_equipo ? "Liberar equipo y cerrar" : "Concluir solicitud"}</button>
         <button type="button" className="btn-sec" onClick={onCancelar}>Volver</button>
       </div>
     </form>

@@ -6,6 +6,7 @@ import { actualizarUsuario } from "./actions";
 import { FormAlta } from "./FormAlta";
 import type { Perfil, Pilar } from "@/lib/tipos";
 import { BotonEnviar } from "@/components/BotonEnviar";
+import { Desplegable } from "@/components/Desplegable";
 
 export const metadata = { title: "Usuarios" };
 
@@ -61,10 +62,9 @@ export default async function Usuarios({ searchParams }: { searchParams: Promise
                   <p className="truncate font-semibold">{u.nombre}</p>
                   <p className="truncate text-sm text-suave">{u.correo}</p>
                 </div>
-                <label><span className="sr-only">Rol de {u.nombre}</span>
-                  <select name="rol" defaultValue={u.rol} className="campo min-h-11">
-                    {otorga.map((r) => <option key={r.valor} value={r.valor}>{r.etiqueta}</option>)}
-                  </select></label>
+                <div><label htmlFor={`rol-${u.id}`} className="sr-only">Rol de {u.nombre}</label>
+                  <Desplegable id={`rol-${u.id}`} name="rol" defaultValue={u.rol} compacto
+                    opciones={otorga.map((r) => ({ valor: r.valor, etiqueta: r.etiqueta }))} /></div>
                 <fieldset><legend className="sr-only">Pilares de {u.nombre}</legend><Pilares marcados={u.pilares ?? []} prefijo={u.id} disponibles={disponibles} /></fieldset>
                 <div className="flex items-center gap-4">
                   <label className="inline-flex min-h-11 items-center gap-2 text-[15px]">
