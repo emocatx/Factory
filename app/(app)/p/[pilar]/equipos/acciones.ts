@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { exigirRol } from "@/lib/sesion";
 import { esPilar } from "@/lib/catalogos";
+import { todasLasPaginas } from "@/lib/datos";
 
 function volver(pilar: string, msg: string, error = false): never {
   revalidatePath(`/p/${pilar}`, "layout");
@@ -92,7 +93,7 @@ export async function importarEquipos(
 
   const [{ data: alm }, { data: eqs }] = await Promise.all([
     supabase.from("almacenes").select("id_almacen, nombre_almacen"),
-    supabase.from("equipos").select("sap_id, clave_id").range(0, 49999),
+    todasLasPaginas<{ sap_id: string | null; clave_id: string | null }>((d, h) => supabase.from("equipos").select("sap_id, clave_id").order("id_equipo").range(d, h)),
   ]);
   const almacenes = new Map((alm ?? []).map((a) => [clave(a.nombre_almacen as string), a.id_almacen as string]));
   const saps = new Set((eqs ?? []).map((e) => e.sap_id as string | null).filter(Boolean).map((s) => clave(s!)));
@@ -132,4 +133,42 @@ export async function importarEquipos(
   revalidatePath(`/p/${pilar}`, "layout");
   const creadosAlm = crearAlmacenes && faltan.length ? ` y ${faltan.length} almacén(es) nuevos` : "";
   return { ok: true, mensaje: `${nuevos.length} equipo(s) dados de alta${creadosAlm}${detalle.length ? `; ${detalle.length} fila(s) omitidas` : ""}.`, detalle };
+}
+
+export type FallaImport = {
+  ref: string; id_equipo: string; id_almacen: string | null; id_origen: string | null; id_modo: string | null;
+  descripcion: string; solicitante: string; recibe: string; fecha_ingreso: string; fecha_cierre: string | null;
+};
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuidONull = (v: unknown) => (typeof v === "string" && UUID.test(v) ? v : null);
+const fechaONull = (v: unknown) => (typeof v === "string" && !Number.isNaN(Date.parse(v)) ? v : null);
+const texto = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max) : "");
+
+/**
+ * Historial de fallas ya emparejado en el navegador. Se manda en bloques a la función
+ * importar_historial_fallas, que valida equipo/pilar/catálogos dentro del tenant y omite repetidas.
+ */
+export async function importarHistorial(
+  pilar: string,
+  fallas: FallaImport[],
+): Promise<{ ok: boolean; mensaje: string; insertadas: number; omitidas: number }> {
+  await exigirRol(["admin"]);
+  if (!esPilar(pilar)) return { ok: false, mensaje: "Pilar inválido.", insertadas: 0, omitidas: 0 };
+  const limpias = fallas.slice(0, 1000).flatMap((f) => {
+    const id_equipo = uuidONull(f.id_equipo);
+    const fecha_ingreso = fechaONull(f.fecha_ingreso);
+    if (!id_equipo || !fecha_ingreso) return [];
+    return [{
+      ref: texto(f.ref, 200), id_equipo, id_almacen: uuidONull(f.id_almacen), id_origen: uuidONull(f.id_origen), id_modo: uuidONull(f.id_modo),
+      descripcion: texto(f.descripcion, 2000), solicitante: texto(f.solicitante, 200), recibe: texto(f.recibe, 200),
+      fecha_ingreso, fecha_cierre: fechaONull(f.fecha_cierre),
+    }];
+  });
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("importar_historial_fallas", { p_pilar: pilar, p_filas: limpias });
+  if (error) return { ok: false, mensaje: traducir(error.message), insertadas: 0, omitidas: 0 };
+  const r = data as { insertadas: number; omitidas: number };
+  revalidatePath(`/p/${pilar}`, "layout");
+  return { ok: true, mensaje: "", insertadas: r.insertadas, omitidas: r.omitidas + (fallas.length - limpias.length) };
 }

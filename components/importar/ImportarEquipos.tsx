@@ -23,7 +23,7 @@ export function ImportarEquipos({ pilar, almacenes, importar }: {
       ayuda="Pega desde Excel o sube un .xlsx / .csv. Las series SAP que ya existen se omiten."
       nombrePlantilla="plantilla-equipos.csv"
       columnas={[
-        { clave: "nombre", etiqueta: "Nombre", requerida: true, alias: ["equipo", "nombre equipo", "descripcion"], ejemplo: "Montacargas 04" },
+        { clave: "nombre", etiqueta: "Nombre", requerida: true, alias: ["titulo", "equipo", "nombre equipo", "descripcion"], ejemplo: "Montacargas 04" },
         { clave: "sap", etiqueta: "Serie SAP", alias: ["sap", "serie", "equipo sap", "no sap", "numero sap"], ejemplo: "100204" },
         { clave: "clave", etiqueta: "Clave", alias: ["clave interna", "id", "codigo"], ejemplo: "MC-04" },
         { clave: "almacen", etiqueta: "Almacén", requerida: true, alias: ["almacen", "cedis", "ubicacion", "sitio"], ejemplo: almacenes[0] ?? "CDN1" },

@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { sesionDePilar } from "@/lib/sesion";
-import { catalogosPilar } from "@/lib/datos";
+import { catalogosPilar, todasLasPaginas } from "@/lib/datos";
 import { esUuid } from "@/lib/filtros";
 import { puedeAdministrar } from "@/lib/catalogos";
 import { Aviso, ChipEquipo, Encabezado, Vacio } from "@/components/ui";
 import type { Equipo } from "@/lib/tipos";
-import { cambiarBaja, guardarEquipo, importarEquipos, moverEquipos } from "./acciones";
+import { cambiarBaja, guardarEquipo, importarEquipos, importarHistorial, moverEquipos } from "./acciones";
+import { ImportarHistorial } from "@/components/importar/ImportarHistorial";
 import { ImportarEquipos } from "@/components/importar/ImportarEquipos";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { Desplegable } from "@/components/Desplegable";
@@ -28,10 +29,12 @@ export default async function Equipos({
   const dorsal = pilar === "dorsales";
   const supabase = await createClient();
   const cat = await catalogosPilar(pilar);
-  let q = supabase.from("equipos").select("id_equipo, id_almacen, id_linea, sap_id, clave_id, nombre_equipo, tipo_pilar, estatus")
-    .eq("tipo_pilar", pilar).order("nombre_equipo");
-  if (!f.bajas) q = q.neq("estatus", "baja");
-  const { data } = await q;
+  const { data } = await todasLasPaginas<Equipo>((desde, hasta) => {
+    let q = supabase.from("equipos").select("id_equipo, id_almacen, id_linea, sap_id, clave_id, nombre_equipo, tipo_pilar, estatus")
+      .eq("tipo_pilar", pilar);
+    if (!f.bajas) q = q.neq("estatus", "baja");
+    return q.order("nombre_equipo").order("id_equipo").range(desde, hasta);
+  });
   let equipos = (data ?? []) as Equipo[];
   const t = f.q?.trim().toLowerCase();
   if (t) equipos = equipos.filter((e) => [e.nombre_equipo, e.sap_id, e.clave_id].some((v) => v?.toLowerCase().includes(t)));
@@ -50,6 +53,14 @@ export default async function Equipos({
       {f.error && <div className="mb-6"><Aviso tono="paro">{f.error}</Aviso></div>}
 
       <ImportarEquipos pilar={pilar} almacenes={cat.almacenes.map((a) => a.nombre_almacen)} importar={importarEquipos} />
+      <ImportarHistorial
+        pilar={pilar}
+        equipos={cat.equipos.map((e) => ({ id: e.id_equipo, sap: e.sap_id, clave: e.clave_id, nombre: e.nombre_equipo, id_almacen: e.id_almacen }))}
+        almacenes={cat.almacenes.map((a) => ({ id: a.id_almacen, nombre: a.nombre_almacen }))}
+        origenes={cat.origenes.map((o) => ({ id: o.id_origen, nombre: o.nombre }))}
+        modos={cat.modos.map((m) => ({ id: m.id_modo, nombre: m.nombre }))}
+        importar={importarHistorial}
+      />
 
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="min-w-0">

@@ -1,46 +1,12 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { aFilas, leerArchivoTabla, partirTexto } from "@/lib/tabla";
 
-export type Columna = { clave: string; etiqueta: string; requerida?: boolean; alias?: string[]; ejemplo?: string };
+export type { Columna } from "@/lib/tabla";
+import type { Columna } from "@/lib/tabla";
 export type ResultadoImport = { ok: boolean; mensaje: string; detalle?: string[] };
 type Fila = Record<string, string>;
-
-const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
-
-/** Separa texto pegado de Excel (tabulador) o CSV (coma / punto y coma, con comillas). */
-function partirTexto(texto: string): string[][] {
-  const lineas = texto.replace(/\r\n?/g, "\n").split("\n").filter((l) => l.trim() !== "");
-  if (!lineas.length) return [];
-  const sep = lineas[0].includes("\t") ? "\t" : (lineas[0].split(";").length > lineas[0].split(",").length ? ";" : ",");
-  return lineas.map((l) => {
-    if (sep === "\t") return l.split("\t").map((c) => c.trim());
-    const celdas: string[] = []; let actual = ""; let comillas = false;
-    for (let i = 0; i < l.length; i++) {
-      const ch = l[i];
-      if (ch === '"') { if (comillas && l[i + 1] === '"') { actual += '"'; i++; } else comillas = !comillas; }
-      else if (ch === sep && !comillas) { celdas.push(actual.trim()); actual = ""; }
-      else actual += ch;
-    }
-    celdas.push(actual.trim());
-    return celdas;
-  });
-}
-
-/** Convierte la tabla a filas por columna. Si la primera fila trae encabezados reconocibles los usa; si no, va por posición. */
-function aFilas(tabla: string[][], columnas: Columna[]): Fila[] {
-  if (!tabla.length) return [];
-  const enc = tabla[0].map(norm);
-  const indice = columnas.map((c) => {
-    const nombres = [c.etiqueta, c.clave, ...(c.alias ?? [])].map(norm);
-    return enc.findIndex((h) => nombres.includes(h));
-  });
-  const conEncabezado = indice.some((i) => i >= 0);
-  const datos = conEncabezado ? tabla.slice(1) : tabla;
-  return datos
-    .map((r) => Object.fromEntries(columnas.map((c, j) => [c.clave, String((conEncabezado ? (indice[j] >= 0 ? r[indice[j]] : "") : r[j]) ?? "").trim()])))
-    .filter((f) => Object.values(f).some((v) => v !== ""));
-}
 
 export function ImportarTabla({
   columnas,
@@ -82,15 +48,9 @@ export function ImportarTabla({
     setRes(null); setErrorArchivo(undefined); setFilas([]);
     if (!archivo) return;
     try {
-      if (/\.xlsx$/i.test(archivo.name)) {
-        const { readSheet } = await import("read-excel-file/browser");
-        const datos = await readSheet(archivo);
-        setFilas(aFilas(datos.map((r) => r.map((c) => (c == null ? "" : c instanceof Date ? c.toISOString().slice(0, 10) : String(c)))), columnas));
-      } else if (/\.(csv|txt|tsv)$/i.test(archivo.name)) {
-        setFilas(aFilas(partirTexto(await archivo.text()), columnas));
-      } else {
-        setErrorArchivo("Usa un archivo .xlsx o .csv. Si es .xls viejo, guárdalo como .xlsx o copia y pega las celdas.");
-      }
+      const tabla = await leerArchivoTabla(archivo);
+      if (!tabla) setErrorArchivo("Usa un archivo .xlsx o .csv. Si es .xls viejo, guárdalo como .xlsx o copia y pega las celdas.");
+      else setFilas(aFilas(tabla, columnas));
     } catch {
       setErrorArchivo("No se pudo leer el archivo. Revisa que no esté protegido o copia y pega las celdas.");
     }
