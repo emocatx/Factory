@@ -71,9 +71,9 @@ export function IlustracionPilar({ pilar, className = "" }: { pilar: Pilar; clas
 }
 
 /** Miniatura para la tira de pilares (recorta el dibujo a su contenido). */
-export function MiniPilar({ pilar }: { pilar: Pilar }) {
+export function MiniPilar({ pilar, ancho = 96, alto = 44, hueco = "var(--color-papel)" }: { pilar: Pilar; ancho?: number; alto?: number; hueco?: string }) {
   return (
-    <svg viewBox="20 10 520 180" width="96" height="44" aria-hidden="true" style={{ ["--hueco" as string]: "var(--color-papel)" }}>
+    <svg viewBox="20 10 520 180" width={ancho} height={alto} aria-hidden="true" style={{ ["--hueco" as string]: hueco }}>
       {DIBUJOS[pilar]}
     </svg>
   );
