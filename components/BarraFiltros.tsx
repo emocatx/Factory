@@ -31,7 +31,9 @@ export function BarraFiltros({
 }) {
   const hayFiltro = Object.entries(valores).some(([k, v]) => v && !(k === "periodo" && v === periodoDefecto));
   return (
-    <form method="get" className="entrar entrar-2 mb-8 flex flex-wrap items-end justify-between gap-4">
+    // relative z-30: la animación .entrar crea un contexto de apilamiento; sin esto las tarjetas
+    // de abajo tapan la lista desplegable y no se puede elegir una opción.
+    <form method="get" className="entrar entrar-2 relative z-30 mb-8 flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
         <p className="text-[17px] font-semibold">{resumen}</p>
         {hayFiltro && <Link href="?" className="enlace text-sm">Quitar filtros</Link>}
