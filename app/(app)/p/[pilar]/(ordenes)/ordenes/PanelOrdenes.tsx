@@ -7,7 +7,7 @@ import { IcoAlerta, IcoAlmacen, IcoEquipo, IcoPersona } from "@/components/Icono
 import { ahoraLocalInput, fechaHora, horas } from "@/lib/formato";
 import { Aviso, ChipEstado, ChipPrioridad, Vacio } from "@/components/ui";
 import type { Almacen, Equipo, Modo, OrdenDetalle, Origen, Pilar, Prioridad, Rol } from "@/lib/tipos";
-import { asignarOrden, cancelarOrden, concluirOrden, iniciarOrden, type Resultado } from "../acciones";
+import { asignarOrden, cancelarOrden, concluirOrden, iniciarOrden, type Resultado } from "../../acciones";
 
 type Props = {
   pilar: Pilar;

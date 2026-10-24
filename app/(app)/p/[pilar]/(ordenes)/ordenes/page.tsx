@@ -3,9 +3,7 @@ import { sesionDePilar } from "@/lib/sesion";
 import { catalogosPilar, tecnicosPilar } from "@/lib/datos";
 import { esUuid } from "@/lib/filtros";
 import { ESTADOS, puedeAsignar } from "@/lib/catalogos";
-import { Encabezado } from "@/components/ui";
 import { BarraFiltros } from "@/components/BarraFiltros";
-import { VistaOrdenes } from "@/components/VistaOrdenes";
 import { PanelOrdenes } from "./PanelOrdenes";
 import type { EstatusOrden, OrdenDetalle } from "@/lib/tipos";
 
@@ -21,7 +19,6 @@ export default async function OrdenesAbiertas({
   const { pilar: p } = await params;
   const { perfil, tenant, pilar } = await sesionDePilar(p);
   const f = await searchParams;
-  const operaciones = perfil.rol === "operaciones";
 
   const supabase = await createClient();
   let q = supabase
@@ -34,7 +31,7 @@ export default async function OrdenesAbiertas({
     .limit(300);
   if (esUuid(f.linea)) q = q.eq("id_linea", f.linea);
   if (f.estado && f.estado in ESTADOS) q = q.eq("estatus_orden", f.estado as EstatusOrden);
-  const [{ data }, cat, tecnicos] = await Promise.all([q, catalogosPilar(pilar), puedeAsignar(perfil.rol) ? tecnicosPilar(pilar) : []]);
+  const [{ data }, cat, tecnicos] = await Promise.all([q, catalogosPilar(pilar, { equipos: pilar === "dorsales" }), puedeAsignar(perfil.rol) ? tecnicosPilar(pilar) : []]);
 
   let ordenes = (data ?? []) as OrdenDetalle[];
   // prioridad: alta primero (el enum ordena baja<media<alta, así que invertimos aquí)
@@ -49,15 +46,6 @@ export default async function OrdenesAbiertas({
 
   return (
     <>
-      <Encabezado
-
-        titulo={operaciones ? "Seguimiento" : "Órdenes"}
-        sub={operaciones
-          ? "Tus solicitudes y las de tu área mientras mantenimiento las atiende."
-          : "Prioriza, asigna e inicia la atención; concluye cuando el activo vuelva a operar."}
-      >
-        <VistaOrdenes pilar={pilar} actual="abiertas" />
-      </Encabezado>
       <BarraFiltros
         resumen={`${ordenes.length} ${ordenes.length === 1 ? "orden abierta" : "órdenes abiertas"}`}
         lineas={pilar === "dorsales" ? cat.lineas : undefined}

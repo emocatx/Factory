@@ -49,10 +49,11 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  // Si Supabase no responde, se trata como sesión no iniciada en lugar de tumbar la página.
+  // getClaims verifica el JWT localmente (y renueva la sesión si venció) sin ir a Supabase Auth en cada
+  // petición. Si Supabase no responde, se trata como sesión no iniciada en lugar de tumbar la página.
   let user = null;
   try {
-    user = (await supabase.auth.getUser()).data.user;
+    user = (await supabase.auth.getClaims()).data?.claims ?? null;
   } catch {
     user = null;
   }

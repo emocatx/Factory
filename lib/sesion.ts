@@ -3,31 +3,31 @@ import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "./supabase/server";
 import { esPilar } from "./catalogos";
-import type { Pilar, Rol, Sesion } from "./tipos";
+import type { Pilar, Rol, Sesion, Tenant } from "./tipos";
 
-/** Perfil + tenant del usuario autenticado. Redirige a login u onboarding si falta algo. */
+/**
+ * Perfil + tenant del usuario autenticado. Redirige a login u onboarding si falta algo.
+ * getClaims verifica la firma del JWT en el servidor sin ir a Supabase Auth (llaves asimétricas),
+ * y perfil + tenant llegan en una sola consulta: así cada página ahorra tres viajes a Supabase.
+ */
 export const obtenerSesion = cache(async (): Promise<Sesion> => {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims?.sub) redirect("/login");
   // Alta con contraseña temporal: primero debe definir la suya.
-  if (user.app_metadata?.cambiar_contrasena) redirect("/auth/contrasena");
+  if (claims.app_metadata?.cambiar_contrasena) redirect("/auth/contrasena");
 
-  const { data: perfil } = await supabase
+  const { data: fila } = await supabase
     .from("usuarios_perfiles")
-    .select("id, tenant_id, nombre, correo, rol, pilares, activo")
-    .eq("id", user.id)
+    .select("id, tenant_id, nombre, correo, rol, pilares, activo, tenant:tenants(id, nombre_empresa, zona_horaria, pilares_activos, meta_mttr_horas, meta_mtbf_horas, meta_disponibilidad_pct)")
+    .eq("id", claims.sub)
     .maybeSingle();
-  if (!perfil) redirect("/onboarding");
+  if (!fila) redirect("/onboarding");
+  const { tenant: t, ...perfil } = fila;
+  // Relación muchos-a-uno: PostgREST entrega un objeto (el cliente sin tipos lo infiere como arreglo).
+  const tenant = t as unknown as Tenant;
   if (!perfil.activo) redirect("/login?error=inactivo");
-
-  const { data: tenant } = await supabase
-    .from("tenants")
-    .select("id, nombre_empresa, zona_horaria, pilares_activos, meta_mttr_horas, meta_mtbf_horas, meta_disponibilidad_pct")
-    .eq("id", perfil.tenant_id)
-    .single();
 
   const activos = (tenant?.pilares_activos ?? []) as Pilar[];
   const propios = perfil.rol === "admin" || perfil.rol === "gerente" ? activos : (perfil.pilares as Pilar[]).filter((p) => activos.includes(p));

@@ -17,15 +17,18 @@ export async function todasLasPaginas<T>(
   return { data: todo };
 }
 
-/** Catálogos que casi todas las pantallas de un pilar necesitan. */
-export async function catalogosPilar(pilar: Pilar) {
+/**
+ * Catálogos que casi todas las pantallas de un pilar necesitan.
+ * `equipos: false` omite la lista de equipos (cientos de filas) en pantallas que no la usan.
+ */
+export async function catalogosPilar(pilar: Pilar, { equipos = true }: { equipos?: boolean } = {}) {
   const supabase = await createClient();
   const [a, l, e, o, m] = await Promise.all([
     supabase.from("almacenes").select("id_almacen, nombre_almacen, activo").eq("activo", true).order("nombre_almacen"),
     pilar === "dorsales"
       ? supabase.from("lineas_dorsales").select("id_linea, nombre_linea, activo").eq("activo", true).order("nombre_linea")
       : Promise.resolve({ data: [] as Linea[] }),
-    todasLasPaginas<Equipo>((desde, hasta) =>
+    !equipos ? Promise.resolve({ data: [] as Equipo[] }) : todasLasPaginas<Equipo>((desde, hasta) =>
       supabase
         .from("equipos")
         .select("id_equipo, id_almacen, id_linea, sap_id, clave_id, nombre_equipo, tipo_pilar, estatus")

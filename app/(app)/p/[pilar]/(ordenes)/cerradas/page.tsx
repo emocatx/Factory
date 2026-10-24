@@ -5,12 +5,14 @@ import { catalogosPilar } from "@/lib/datos";
 import { esUuid, rangoPeriodo } from "@/lib/filtros";
 
 import { fechaHora, horas } from "@/lib/formato";
-import { ChipEstado, Encabezado, Vacio } from "@/components/ui";
+import { ChipEstado, Vacio } from "@/components/ui";
 import { BarraFiltros } from "@/components/BarraFiltros";
-import { VistaOrdenes } from "@/components/VistaOrdenes";
 import type { OrdenDetalle } from "@/lib/tipos";
 
 export const metadata = { title: "Órdenes cerradas" };
+
+/** Solo lo que muestra la tabla y lo que usa la búsqueda. */
+const COLUMNAS = "id_orden, folio_ticket, estatus_orden, fecha_ingreso, fecha_cierre, tiempo_paro_horas, notas_cierre, motivo_cancelacion, nombre_equipo, nombre_linea, nombre_almacen, nombre_modo, nombre_origen, sap_id, solicitante_nombre";
 
 export default async function Cerradas({
   params,
@@ -20,33 +22,27 @@ export default async function Cerradas({
   searchParams: Promise<{ q?: string; linea?: string; periodo?: string; estado?: string }>;
 }) {
   const { pilar: p } = await params;
-  const { perfil, tenant, pilar } = await sesionDePilar(p);
+  const { tenant, pilar } = await sesionDePilar(p);
   const f = await searchParams;
   const { periodo, desde } = rangoPeriodo(f.periodo);
   const supabase = await createClient();
 
-  let q = supabase.from("v_ordenes_detalle").select("*").eq("pilar", pilar)
+  let q = supabase.from("v_ordenes_detalle").select(COLUMNAS).eq("pilar", pilar)
     .in("estatus_orden", f.estado === "cancelada" ? ["cancelada"] : f.estado === "cerrada" ? ["cerrada"] : ["cerrada", "cancelada"])
     .order("fecha_ingreso", { ascending: false }).limit(300);
   if (desde) q = q.gte("fecha_ingreso", desde);
   if (esUuid(f.linea)) q = q.eq("id_linea", f.linea);
-  const [{ data }, cat] = await Promise.all([q, catalogosPilar(pilar)]);
+  // Solo Dorsales filtra por línea; los demás pilares no necesitan catálogos aquí.
+  const [{ data }, lineas] = await Promise.all([q, pilar === "dorsales" ? catalogosPilar(pilar, { equipos: false }).then((c) => c.lineas) : undefined]);
   let ordenes = (data ?? []) as OrdenDetalle[];
   const t = f.q?.trim().toLowerCase();
   if (t) ordenes = ordenes.filter((o) => [o.folio_ticket, o.nombre_linea, o.nombre_equipo, o.sap_id, o.solicitante_nombre].some((v) => v?.toLowerCase().includes(t)));
 
   return (
     <>
-      <Encabezado
-
-        titulo={perfil.rol === "operaciones" ? "Seguimiento" : "Órdenes"}
-        sub="Solicitudes concluidas o canceladas, para validar el cierre y el historial de atención."
-      >
-        <VistaOrdenes pilar={pilar} actual="cerradas" />
-      </Encabezado>
       <BarraFiltros
         resumen={`${ordenes.length} en ${periodo.t.toLowerCase()}`}
-        lineas={pilar === "dorsales" ? cat.lineas : undefined}
+        lineas={lineas}
         valores={{ q: f.q, linea: f.linea, periodo: f.periodo, estado: f.estado }}
         mostrarBusqueda
         estados={[{ v: "cerrada", t: "Cerrada" }, { v: "cancelada", t: "Cancelada" }]}
