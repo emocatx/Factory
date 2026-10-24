@@ -6,6 +6,8 @@ import { exigirRol } from "@/lib/sesion";
 import { esPilar } from "@/lib/catalogos";
 import { todasLasPaginas } from "@/lib/datos";
 import { leerFecha } from "@/lib/historial";
+import { hoyMx, TIPOS_PLAN } from "@/lib/planes";
+import type { TipoPlan } from "@/lib/tipos";
 
 type Resultado = { ok: boolean; mensaje: string; detalle?: string[] };
 const EDITORES = ["admin", "supervisor", "coordinador"] as const;
@@ -16,16 +18,26 @@ const fecha = (v: string | undefined) => (v?.trim() ? leerFecha(v, "dmy")?.slice
 function traducir(m: string) {
   if (m.includes("planes_nombre_unq")) return "Ya existe un plan con ese nombre.";
   if (m.includes("row-level security")) return "No tienes permiso para editar planes.";
+  if (m.includes("planes_frecuencia")) return "Solo los planes de proveedor pueden ir sin frecuencia.";
   return m;
 }
 
-export async function crearPlan(pilar: string, d: { nombre: string; cada_dias: number; tareas: string }): Promise<Resultado> {
+const esTipo = (t: string): t is TipoPlan => TIPOS_PLAN.some((x) => x.valor === t);
+/** "Inspección" / "inspeccion" / "proveedor" → tipo; vacío o desconocido → null. */
+const tipoDe = (v: string | undefined) => {
+  const n = (v ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
+  return esTipo(n) ? n : null;
+};
+
+export async function crearPlan(pilar: string, d: { nombre: string; tipo: string; cada_dias: number | null; tareas: string }): Promise<Resultado> {
   await exigirRol([...EDITORES]);
   if (!esPilar(pilar)) return { ok: false, mensaje: "Pilar inválido." };
   if (d.nombre.trim().length < 2) return { ok: false, mensaje: "Escribe el nombre del servicio." };
-  if (!Number.isInteger(d.cada_dias) || d.cada_dias < 1) return { ok: false, mensaje: "La frecuencia debe ser un número de días mayor a 0." };
+  const tipo = esTipo(d.tipo) ? d.tipo : "preventivo";
+  if (d.cada_dias === null ? tipo !== "proveedor" : !Number.isInteger(d.cada_dias) || d.cada_dias < 1)
+    return { ok: false, mensaje: "La frecuencia debe ser un número de días mayor a 0." };
   const { error } = await (await createClient()).from("planes_mantenimiento")
-    .insert({ pilar, nombre: d.nombre.trim(), cada_dias: d.cada_dias, tareas: d.tareas.trim() || null });
+    .insert({ pilar, nombre: d.nombre.trim(), tipo, cada_dias: d.cada_dias, tareas: d.tareas.trim() || null });
   if (error) return { ok: false, mensaje: traducir(error.message) };
   revalidatePath(`/p/${pilar}/planes`);
   return { ok: true, mensaje: `Plan "${d.nombre.trim()}" creado.` };
@@ -43,6 +55,18 @@ export async function asignarPlan(pilar: string, idPlan: string, equipos: string
   if (error) return { ok: false, mensaje: traducir(error.message) };
   revalidatePath(`/p/${pilar}/planes`);
   return { ok: true, mensaje: `Plan asignado a ${equipos.length} equipo${equipos.length === 1 ? "" : "s"}.` };
+}
+
+/** Registra el servicio como hecho (último servicio = la fecha dada u hoy): el siguiente se recorre solo. */
+export async function marcarHecho(pilar: string, ids: string[], fechaHecho?: string): Promise<Resultado> {
+  await exigirRol([...EDITORES]);
+  if (!esPilar(pilar) || !ids.length) return { ok: false, mensaje: "Nada que marcar." };
+  const f = fechaHecho ? fecha(fechaHecho) : hoyMx();
+  if (!f) return { ok: false, mensaje: "La fecha no es válida." };
+  const { error } = await (await createClient()).from("plan_equipos").update({ ultimo_servicio: f }).in("id", ids);
+  if (error) return { ok: false, mensaje: traducir(error.message) };
+  revalidatePath(`/p/${pilar}/planes`);
+  return { ok: true, mensaje: `${ids.length} servicio${ids.length === 1 ? "" : "s"} marcado${ids.length === 1 ? "" : "s"} como hecho${ids.length === 1 ? "" : "s"}.` };
 }
 
 export async function quitarPlan(pilar: string, idPlan: string, equipos: string[]): Promise<Resultado> {
@@ -66,18 +90,19 @@ export async function importarPlan(pilar: string, filas: Record<string, string>[
   const [{ data: eqs }, { data: planesData }, { data: alm }] = await Promise.all([
     todasLasPaginas<{ id_equipo: string; sap_id: string | null; nombre_equipo: string; id_almacen: string }>((d, h) =>
       supabase.from("equipos").select("id_equipo, sap_id, nombre_equipo, id_almacen").eq("tipo_pilar", pilar).neq("estatus", "baja").order("id_equipo").range(d, h)),
-    supabase.from("planes_mantenimiento").select("id_plan, nombre, cada_dias, tareas").eq("pilar", pilar),
+    supabase.from("planes_mantenimiento").select("id_plan, nombre, tipo, cada_dias, tareas").eq("pilar", pilar),
     supabase.from("almacenes").select("id_almacen, nombre_almacen"),
   ]);
   const almacen = new Map((alm ?? []).map((a) => [a.id_almacen as string, clave(a.nombre_almacen as string)]));
   const porSap = new Map(eqs.filter((e) => e.sap_id).map((e) => [clave(e.sap_id!), e.id_equipo]));
   const porNombre = new Map(eqs.map((e) => [`${clave(e.nombre_equipo)}|${almacen.get(e.id_almacen) ?? ""}`, e.id_equipo]));
-  const planes = new Map((planesData ?? []).map((p) => [clave(p.nombre as string), p as { id_plan: string; nombre: string; cada_dias: number; tareas: string | null }]));
+  type PlanFila = { id_plan: string; nombre: string; tipo: TipoPlan; cada_dias: number | null; tareas: string | null };
+  const planes = new Map((planesData ?? []).map((p) => [clave(p.nombre as string), p as PlanFila]));
 
   const detalle: string[] = [];
   const asignaciones: { fila: number; plan: string; id_equipo: string; ultimo: string | null }[] = [];
-  const nuevos = new Map<string, { nombre: string; cada_dias: number; tareas: string | null }>();
-  const cambios = new Map<string, { cada_dias: number; tareas: string | null }>();
+  const nuevos = new Map<string, { nombre: string; tipo: TipoPlan; cada_dias: number | null; tareas: string | null }>();
+  const cambios = new Map<string, { tipo: TipoPlan; cada_dias: number | null; tareas: string | null }>();
 
   filas.slice(0, 5000).forEach((f, i) => {
     const n = i + 2; // fila 1 = encabezados en Excel
@@ -89,22 +114,25 @@ export async function importarPlan(pilar: string, filas: Record<string, string>[
     if (ultimo === undefined) { detalle.push(`Fila ${n}: la fecha "${f.ultimo}" no es válida.`); return; }
     const dias = f.cada?.trim() ? Number(f.cada.replace(/[^\d]/g, "")) : NaN;
     const tareas = f.tareas?.trim() || null;
+    const tipo = tipoDe(f.tipo);
     const k = clave(servicio);
     const existente = planes.get(k);
     if (!existente && !nuevos.has(k)) {
-      if (!(dias >= 1)) { detalle.push(`Fila ${n}: el plan "${servicio}" es nuevo y le falta "Cada (días)".`); return; }
-      nuevos.set(k, { nombre: servicio, cada_dias: dias, tareas });
-    } else if (existente && !cambios.has(k) && ((dias >= 1 && dias !== existente.cada_dias) || (tareas && tareas !== existente.tareas))) {
-      cambios.set(k, { cada_dias: dias >= 1 ? dias : existente.cada_dias, tareas: tareas ?? existente.tareas });
+      const t = tipo ?? "preventivo";
+      if (!(dias >= 1) && t !== "proveedor") { detalle.push(`Fila ${n}: el plan "${servicio}" es nuevo y le falta "Cada (días)".`); return; }
+      nuevos.set(k, { nombre: servicio, tipo: t, cada_dias: dias >= 1 ? dias : null, tareas });
+    } else if (existente && !cambios.has(k)
+      && ((dias >= 1 && dias !== existente.cada_dias) || (tareas && tareas !== existente.tareas) || (tipo && tipo !== existente.tipo))) {
+      cambios.set(k, { tipo: tipo ?? existente.tipo, cada_dias: dias >= 1 ? dias : existente.cada_dias, tareas: tareas ?? existente.tareas });
     }
     asignaciones.push({ fila: n, plan: k, id_equipo: id, ultimo });
   });
 
   if (nuevos.size) {
     const { data, error } = await supabase.from("planes_mantenimiento")
-      .insert([...nuevos.values()].map((p) => ({ pilar, ...p }))).select("id_plan, nombre, cada_dias, tareas");
+      .insert([...nuevos.values()].map((p) => ({ pilar, ...p }))).select("id_plan, nombre, tipo, cada_dias, tareas");
     if (error) return { ok: false, mensaje: traducir(error.message), detalle };
-    (data ?? []).forEach((p) => planes.set(clave(p.nombre as string), p as { id_plan: string; nombre: string; cada_dias: number; tareas: string | null }));
+    (data ?? []).forEach((p) => planes.set(clave(p.nombre as string), p as PlanFila));
   }
   for (const [k, c] of cambios) {
     const { error } = await supabase.from("planes_mantenimiento").update(c).eq("id_plan", planes.get(k)!.id_plan);

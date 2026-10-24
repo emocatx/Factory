@@ -1,6 +1,7 @@
 import { sesionDePilar } from "@/lib/sesion";
 import { createClient } from "@/lib/supabase/server";
 import { todasLasPaginas } from "@/lib/datos";
+import { etiquetaTipo } from "@/lib/planes";
 import type { PlanEquipo } from "@/lib/tipos";
 
 /**
@@ -23,12 +24,12 @@ export async function GET(_: Request, { params }: { params: Promise<{ pilar: str
   const ddmmaaaa = (iso: string | null) => (iso ? iso.split("-").reverse().join("/") : "");
   const celda = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
 
-  const filas = [["Serie SAP", "Equipo", "Almacén", "Servicio", "Cada (días)", "Último servicio", "Tareas", "Próximo (calculado)"]];
+  const filas = [["Serie SAP", "Equipo", "Almacén", "Servicio", "Tipo", "Cada (días)", "Último servicio", "Tareas", "Próximo (calculado)"]];
   for (const e of equipos) {
     const base = [e.sap_id ?? "", e.nombre_equipo, e.almacenes?.nombre_almacen ?? ""];
     const suyas = porEquipo.get(e.id_equipo) ?? [];
-    if (!suyas.length) filas.push([...base, "", "", "", "", ""]);
-    for (const a of suyas) filas.push([...base, a.plan, String(a.cada_dias), ddmmaaaa(a.ultimo_servicio), tareas.get(a.id_plan) ?? "", ddmmaaaa(a.proximo)]);
+    if (!suyas.length) filas.push([...base, "", "", "", "", "", ""]);
+    for (const a of suyas) filas.push([...base, a.plan, etiquetaTipo(a.tipo), String(a.cada_dias ?? ""), ddmmaaaa(a.ultimo_servicio), tareas.get(a.id_plan) ?? "", ddmmaaaa(a.proximo)]);
   }
   const csv = "﻿" + filas.map((f) => f.map(celda).join(",")).join("\r\n");
   return new Response(csv, {

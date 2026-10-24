@@ -4,28 +4,33 @@ import { useMemo, useState, useTransition } from "react";
 import { Desplegable } from "@/components/Desplegable";
 import { IcoAlmacen } from "@/components/Iconos";
 import { Aviso } from "@/components/ui";
-import type { Almacen, PlanMantenimiento } from "@/lib/tipos";
+import { frecuencia, TIPOS_PLAN } from "@/lib/planes";
+import type { Almacen, PlanMantenimiento, TipoPlan } from "@/lib/tipos";
 import { asignarPlan, crearPlan, quitarPlan } from "./acciones";
 
 type EquipoLigero = { id: string; nombre: string; sap: string | null; id_almacen: string };
 type Res = { ok: boolean; mensaje: string } | null;
 
 /** Crear un plan y asignarlo seleccionando equipos (filtrables por almacén y búsqueda). */
-export function PanelPlanes({ pilar, planes, equipos, almacenes, asignados }: {
+export function PanelPlanes({ pilar, planes, equipos, almacenes, asignados, almacenInicial = "", sugerencia }: {
   pilar: string;
   planes: PlanMantenimiento[];
   equipos: EquipoLigero[];
   almacenes: Almacen[];
   /** id_plan → ids de equipos que ya lo tienen. */
   asignados: Record<string, string[]>;
+  almacenInicial?: string;
+  /** Plan propuesto desde el análisis de falla ("Crear plan ›"). */
+  sugerencia?: { nombre: string; tipo: TipoPlan; cada: number };
 }) {
   const [pend, start] = useTransition();
   const [res, setRes] = useState<Res>(null);
-  const [nuevo, setNuevo] = useState({ nombre: "", cada: "30", tareas: "" });
+  const vacio = { nombre: "", tipo: "preventivo" as TipoPlan, cada: "30", tareas: "" };
+  const [nuevo, setNuevo] = useState(sugerencia ? { ...vacio, nombre: sugerencia.nombre, tipo: sugerencia.tipo, cada: String(sugerencia.cada) } : vacio);
   const [elegido, setPlan] = useState("");
   // Si aún no se elige (o se acaba de crear el primero), se usa el primer plan.
   const plan = planes.some((p) => p.id_plan === elegido) ? elegido : (planes[0]?.id_plan ?? "");
-  const [almacen, setAlmacen] = useState("");
+  const [almacen, setAlmacen] = useState(almacenInicial);
   const [q, setQ] = useState("");
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [ultimo, setUltimo] = useState("");
@@ -57,18 +62,32 @@ export function PanelPlanes({ pilar, planes, equipos, almacenes, asignados }: {
 
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
-      <form className="caja-panel space-y-4 p-6" onSubmit={(e) => {
+      <form id="nuevo-plan" className="caja-panel scroll-mt-24 space-y-4 p-6" onSubmit={(e) => {
         e.preventDefault();
-        correr(() => crearPlan(pilar, { nombre: nuevo.nombre, cada_dias: Number(nuevo.cada), tareas: nuevo.tareas }), () => setNuevo({ nombre: "", cada: "30", tareas: "" }));
+        const cada = nuevo.cada.trim() ? Number(nuevo.cada) : null;
+        correr(() => crearPlan(pilar, { nombre: nuevo.nombre, tipo: nuevo.tipo, cada_dias: cada, tareas: nuevo.tareas }), () => setNuevo(vacio));
       }}>
         <p className="text-lg font-semibold">Nuevo plan</p>
         <label className="block">
           <span className="etiqueta">Servicio</span>
           <input className="campo" value={nuevo.nombre} onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })} placeholder="Ej. Servicio mensual montacargas" required />
         </label>
+        <fieldset>
+          <legend className="etiqueta">Tipo</legend>
+          <div className="flex gap-2">
+            {TIPOS_PLAN.map((t) => (
+              <label key={t.valor} className={`btn min-h-10 flex-1 px-2 text-[14px] ${nuevo.tipo === t.valor ? "bg-tinta text-white" : "bg-papel hover:bg-panel-2"}`}>
+                <input type="radio" name="tipo" className="sr-only" checked={nuevo.tipo === t.valor} onChange={() => setNuevo({ ...nuevo, tipo: t.valor })} />
+                {t.etiqueta}
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <label className="block">
-          <span className="etiqueta">Cada cuántos días</span>
-          <input className="campo" type="number" min={1} max={3650} value={nuevo.cada} onChange={(e) => setNuevo({ ...nuevo, cada: e.target.value })} required />
+          <span className="etiqueta">Cada cuántos días{nuevo.tipo === "proveedor" ? " (opcional)" : ""}</span>
+          <input className="campo" type="number" min={1} max={3650} value={nuevo.cada} onChange={(e) => setNuevo({ ...nuevo, cada: e.target.value })}
+            required={nuevo.tipo !== "proveedor"} placeholder={nuevo.tipo === "proveedor" ? "Lo define el proveedor" : undefined} />
+          <span className="mt-1 block text-[13px] text-suave">7 = semanal · 30 = mensual · 90 = cada 3 meses</span>
         </label>
         <label className="block">
           <span className="etiqueta">Tareas (opcional)</span>
@@ -88,7 +107,7 @@ export function PanelPlanes({ pilar, planes, equipos, almacenes, asignados }: {
               <div>
                 <label htmlFor="asignar-plan" className="etiqueta">Plan</label>
                 <Desplegable id="asignar-plan" value={plan} onChange={(v) => setPlan(v)}
-                  opciones={planes.map((p) => ({ valor: p.id_plan, etiqueta: p.nombre, detalle: `Cada ${p.cada_dias} días` }))} />
+                  opciones={planes.map((p) => ({ valor: p.id_plan, etiqueta: p.nombre, detalle: frecuencia(p.cada_dias) }))} />
               </div>
               <div>
                 <label htmlFor="asignar-almacen" className="etiqueta">Almacén</label>
