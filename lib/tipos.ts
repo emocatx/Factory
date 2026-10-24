@@ -37,6 +37,14 @@ export interface Origen { id_origen: string; nombre: string; pilares: Pilar[] | 
 /** Componente o modo de falla (qué falló), separado de la causa (por qué). */
 export interface Modo { id_modo: string; nombre: string; pilares: Pilar[] | null; orden: number; activo: boolean }
 
+/** Plan de mantenimiento preventivo: servicio con frecuencia en días, asignable a muchos equipos. */
+export interface PlanMantenimiento { id_plan: string; pilar: Pilar; nombre: string; cada_dias: number; tareas: string | null; activo: boolean }
+/** Asignación plan–equipo con el próximo servicio ya calculado (vista v_plan_equipos). */
+export interface PlanEquipo {
+  id: string; id_plan: string; plan: string; cada_dias: number; id_equipo: string; nombre_equipo: string; sap_id: string | null;
+  id_almacen: string | null; nombre_almacen: string | null; ultimo_servicio: string | null; proximo: string; dias_restantes: number;
+}
+
 export interface Equipo {
   id_equipo: string;
   id_almacen: string;

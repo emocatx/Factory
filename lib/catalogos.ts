@@ -69,6 +69,7 @@ export function pestanasPilar(pilar: Pilar, rol: Rol) {
     ...(puedeSolicitar(rol) ? [{ href: `${base}/registro`, texto: "Registro" }] : []),
     { href: `${base}/indicadores`, texto: "Indicadores" },
     { href: `${base}/analisis`, texto: "Análisis de falla" },
+    { href: `${base}/planes`, texto: "Planes" },
   ];
   if (puedeAdministrar(rol)) t.push({ href: `${base}/equipos`, texto: "Equipos" });
   return t;

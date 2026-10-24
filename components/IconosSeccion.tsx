@@ -12,6 +12,7 @@ const DIBUJOS: Record<string, React.ReactNode> = {
   indicadores: (<g {...p}><path d="M10 34a18 18 0 0 1 36 0" /><path d="M28 34l9-11" /><circle cx="28" cy="34" r="2.5" /><path d="M14 34h3M39 34h3M28 16v3" /></g>),
   analisis: (<g {...p}><rect x="9" y="12" width="7" height="26" rx="1.5" /><rect x="20" y="20" width="7" height="18" rx="1.5" /><rect x="31" y="27" width="7" height="11" rx="1.5" /><path d="M8 10c10 0 20 4 26 10s8 10 14 10" /></g>),
   cerradas: (<g {...p}><rect x="12" y="6" width="28" height="34" rx="4" /><path d="M19 24l5 5 10-11" /></g>),
+  planes: (<g {...p}><rect x="10" y="9" width="36" height="31" rx="4" /><path d="M10 18h36M19 5v8M37 5v8" /><path d="M19 29l4 4 9-9" /></g>),
   equipos: (<g {...p}><path d="M8 34h20V18h-8l-6 8H8z" /><path d="M32 8v28M37 8v28M37 30h9" /><circle cx="14" cy="36" r="3.5" fill="var(--color-panel)" /><circle cx="25" cy="36" r="3.5" fill="var(--color-panel)" /></g>),
 };
 
