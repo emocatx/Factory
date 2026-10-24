@@ -8,7 +8,8 @@ type Estado = "conectando" | "en_vivo" | "sin_conexion";
 const hora = (d: Date) => d.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
 
 /**
- * Escucha cambios de órdenes y equipos del tenant (Realtime respeta RLS) y refresca la vista.
+ * Escucha el canal privado "tenant:<id>", donde la base avisa cada cambio de órdenes o equipos
+ * (Broadcast; ver migración aviso_en_vivo_broadcast), y refresca la vista.
  * Solo dice "En vivo" con el canal suscrito y siempre muestra la hora de la última actualización.
  */
 export function EnVivo({ tenantId }: { tenantId: string }) {
@@ -29,13 +30,14 @@ export function EnVivo({ tenantId }: { tenantId: string }) {
       }, 400);
     };
     const canal = supabase
-      .channel(`tenant-${tenantId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "ordenes_mantenimiento", filter: `tenant_id=eq.${tenantId}` }, refrescar)
-      .on("postgres_changes", { event: "*", schema: "public", table: "equipos", filter: `tenant_id=eq.${tenantId}` }, refrescar)
-      .subscribe((s) => {
+      .channel(`tenant:${tenantId}`, { config: { private: true } })
+      .on("broadcast", { event: "cambio" }, refrescar);
+    // Canal privado: Realtime necesita el token del usuario para aplicar la regla de realtime.messages.
+    supabase.realtime.setAuth().then(() =>
+      canal.subscribe((s) => {
         if (s === "SUBSCRIBED") setEstado("en_vivo");
         else if (s === "CHANNEL_ERROR" || s === "TIMED_OUT" || s === "CLOSED") setEstado("sin_conexion");
-      });
+      }));
     return () => {
       if (espera.current) clearTimeout(espera.current);
       supabase.removeChannel(canal);
