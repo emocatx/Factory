@@ -1,182 +1,278 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { sesionDePilar } from "@/lib/sesion";
-
+import { todasLasPaginas } from "@/lib/datos";
+import { infoPilar } from "@/lib/catalogos";
 import { horas, pct } from "@/lib/formato";
-import { Barra, Encabezado, Seccion, Vacio } from "@/components/ui";
-import { GraficaTendencia } from "@/components/GraficaTendencia";
-import type { DisponibilidadAlmacen, PuntoTendencia, ResumenOrdenes, SaludLinea } from "@/lib/tipos";
+import type { OrdenDetalle } from "@/lib/tipos";
 
-export const metadata = { title: "Resumen de órdenes" };
+export const metadata = { title: "Resumen" };
 
-const GRANOS = [
-  { v: "semana", t: "Semana", n: 12 },
-  { v: "mes", t: "Mes", n: 12 },
-  { v: "anio", t: "Año", n: 5 },
+const PERIODOS = [
+  { v: "hoy", t: "Hoy", dias: 0, nombre: "hoy" },
+  { v: "7d", t: "7 días", dias: 7, nombre: "7 días" },
+  { v: "30d", t: "30 días", dias: 30, nombre: "30 días" },
 ] as const;
+const SEMANAS = 11;
+const DIA = 86_400_000;
+/** Hora del centro de México (sin horario de verano desde 2022). */
+const OFFSET = -6 * 3_600_000;
+
+const abiertas = ["pendiente", "asignada", "en_proceso"] as const;
+const dias = (iso: string) => Math.floor((Date.now() - new Date(iso).getTime()) / DIA);
+const fechaCorta = (t: number) => new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(t + OFFSET)).replace(".", "");
+const num = (n: number) => n.toLocaleString("es-MX", { maximumFractionDigits: 0 });
+
+/** Medianoche local (en ms UTC) del día de t; y el lunes de esa semana. */
+const medianoche = (t: number) => Math.floor((t + OFFSET) / DIA) * DIA - OFFSET;
+const lunes = (t: number) => {
+  const m = medianoche(t);
+  const dow = (new Date(m + OFFSET).getUTCDay() + 6) % 7; // 0 = lunes
+  return m - dow * DIA;
+};
+
+type Fila = Pick<OrdenDetalle, "fecha_ingreso" | "tiempo_paro_horas" | "estatus_orden" | "nombre_almacen" | "nombre_linea">;
 
 export default async function Resumen({
   params,
   searchParams,
 }: {
   params: Promise<{ pilar: string }>;
-  searchParams: Promise<{ grano?: string }>;
+  searchParams: Promise<{ periodo?: string }>;
 }) {
   const { pilar: p } = await params;
-  const { pilar } = await sesionDePilar(p);
-  const { grano: g } = await searchParams;
-  const grano = GRANOS.find((x) => x.v === g) ?? GRANOS[0];
+  const { pilar, tenant } = await sesionDePilar(p);
+  const { periodo: pv } = await searchParams;
+  const periodo = PERIODOS.find((x) => x.v === pv) ?? PERIODOS[2];
+  const ahora = Date.now();
+  const desde = periodo.dias ? ahora - periodo.dias * DIA : medianoche(ahora);
+  const inicioSemanas = lunes(ahora) - (SEMANAS - 1) * 7 * DIA;
   const supabase = await createClient();
 
-  const [{ data: r }, { data: serie }, { data: lineas }, { data: almacenes }] = await Promise.all([
-    supabase.rpc("resumen_ordenes", { p_pilar: pilar }).single(),
-    supabase.rpc("tendencia_ordenes", { p_grano: grano.v, p_periodos: grano.n, p_pilar: pilar }),
-    pilar === "dorsales"
-      ? supabase.from("v_salud_lineas").select("*").order("carga_abierta", { ascending: false }).order("nombre_linea")
-      : Promise.resolve({ data: [] }),
-    pilar !== "dorsales"
-      ? supabase.from("v_disponibilidad_almacen").select("*").eq("tipo_pilar", pilar).order("pct_disponibilidad", { ascending: true })
-      : Promise.resolve({ data: [] }),
+  const [{ count: activos }, { data: det }, { data: filas }, { data: rec }] = await Promise.all([
+    supabase.from("equipos").select("id_equipo", { count: "exact", head: true }).eq("tipo_pilar", pilar).neq("estatus", "baja"),
+    supabase.from("v_ordenes_detalle").select("folio_ticket, fecha_ingreso, descripcion_falla, nombre_equipo, nombre_almacen, nombre_linea")
+      .eq("pilar", pilar).in("estatus_orden", abiertas).order("fecha_ingreso", { ascending: true }).limit(1000),
+    todasLasPaginas<Fila>((a, b) =>
+      supabase.from("v_ordenes_detalle").select("fecha_ingreso, tiempo_paro_horas, estatus_orden, nombre_almacen, nombre_linea")
+        .eq("pilar", pilar).neq("estatus_orden", "cancelada").gte("fecha_ingreso", new Date(Math.min(desde, inicioSemanas)).toISOString())
+        .order("fecha_ingreso").range(a, b)),
+    supabase.from("v_ordenes_detalle").select("id_orden, folio_ticket, fecha_cierre, notas_cierre, nombre_equipo, nombre_almacen, nombre_linea")
+      .eq("pilar", pilar).eq("estatus_orden", "cerrada").order("fecha_cierre", { ascending: false }).limit(5),
   ]);
-  const res = (r ?? { abiertas: 0, pendientes: 0, en_proceso: 0, cerradas: 0, ingresos_hoy: 0, cierres_hoy: 0, mttr_horas: null, abierta_mas_antigua: null }) as ResumenOrdenes;
-  const puntos = ((serie ?? []) as PuntoTendencia[]).map((x) => ({ ...x, ingresadas: Number(x.ingresadas), cerradas: Number(x.cerradas) }));
-  const neto = puntos.reduce((s, x) => s + x.ingresadas - x.cerradas, 0);
-  const salud = (lineas ?? []) as SaludLinea[];
-  const disp = (almacenes ?? []) as DisponibilidadAlmacen[];
-  const critica = salud.find((l) => l.carga_abierta > 0 && l.pct_salud < 80);
-  const horasAntigua = res.abierta_mas_antigua ? (Date.now() - new Date(res.abierta_mas_antigua).getTime()) / 3600000 : null;
 
-  const titular = res.abiertas === 0
-    ? "Sin backlog abierto en este corte."
-    : `${res.abiertas} ${res.abiertas === 1 ? "orden abierta" : "órdenes abiertas"}; la más antigua lleva ${horas(horasAntigua)}.`;
+  const detenidos = (det ?? []) as Pick<OrdenDetalle, "folio_ticket" | "fecha_ingreso" | "descripcion_falla" | "nombre_equipo" | "nombre_almacen" | "nombre_linea">[];
+  const recientes = (rec ?? []) as Pick<OrdenDetalle, "id_orden" | "folio_ticket" | "fecha_cierre" | "notas_cierre" | "nombre_equipo" | "nombre_almacen" | "nombre_linea">[];
+  const nActivos = activos ?? 0;
+  const operando = Math.max(0, nActivos - detenidos.length);
+  const disponibilidad = nActivos ? (100 * operando) / nActivos : null;
+  const meta = Number(tenant.meta_disponibilidad_pct ?? 95);
+  const masDe100 = detenidos.filter((o) => dias(o.fecha_ingreso) > 100).length;
+
+  // Fallas del periodo = ingresos del periodo; sus horas de paro y la mediana de las ya cerradas.
+  const delPeriodo = filas.filter((o) => new Date(o.fecha_ingreso).getTime() >= desde);
+  const horasParo = delPeriodo.reduce((s, o) => s + Number(o.tiempo_paro_horas ?? 0), 0);
+  const reparaciones = delPeriodo.filter((o) => o.estatus_orden === "cerrada" && o.tiempo_paro_horas !== null)
+    .map((o) => Number(o.tiempo_paro_horas)).sort((a, b) => a - b);
+  const mediana = reparaciones.length
+    ? (reparaciones[(reparaciones.length - 1) >> 1] + reparaciones[reparaciones.length >> 1]) / 2
+    : null;
+  const promedio = reparaciones.length ? reparaciones.reduce((s, x) => s + x, 0) / reparaciones.length : null;
+
+  // Mini gráfica de la tarjeta: el periodo partido en 7 tramos.
+  const tramos = Array.from({ length: 7 }, () => 0);
+  for (const o of delPeriodo) {
+    const i = Math.min(6, Math.floor((7 * (new Date(o.fecha_ingreso).getTime() - desde)) / Math.max(1, ahora - desde)));
+    tramos[i]++;
+  }
+  const maxTramo = Math.max(1, ...tramos);
+
+  const porAlmacen = new Map<string, { fallas: number; horas: number }>();
+  for (const o of delPeriodo) {
+    const k = o.nombre_almacen ?? o.nombre_linea ?? "Sin almacén";
+    const x = porAlmacen.get(k) ?? { fallas: 0, horas: 0 };
+    x.fallas++;
+    x.horas += Number(o.tiempo_paro_horas ?? 0);
+    porAlmacen.set(k, x);
+  }
+  const topAlmacenes = [...porAlmacen].sort((a, b) => b[1].fallas - a[1].fallas || b[1].horas - a[1].horas).slice(0, 6);
+  const maxAlmacen = Math.max(1, ...topAlmacenes.map(([, x]) => x.fallas));
+
+  const semanas = Array.from({ length: SEMANAS }, (_, i) => ({ inicio: inicioSemanas + i * 7 * DIA, n: 0 }));
+  for (const o of filas) {
+    const i = Math.floor((new Date(o.fecha_ingreso).getTime() - inicioSemanas) / (7 * DIA));
+    if (i >= 0 && i < SEMANAS) semanas[i].n++;
+  }
+  const maxSemana = Math.max(1, ...semanas.map((s) => s.n));
 
   return (
     <>
-      <Encabezado
-
-        titulo="Resumen de órdenes"
-        sub="Volumen, responsables y estado general de las órdenes."
-      />
-
-      <section className="entrar caja-panel px-6 py-10 text-center md:px-12 md:py-14">
-        <p className="mx-auto max-w-3xl text-[28px] font-semibold leading-tight tracking-[-0.02em] md:text-[40px]">{titular}</p>
-        <div className="mx-auto mt-8 grid max-w-3xl gap-3 text-left sm:grid-cols-2">
-          <div className="rounded-[18px] bg-papel p-5">
-            <p className="text-sm text-suave">Señal del periodo</p>
-            <p className="mt-1 text-[19px] font-semibold">
-              {neto > 0 ? `Entran más de las que se cierran (+${neto})` : neto < 0 ? `Ritmo de cierre por encima de los ingresos (${neto})` : "Ritmo de cierre equilibrado"}
-            </p>
-          </div>
-          <div className="rounded-[18px] bg-papel p-5">
-            <p className="text-sm text-suave">Riesgo</p>
-            <p className="mt-1 text-[19px] font-semibold">
-              {critica ? `Atención en ${critica.nombre_linea}` : res.pendientes > 0 ? `${res.pendientes} sin asignar` : "Sin línea crítica"}
-            </p>
-          </div>
+      <header className="entrar flex flex-wrap items-start justify-between gap-4 pb-6">
+        <div>
+          <h1 className="text-[32px] font-semibold leading-[1.1] md:text-[40px]">Resumen de {infoPilar(pilar).etiqueta}</h1>
+          <p className="mt-2 text-[17px] text-suave">{num(nActivos)} equipos activos · se actualiza solo cuando alguien registra o libera</p>
         </div>
-      </section>
+        <nav aria-label="Periodo" className="inline-flex rounded-full bg-panel-2 p-1">
+          {PERIODOS.map((x) => (
+            <Link key={x.v} href={x.v === "30d" ? "?" : `?periodo=${x.v}`} scroll={false} aria-current={x.v === periodo.v ? "true" : undefined}
+              className={`flex min-h-10 items-center rounded-full px-4 text-[15px] ${x.v === periodo.v ? "bg-panel font-semibold shadow-sm" : "text-suave hover:text-tinta"}`}>
+              {x.t}
+            </Link>
+          ))}
+        </nav>
+      </header>
 
-      <div className="entrar entrar-2 mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          ["Órdenes abiertas", res.abiertas, "Pendientes, asignadas o en proceso"],
-          ["Órdenes cerradas", res.cerradas, "Concluidas en el histórico"],
-          ["Cierres hoy", res.cierres_hoy, `Ingresos hoy: ${res.ingresos_hoy}`],
-          ["MTTR histórico", horas(res.mttr_horas), "Tiempo medio de paro de las cerradas"],
-        ].map(([t, v, s]) => (
-          <div key={String(t)} className="caja-panel p-6">
-            <p className="text-sm font-semibold text-suave">{t}</p>
-            <p className="mt-1 text-[40px] font-semibold leading-none tracking-[-0.02em] tabular-nums">{v}</p>
-            <p className="mt-3 text-[13px] text-suave">{s}</p>
+      <div className="entrar entrar-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Tarjeta titulo="Disponibilidad de flota">
+          <p className="text-[40px] font-semibold leading-none tracking-[-0.02em] tabular-nums">{pct(disponibilidad)}</p>
+          <div className="relative mt-4 h-1.5 rounded-full bg-papel" role="presentation">
+            <div className="h-full rounded-full bg-ok" style={{ width: `${disponibilidad ?? 0}%` }} />
+            <div className="absolute -top-1 h-3.5 w-0.5 rounded bg-tinta/40" style={{ left: `${meta}%` }} title={`Meta ${meta}%`} />
           </div>
-        ))}
+          <p className="mt-2 text-[13px] text-suave">{num(operando)} de {num(nActivos)} equipos operando · meta {meta}%</p>
+        </Tarjeta>
+
+        <Tarjeta titulo="Detenidos ahora">
+          <p className={`text-[40px] font-semibold leading-none tracking-[-0.02em] tabular-nums ${detenidos.length ? "text-paro-texto" : ""}`}>{detenidos.length}</p>
+          {masDe100 > 0 && <p className="mt-3 text-[13px] text-paro-texto">{masDe100 === 1 ? "1 lleva" : `${masDe100} llevan`} más de 100 días detenido{masDe100 === 1 ? "" : "s"}</p>}
+          <Link href={`/p/${pilar}/ordenes`} className="enlace mt-1 text-[13px]">Ver detenidos ›</Link>
+        </Tarjeta>
+
+        <Tarjeta titulo={`Fallas · ${periodo.nombre}`}>
+          <div className="flex items-end justify-between gap-3">
+            <p className="text-[40px] font-semibold leading-none tracking-[-0.02em] tabular-nums">{num(delPeriodo.length)}</p>
+            <div className="flex h-10 items-end gap-1" aria-hidden="true">
+              {tramos.map((n, i) => (
+                <span key={i} className="w-1.5 rounded-sm bg-azul" style={{ height: `${Math.max(8, (100 * n) / maxTramo)}%` }} />
+              ))}
+            </div>
+          </div>
+          <p className="mt-3 text-[13px] text-suave">{num(horasParo)} h de paro acumuladas</p>
+        </Tarjeta>
+
+        <Tarjeta titulo="Reparación típica (mediana)">
+          <p className="text-[40px] font-semibold leading-none tracking-[-0.02em] tabular-nums">{horas(mediana)}</p>
+          <p className="mt-3 text-[13px] text-suave">
+            {promedio === null ? "Sin reparaciones cerradas en el periodo"
+              : `Promedio ${horas(promedio)}${mediana !== null && promedio > 3 * Math.max(mediana, 0.1) ? ": lo inflan pocos paros largos" : ""}`}
+          </p>
+        </Tarjeta>
       </div>
 
-      <Seccion
-        titulo="Evolución de órdenes"
-        sub={`Balance del periodo: ${neto > 0 ? "+" : ""}${neto}`}
-        extra={
-          <nav aria-label="Agrupar por" className="inline-flex rounded-full bg-panel p-1">
-            {GRANOS.map((x) => (
-              <Link key={x.v} href={`?grano=${x.v}`} aria-current={x.v === grano.v ? "true" : undefined}
-                className={`flex min-h-10 items-center rounded-full px-4 text-[15px] ${x.v === grano.v ? "bg-tinta font-semibold text-white" : "hover:bg-panel-2"}`}>
-                {x.t}
-              </Link>
-            ))}
-          </nav>
-        }
-      >
-        <div className="caja-panel p-6">
-          <GraficaTendencia datos={puntos} grano={grano.v} />
-        </div>
-      </Seccion>
-
-      {pilar === "dorsales" ? (
-        <Seccion titulo="Análisis por línea" sub="Carga abierta, cierres y salud para priorizar atención." extra={<span className="chip bg-panel-2 text-suave">{salud.length} líneas</span>}>
-          {salud.length === 0 ? (
-            <Vacio titulo="Aún no hay líneas" accion={<Link href="/configuracion" className="btn-primario">Dar de alta líneas</Link>} />
+      <div className="entrar entrar-3 mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+        <section className="caja-panel p-6">
+          <div className="mb-4 flex items-baseline justify-between gap-3">
+            <h2 className="text-[19px] font-semibold">Detenidos más antiguos</h2>
+            {detenidos.length > 0 && <Link href={`/p/${pilar}/ordenes`} className="enlace text-[14px]">Ver los {detenidos.length} ›</Link>}
+          </div>
+          {detenidos.length === 0 ? (
+            <p className="py-8 text-center text-suave">No hay equipos detenidos.</p>
           ) : (
-            <ul className="space-y-3">
-              {salud.map((l) => {
-                const carga = l.total_ordenes ? (100 * l.carga_abierta) / l.total_ordenes : 0;
-                return (
-                  <li key={l.id_linea} className="caja-panel grid items-center gap-4 p-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)_auto]">
-                    <div>
-                      <p className="text-lg font-semibold">{l.nombre_linea}</p>
-                      <p className="text-sm text-suave">
-                        {l.carga_abierta === 0 ? "Sin carga abierta" : `${l.carga_abierta} abierta${l.carga_abierta === 1 ? "" : "s"}`} · MTTR {horas(l.mttr_horas)}
-                      </p>
-                    </div>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-3"><span className="w-32 shrink-0 whitespace-nowrap text-suave">Carga abierta</span><Barra valor={carga} tono="alerta" /><span className="w-14 shrink-0 text-right tabular-nums">{pct(carga)}</span></div>
-                      <div className="flex items-center gap-3"><span className="w-32 shrink-0 whitespace-nowrap text-suave">Cierre histórico</span><Barra valor={Number(l.pct_salud)} /><span className="w-14 shrink-0 text-right tabular-nums">{pct(l.pct_salud)}</span></div>
-                    </div>
-                    <div className="flex gap-2 text-center">
-                      {[["Abiertas", l.carga_abierta], ["Cerradas", l.cierres_historicos], ["Salud", pct(l.pct_salud)]].map(([t, v]) => (
-                        <div key={String(t)} className="min-w-[72px] rounded-xl bg-papel px-3 py-2">
-                          <p className="font-semibold tabular-nums">{v}</p><p className="text-[13px] text-suave">{t}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </Seccion>
-      ) : (
-        <Seccion titulo="Disponibilidad por almacén" sub="Equipos del pilar contra equipos parados en este momento, del más comprometido al menos.">
-          {disp.length === 0 ? (
-            <Vacio titulo="Aún no hay equipos en este pilar" accion={<Link href={`/p/${pilar}/equipos`} className="btn-primario">Dar de alta equipos</Link>} />
-          ) : (
-            <div className="caja-panel overflow-x-auto">
-              <table className="w-full min-w-[640px] text-[15px]">
-                <thead className="text-left text-sm text-suave">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[560px] text-[14px]">
+                <thead className="text-left text-[13px] text-suave">
                   <tr>
-                    <th className="px-5 pb-2 pt-4 font-medium">Almacén</th>
-                    <th className="px-5 pb-2 pt-4 text-right font-medium">Total</th>
-                    <th className="px-5 pb-2 pt-4 text-right font-medium">Parados</th>
-                    <th className="px-5 pb-2 pt-4 text-right font-medium">Disponibles</th>
-                    <th className="w-1/3 px-5 pb-2 pt-4 font-medium">Disponibilidad</th>
+                    <th className="pb-2 font-medium">Folio</th>
+                    <th className="pb-2 font-medium">Equipo</th>
+                    <th className="pb-2 font-medium">Almacén</th>
+                    <th className="pb-2 font-medium">Falla</th>
+                    <th className="pb-2 text-right font-medium">Detenido</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {disp.map((a) => (
-                    <tr key={a.id_almacen} className="odd:bg-papel/60">
-                      <td className="px-5 py-3 font-semibold">{a.nombre_almacen}</td>
-                      <td className="px-5 py-3 text-right tabular-nums">{a.total_equipos}</td>
-                      <td className={`px-5 py-3 text-right tabular-nums ${a.equipos_parados ? "font-semibold text-paro-texto" : ""}`}>{a.equipos_parados}</td>
-                      <td className="px-5 py-3 text-right tabular-nums">{a.equipos_disponibles}</td>
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-3"><Barra valor={Number(a.pct_disponibilidad ?? 0)} /><span className="w-14 text-right font-semibold tabular-nums">{pct(a.pct_disponibilidad)}</span></div>
-                      </td>
-                    </tr>
-                  ))}
+                  {detenidos.slice(0, 8).map((o) => {
+                    const d = dias(o.fecha_ingreso);
+                    return (
+                      <tr key={o.folio_ticket} className="border-t border-papel">
+                        <td className="folio py-2.5 pr-3 text-[13px]">{o.folio_ticket}</td>
+                        <td className="max-w-[200px] truncate py-2.5 pr-3 font-medium">{o.nombre_equipo ?? "—"}</td>
+                        <td className="py-2.5 pr-3 text-suave">{o.nombre_almacen ?? o.nombre_linea ?? "—"}</td>
+                        <td className="max-w-[240px] truncate py-2.5 pr-3" title={o.descripcion_falla}>{o.descripcion_falla}</td>
+                        <td className={`py-2.5 text-right font-semibold tabular-nums ${d >= 30 ? "text-paro-texto" : d >= 7 ? "text-alerta-texto" : ""}`}>
+                          {d === 0 ? "Hoy" : `${d} día${d === 1 ? "" : "s"}`}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           )}
-        </Seccion>
-      )}
+          {masDe100 > 0 && <p className="mt-4 text-[13px] text-suave">Varios vienen del historial importado. Revisa si siguen detenidos o si faltó registrar su salida.</p>}
+        </section>
+
+        <section className="caja-panel p-6">
+          <h2 className="text-[19px] font-semibold">Almacenes con más fallas</h2>
+          <p className="mt-0.5 text-[13px] text-suave">{periodo.dias ? `Últimos ${periodo.nombre}` : "Hoy"} · fallas y horas de paro</p>
+          {topAlmacenes.length === 0 ? (
+            <p className="py-8 text-center text-suave">Sin fallas en el periodo.</p>
+          ) : (
+            <ul className="mt-5 space-y-4">
+              {topAlmacenes.map(([nombre, x]) => (
+                <li key={nombre}>
+                  <div className="flex items-baseline justify-between gap-3 text-[14px]">
+                    <span className="truncate font-semibold">{nombre}</span>
+                    <span className="shrink-0 text-[13px] text-suave tabular-nums">{x.fallas} falla{x.fallas === 1 ? "" : "s"} · {num(x.horas)} h</span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 rounded-full bg-papel" role="presentation">
+                    <div className="h-full rounded-full bg-azul" style={{ width: `${(100 * x.fallas) / maxAlmacen}%` }} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+
+      <div className="entrar entrar-4 mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+        <section className="caja-panel p-6">
+          <h2 className="text-[19px] font-semibold">Fallas por semana</h2>
+          <p className="mt-0.5 text-[13px] text-suave">{infoPilar(pilar).etiqueta} · últimas {SEMANAS} semanas (la última va en curso)</p>
+          <div className="mt-6 flex h-48 items-end gap-2 border-b border-papel sm:gap-3">
+            {semanas.map((s, i) => (
+              <div key={s.inicio} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
+                <span className="text-[12px] tabular-nums">{s.n}</span>
+                <div className={`w-full max-w-10 rounded-t-md ${i === SEMANAS - 1 ? "bg-azul/40" : "bg-azul"}`} style={{ height: `${(100 * s.n) / maxSemana}%` }} />
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 flex gap-2 sm:gap-3">
+            {semanas.map((s) => (
+              <span key={s.inicio} className="flex-1 text-center text-[11px] whitespace-nowrap text-suave">{fechaCorta(s.inicio)}</span>
+            ))}
+          </div>
+        </section>
+
+        <section className="caja-panel p-6">
+          <h2 className="text-[19px] font-semibold">Actividad reciente</h2>
+          {recientes.length === 0 ? (
+            <p className="py-8 text-center text-suave">Aún no se ha liberado ningún equipo.</p>
+          ) : (
+            <ul className="mt-4 space-y-4">
+              {recientes.map((o) => (
+                <li key={o.id_orden} className="flex gap-3">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-ok-suave text-ok-texto" aria-hidden="true">
+                    <svg viewBox="0 0 12 12" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 6.2l2.3 2.3 4.7-5" /></svg>
+                  </span>
+                  <div className="min-w-0 text-[14px]">
+                    <p><span className="font-semibold">Liberado</span> · {o.nombre_equipo ?? o.nombre_linea ?? "Sin equipo"}</p>
+                    <p className="truncate text-[12px] text-suave">{[o.folio_ticket, o.nombre_almacen, o.notas_cierre].filter(Boolean).join(" · ")}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
     </>
+  );
+}
+
+function Tarjeta({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <div className="caja-panel p-6">
+      <p className="mb-2 text-[13px] text-suave">{titulo}</p>
+      {children}
+    </div>
   );
 }

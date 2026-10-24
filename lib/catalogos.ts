@@ -64,8 +64,8 @@ export function pestanasPilar(pilar: Pilar, rol: Rol) {
     ];
   }
   const t = [
+    { href: `${base}/resumen`, texto: "Resumen" },
     { href: `${base}/ordenes`, texto: "Órdenes abiertas" },
-    { href: `${base}/resumen`, texto: "Resumen de órdenes" },
     ...(puedeSolicitar(rol) ? [{ href: `${base}/registro`, texto: "Registro" }] : []),
     { href: `${base}/indicadores`, texto: "Indicadores" },
     { href: `${base}/analisis`, texto: "Análisis de falla" },

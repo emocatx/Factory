@@ -76,7 +76,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
           const sinEquipos = permitido && d.equipos === 0;
           const disp = d.equipos > 0 ? ((d.equipos - d.paro) / d.equipos) * 100 : 0;
           const enMeta = disp >= meta;
-          const destino = sinEquipos && puedeAdministrar(perfil.rol) ? `/p/${p.valor}/equipos` : `/p/${p.valor}/ordenes`;
+          const destino = sinEquipos && puedeAdministrar(perfil.rol) ? `/p/${p.valor}/equipos` : `/p/${p.valor}`;
 
           const chip = !permitido
             ? { texto: activo ? "Sin acceso" : "Aún no activo", clase: "bg-papel text-suave" }
