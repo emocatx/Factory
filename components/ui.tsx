@@ -15,7 +15,9 @@ export function Encabezado({
   children?: React.ReactNode;
 }) {
   return (
-    <header className="entrar flex flex-wrap items-start justify-between gap-x-6 gap-y-4 pb-6">
+    // relative z-20: si a la derecha hay filtros, su lista desplegable debe quedar sobre las tarjetas
+    // (la animación .entrar crea un contexto de apilamiento); 20 deja la barra fija de arriba (z-30) encima.
+    <header className={`entrar flex flex-wrap items-start justify-between gap-x-6 gap-y-4 pb-6 ${children ? "relative z-20" : ""}`}>
       <div className="min-w-0 max-w-3xl">
         {ruta && ruta.length > 0 && (
           <nav aria-label="Ruta" className="mb-3 flex flex-wrap items-center gap-1.5 text-[14px] text-suave">

@@ -19,8 +19,9 @@ export function BarraFiltros({
   mostrarBusqueda = false,
   estados,
   periodoDefecto = "30d",
+  enEncabezado = false,
 }: {
-  resumen: string;
+  resumen?: string;
   lineas?: Linea[];
   almacenes?: Almacen[];
   equipos?: Equipo[];
@@ -29,16 +30,21 @@ export function BarraFiltros({
   mostrarBusqueda?: boolean;
   estados?: { v: string; t: string }[];
   periodoDefecto?: string;
+  /** Solo los controles, para ir a la derecha del título (el alcance va como subtítulo). */
+  enEncabezado?: boolean;
 }) {
   const hayFiltro = Object.entries(valores).some(([k, v]) => v && !(k === "periodo" && v === periodoDefecto));
   return (
     // relative z-30: la animación .entrar crea un contexto de apilamiento; sin esto las tarjetas
     // de abajo tapan la lista desplegable y no se puede elegir una opción.
-    <FormFiltros className="group entrar entrar-2 relative z-30 mb-8 flex flex-wrap items-end justify-between gap-4">
-      <div className="min-w-0">
-        <p className="text-[17px] font-semibold">{resumen}</p>
-        {hayFiltro && <Link href="?" className="enlace text-sm">Quitar filtros</Link>}
-      </div>
+    <FormFiltros className={enEncabezado ? "relative z-30 flex flex-wrap items-end gap-3"
+      : "group entrar entrar-2 relative z-30 mb-8 flex flex-wrap items-end justify-between gap-4"}>
+      {!enEncabezado && (
+        <div className="min-w-0">
+          <p className="text-[17px] font-semibold">{resumen}</p>
+          {hayFiltro && <Link href="?" className="enlace text-sm">Quitar filtros</Link>}
+        </div>
+      )}
       <div className="flex flex-wrap items-end gap-3">
         {mostrarBusqueda && (
           <label className="w-full sm:w-64">
@@ -83,6 +89,7 @@ export function BarraFiltros({
         )}
         {/* Las listas se aplican solas; el botón queda oculto para el envío con Enter y sin JavaScript. */}
         <button className="sr-only">Aplicar</button>
+        {enEncabezado && hayFiltro && <Link href="?" className="enlace mb-2.5 text-sm">Quitar filtros</Link>}
       </div>
     </FormFiltros>
   );

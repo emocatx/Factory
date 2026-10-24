@@ -58,22 +58,16 @@ export default async function PaginaIndicadores({
 
   return (
     <>
-      <Encabezado
+      <Encabezado titulo="Indicadores" sub={`${alcance} · ${periodo.t}`}>
+        <BarraFiltros
+          enEncabezado
+          lineas={pilar === "dorsales" ? cat.lineas : undefined}
+          almacenes={almacenes}
+          valores={{ linea: f.linea, almacen: f.almacen, periodo: f.periodo }}
+        />
+      </Encabezado>
 
-        titulo="Indicadores"
-        sub="MTTR, MTBF, disponibilidad y equipos actualmente detenidos."
-      />
-      <BarraFiltros
-        resumen={`${alcance} · ${periodo.t}`}
-        lineas={pilar === "dorsales" ? cat.lineas : undefined}
-        almacenes={almacenes}
-        valores={{ linea: f.linea, almacen: f.almacen, periodo: f.periodo }}
-      />
-
-      <Seccion
-        titulo="Indicadores globales"
-        sub={i ? `${i.activos_evaluados} ${i.activos_evaluados === 1 ? "activo evaluado" : "activos evaluados"} · ${n1(i.horas_periodo)} h en el periodo` : undefined}
-      >
+      <section className="entrar entrar-2 mt-2">
         {!i || i.activos_evaluados === 0 ? (
           <Vacio titulo="Aún no hay activos para medir" accion={<Link href={`/p/${pilar}/equipos`} className="btn-primario">Dar de alta equipos</Link>}>
             Los indicadores se calculan sobre los equipos{pilar === "dorsales" ? " o líneas" : ""} registrados en este pilar.
@@ -120,7 +114,7 @@ export default async function PaginaIndicadores({
             />
           </div>
         )}
-      </Seccion>
+      </section>
 
       <Seccion
         titulo={pilar === "dorsales" ? "Dorsales actualmente detenidos" : "Equipos actualmente detenidos"}
