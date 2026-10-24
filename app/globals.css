@@ -63,6 +63,10 @@ h1 { letter-spacing: -0.03em; }
 .entrar-3 { animation-delay: 140ms; }
 .entrar-4 { animation-delay: 210ms; }
 
+/* Mientras un filtro recalcula los datos, el contenido de abajo se atenúa (ver FormFiltros). */
+form[aria-busy] ~ * { transition: opacity 180ms ease-out; }
+form[data-cargando] ~ * { opacity: 0.5; pointer-events: none; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-delay: 0ms !important; }
 }

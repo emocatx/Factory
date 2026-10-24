@@ -81,7 +81,8 @@ export function BarraFiltros({
               opciones={PERIODOS.map((p) => ({ valor: p.v, etiqueta: p.t }))} />
           </div>
         )}
-        <button className="btn-primario min-h-11 group-data-[cargando]:opacity-60">Aplicar</button>
+        {/* Las listas se aplican solas; el botón queda oculto para el envío con Enter y sin JavaScript. */}
+        <button className="sr-only">Aplicar</button>
       </div>
     </FormFiltros>
   );
