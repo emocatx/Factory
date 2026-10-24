@@ -7,7 +7,7 @@ import type { Pilar, Prioridad } from "@/lib/tipos";
 export type Resultado = { ok: true; mensaje: string; folio?: string } | { ok: false; error: string; campos?: Record<string, string> };
 
 function traducir(m: string): string {
-  if (m.includes("ordenes_equipo_abierta_unq")) return "Ese equipo ya está detenido con otra orden abierta. Libéralo primero desde Órdenes abiertas.";
+  if (m.includes("ordenes_equipo_abierta_unq")) return "Ese equipo ya está detenido con otra orden abierta. Libéralo primero desde Órdenes.";
   if (m.includes("folio_ticket")) return "Ese folio ya existe en tu organización.";
   if (m.includes("row-level security")) return "No tienes permiso para esta acción en este pilar.";
   if (m.includes("orden_cierre_completo")) return "Para cerrar hace falta el origen de falla (y en Dorsales, el almacén).";

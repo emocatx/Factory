@@ -7,9 +7,10 @@ import { esUuid, rangoPeriodo } from "@/lib/filtros";
 import { fechaHora, horas } from "@/lib/formato";
 import { ChipEstado, Encabezado, Vacio } from "@/components/ui";
 import { BarraFiltros } from "@/components/BarraFiltros";
+import { VistaOrdenes } from "@/components/VistaOrdenes";
 import type { OrdenDetalle } from "@/lib/tipos";
 
-export const metadata = { title: "Cerradas" };
+export const metadata = { title: "Órdenes cerradas" };
 
 export default async function Cerradas({
   params,
@@ -19,7 +20,7 @@ export default async function Cerradas({
   searchParams: Promise<{ q?: string; linea?: string; periodo?: string; estado?: string }>;
 }) {
   const { pilar: p } = await params;
-  const { tenant, pilar } = await sesionDePilar(p);
+  const { perfil, tenant, pilar } = await sesionDePilar(p);
   const f = await searchParams;
   const { periodo, desde } = rangoPeriodo(f.periodo);
   const supabase = await createClient();
@@ -38,9 +39,11 @@ export default async function Cerradas({
     <>
       <Encabezado
 
-        titulo="Cerradas"
+        titulo={perfil.rol === "operaciones" ? "Seguimiento" : "Órdenes"}
         sub="Solicitudes concluidas o canceladas, para validar el cierre y el historial de atención."
-      />
+      >
+        <VistaOrdenes pilar={pilar} actual="cerradas" />
+      </Encabezado>
       <BarraFiltros
         resumen={`${ordenes.length} en ${periodo.t.toLowerCase()}`}
         lineas={pilar === "dorsales" ? cat.lineas : undefined}

@@ -60,16 +60,15 @@ export function pestanasPilar(pilar: Pilar, rol: Rol) {
     return [
       { href: `${base}/ordenes`, texto: "Seguimiento" },
       { href: `${base}/registro`, texto: "Nueva solicitud" },
-      { href: `${base}/cerradas`, texto: "Cerradas" },
     ];
   }
   const t = [
     { href: `${base}/resumen`, texto: "Resumen" },
-    { href: `${base}/ordenes`, texto: "Órdenes abiertas" },
+    // Órdenes agrupa abiertas y cerradas (ver VistaOrdenes).
+    { href: `${base}/ordenes`, texto: "Órdenes" },
     ...(puedeSolicitar(rol) ? [{ href: `${base}/registro`, texto: "Registro" }] : []),
     { href: `${base}/indicadores`, texto: "Indicadores" },
     { href: `${base}/analisis`, texto: "Análisis de falla" },
-    { href: `${base}/cerradas`, texto: "Cerradas" },
   ];
   if (puedeAdministrar(rol)) t.push({ href: `${base}/equipos`, texto: "Equipos" });
   return t;

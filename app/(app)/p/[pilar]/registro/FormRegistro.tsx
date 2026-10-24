@@ -139,7 +139,7 @@ export function FormRegistro({ pilar, operaciones, usuario, almacenes, lineas, e
                 <Desplegable id="id_almacen" value={d.id_almacen} onChange={(v) => { set("id_almacen", v); set("id_equipo", ""); }} icono={<IcoAlmacen />}
                   placeholder="Selecciona almacén" opciones={almacenes.map((a) => ({ valor: a.id_almacen, etiqueta: a.nombre_almacen }))} />
               </Campo>
-              <Campo id="id_equipo" etiqueta="Equipo" error={err("id_equipo")} ayuda={d.id_almacen && opcEquipos.length ? `${disponibles} disponible${disponibles === 1 ? "" : "s"} de ${opcEquipos.length}. Los detenidos ya tienen una orden abierta: libéralos desde Órdenes abiertas.` : undefined}>
+              <Campo id="id_equipo" etiqueta="Equipo" error={err("id_equipo")} ayuda={d.id_almacen && opcEquipos.length ? `${disponibles} disponible${disponibles === 1 ? "" : "s"} de ${opcEquipos.length}. Los detenidos ya tienen una orden abierta: libéralos desde Órdenes.` : undefined}>
                 <Desplegable id="id_equipo" value={d.id_equipo} disabled={!d.id_almacen} onChange={(v) => set("id_equipo", v)} invalido={!!err("id_equipo")} icono={<IcoEquipo />}
                   placeholder={d.id_almacen ? (opcEquipos.length ? (disponibles ? "Selecciona equipo" : "Todos los equipos de este almacén están detenidos") : "Este almacén no tiene equipos de este pilar") : "Primero elige el almacén"}
                   opciones={opcEquipos} />

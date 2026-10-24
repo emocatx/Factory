@@ -5,10 +5,11 @@ import { esUuid } from "@/lib/filtros";
 import { ESTADOS, puedeAsignar } from "@/lib/catalogos";
 import { Encabezado } from "@/components/ui";
 import { BarraFiltros } from "@/components/BarraFiltros";
+import { VistaOrdenes } from "@/components/VistaOrdenes";
 import { PanelOrdenes } from "./PanelOrdenes";
 import type { EstatusOrden, OrdenDetalle } from "@/lib/tipos";
 
-export const metadata = { title: "Órdenes abiertas" };
+export const metadata = { title: "Órdenes" };
 
 export default async function OrdenesAbiertas({
   params,
@@ -50,11 +51,13 @@ export default async function OrdenesAbiertas({
     <>
       <Encabezado
 
-        titulo={operaciones ? "Seguimiento" : "Órdenes abiertas"}
+        titulo={operaciones ? "Seguimiento" : "Órdenes"}
         sub={operaciones
           ? "Tus solicitudes y las de tu área mientras mantenimiento las atiende."
           : "Prioriza, asigna e inicia la atención; concluye cuando el activo vuelva a operar."}
-      />
+      >
+        <VistaOrdenes pilar={pilar} actual="abiertas" />
+      </Encabezado>
       <BarraFiltros
         resumen={`${ordenes.length} ${ordenes.length === 1 ? "orden abierta" : "órdenes abiertas"}`}
         lineas={pilar === "dorsales" ? cat.lineas : undefined}

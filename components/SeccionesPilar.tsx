@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { TiraNav } from "./TiraNav";
 import { IconoSeccion } from "./IconosSeccion";
 
-/** Tira de secciones del pilar (Órdenes abiertas, Resumen…) con icono, como la fila de productos. */
+/** Tira de secciones del pilar (Resumen, Órdenes…) con icono, como la fila de productos. */
 export function SeccionesPilar({ items, abiertas }: { items: { href: string; texto: string }[]; abiertas: number }) {
   const ruta = usePathname();
   return (
@@ -18,7 +18,8 @@ export function SeccionesPilar({ items, abiertas }: { items: { href: string; tex
           texto: i.texto,
           visual: <IconoSeccion clave={clave} />,
           etiqueta: seg === "ordenes" && abiertas > 0 ? `${abiertas} abierta${abiertas === 1 ? "" : "s"}` : undefined,
-          activo: ruta === i.href || ruta.startsWith(i.href + "/"),
+          // Cerradas vive dentro de la sección Órdenes.
+          activo: ruta === i.href || ruta.startsWith(i.href + "/") || (seg === "ordenes" && ruta.endsWith("/cerradas")),
         };
       })}
     />
