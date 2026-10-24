@@ -38,10 +38,11 @@ export function BarraFiltros({
     // relative z-30: la animación .entrar crea un contexto de apilamiento; sin esto las tarjetas
     // de abajo tapan la lista desplegable y no se puede elegir una opción.
     <FormFiltros className={enEncabezado ? "relative z-30 flex flex-wrap items-end gap-3"
-      : "group entrar entrar-2 relative z-30 mb-8 flex flex-wrap items-end justify-between gap-4"}>
+      // -mt-4: el resumen queda pegado al título, como subtítulo (Órdenes, donde el selector ocupa la fila del título).
+      : "group entrar entrar-2 relative z-30 -mt-4 mb-8 flex flex-wrap items-end justify-between gap-4"}>
       {!enEncabezado && (
-        <div className="min-w-0">
-          <p className="text-[17px] font-semibold">{resumen}</p>
+        <div className="min-w-0 self-start">
+          <p className="text-[17px] text-suave">{resumen}</p>
           {hayFiltro && <Link href="?" className="enlace text-sm">Quitar filtros</Link>}
         </div>
       )}

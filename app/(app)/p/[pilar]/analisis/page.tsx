@@ -59,8 +59,9 @@ export default async function Analisis({ params, searchParams }: { params: Promi
   if (filas.length === 0) {
     return (
       <>
-        <Encabezado titulo="Análisis de falla" sub="Qué equipos concentran el paro, por qué fallan y si las reparaciones resuelven." />
-        <BarraFiltros resumen={`${alcance} · ${periodo.t}`} lineas={pilar === "dorsales" ? cat.lineas : undefined} valores={{ linea: f.linea, periodo: f.periodo ?? "90d" }} periodoDefecto="90d" />
+        <Encabezado titulo="Análisis de falla" sub={`${alcance} · ${periodo.t}`}>
+          <BarraFiltros enEncabezado lineas={pilar === "dorsales" ? cat.lineas : undefined} valores={{ linea: f.linea, periodo: f.periodo ?? "90d" }} periodoDefecto="90d" />
+        </Encabezado>
         <Vacio titulo="Todavía no hay fallas en este periodo">
           El análisis aparece en cuanto se registren órdenes. <Link href={`/p/${pilar}/registro`} className="enlace">Registrar una ›</Link>
         </Vacio>
@@ -81,12 +82,13 @@ export default async function Analisis({ params, searchParams }: { params: Promi
 
   return (
     <>
-      <Encabezado titulo="Análisis de falla" sub="Qué equipos concentran el paro, por qué fallan y si las reparaciones resuelven." />
-      <BarraFiltros
-        resumen={`${alcance} · ${periodo.t} · ${filas.length} fallas`}
-        lineas={pilar === "dorsales" ? cat.lineas : undefined}
-        valores={{ linea: f.linea, periodo: f.periodo ?? "90d" }} periodoDefecto="90d"
-      />
+      <Encabezado titulo="Análisis de falla" sub={`${alcance} · ${periodo.t} · ${filas.length} fallas`}>
+        <BarraFiltros
+          enEncabezado
+          lineas={pilar === "dorsales" ? cat.lineas : undefined}
+          valores={{ linea: f.linea, periodo: f.periodo ?? "90d" }} periodoDefecto="90d"
+        />
+      </Encabezado>
 
       {(cal.sinModo > 0 || cal.sinCausa > 0 || cal.sinUnidad > 0 || cal.abiertas > 0) && (
         <p className="entrar mb-2 rounded-[18px] bg-panel px-5 py-4 text-[15px] text-suave">

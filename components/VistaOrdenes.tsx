@@ -18,14 +18,8 @@ export function EncabezadoOrdenes({ pilar, operaciones }: { pilar: Pilar; operac
     { v: "cerradas", t: "Cerradas", href: `/p/${pilar}/cerradas` },
   ] as const;
   return (
-    <Encabezado
-      titulo={operaciones ? "Seguimiento" : "Órdenes"}
-      sub={actual === "cerradas"
-        ? "Solicitudes concluidas o canceladas, para validar el cierre y el historial de atención."
-        : operaciones
-          ? "Tus solicitudes y las de tu área mientras mantenimiento las atiende."
-          : "Prioriza, asigna e inicia la atención; concluye cuando el activo vuelva a operar."}
-    >
+    // El resumen de cada vista hace de subtítulo en la fila de filtros de la página (BarraFiltros).
+    <Encabezado titulo={operaciones ? "Seguimiento" : "Órdenes"}>
       <nav aria-label="Vista de órdenes" className="inline-flex rounded-full bg-panel-2 p-1">
         {vistas.map((x) => (
           <Link key={x.v} href={x.href} aria-current={x.v === actual ? "page" : undefined}
