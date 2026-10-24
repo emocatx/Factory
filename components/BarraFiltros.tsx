@@ -1,16 +1,17 @@
 import Link from "next/link";
 import { PERIODOS } from "@/lib/filtros";
 import { Desplegable } from "./Desplegable";
-import { IcoCalendario, IcoEquipo, IcoFiltro } from "./Iconos";
-import type { Equipo, Linea } from "@/lib/tipos";
+import { IcoAlmacen, IcoCalendario, IcoEquipo, IcoFiltro } from "./Iconos";
+import type { Almacen, Equipo, Linea } from "@/lib/tipos";
 
 /**
- * Fila de filtros (Línea · Equipo · Periodo) como en la app de Power Apps.
+ * Fila de filtros (Línea · Almacén · Equipo · Periodo) como en la app de Power Apps.
  * Es un formulario GET: funciona sin JavaScript y deja el filtro en la URL para compartirlo.
  */
 export function BarraFiltros({
   resumen,
   lineas,
+  almacenes,
   equipos,
   valores,
   mostrarPeriodo = true,
@@ -20,8 +21,9 @@ export function BarraFiltros({
 }: {
   resumen: string;
   lineas?: Linea[];
+  almacenes?: Almacen[];
   equipos?: Equipo[];
-  valores: { linea?: string; equipo?: string; periodo?: string; q?: string; estado?: string };
+  valores: { linea?: string; almacen?: string; equipo?: string; periodo?: string; q?: string; estado?: string };
   mostrarPeriodo?: boolean;
   mostrarBusqueda?: boolean;
   estados?: { v: string; t: string }[];
@@ -46,6 +48,13 @@ export function BarraFiltros({
             <label htmlFor="f-linea" className="etiqueta">Línea</label>
             <Desplegable id="f-linea" name="linea" compacto defaultValue={valores.linea ?? ""}
               opciones={[{ valor: "", etiqueta: "Todas las líneas" }, ...lineas.map((l) => ({ valor: l.id_linea, etiqueta: l.nombre_linea }))]} />
+          </div>
+        )}
+        {almacenes && almacenes.length > 0 && (
+          <div className="max-w-[300px]">
+            <label htmlFor="f-almacen" className="etiqueta">Almacén</label>
+            <Desplegable id="f-almacen" name="almacen" compacto defaultValue={valores.almacen ?? ""} icono={<IcoAlmacen />}
+              opciones={[{ valor: "", etiqueta: "Todos los almacenes" }, ...almacenes.map((a) => ({ valor: a.id_almacen, etiqueta: a.nombre_almacen }))]} />
           </div>
         )}
         {equipos && equipos.length > 0 && (

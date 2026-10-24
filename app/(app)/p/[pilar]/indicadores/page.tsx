@@ -19,32 +19,36 @@ export default async function PaginaIndicadores({
   searchParams,
 }: {
   params: Promise<{ pilar: string }>;
-  searchParams: Promise<{ linea?: string; equipo?: string; periodo?: string }>;
+  searchParams: Promise<{ linea?: string; almacen?: string; periodo?: string }>;
 }) {
   const { pilar: p } = await params;
   const { pilar } = await sesionDePilar(p);
   const f = await searchParams;
   const { periodo, desde } = rangoPeriodo(f.periodo);
   const linea = esUuid(f.linea) ? f.linea : null;
-  const equipo = esUuid(f.equipo) ? f.equipo : null;
+  const almacen = esUuid(f.almacen) ? f.almacen : null;
   const info = infoPilar(pilar);
 
   const supabase = await createClient();
   const cat = await catalogosPilar(pilar);
+  // Solo almacenes que tienen equipos de este pilar.
+  const conEquipos = new Set(cat.equipos.map((e) => e.id_almacen));
+  const almacenes = cat.almacenes.filter((a) => conEquipos.has(a.id_almacen));
   let detenidos = supabase.from("v_ordenes_detalle").select("*").eq("pilar", pilar)
     .in("estatus_orden", ["pendiente", "asignada", "en_proceso"]).order("fecha_ingreso");
   if (linea) detenidos = detenidos.eq("id_linea", linea);
-  if (equipo) detenidos = detenidos.eq("id_equipo", equipo);
+  if (almacen) detenidos = detenidos.eq("id_almacen", almacen);
   const [{ data: ind }, { data: abiertas }] = await Promise.all([
-    supabase.rpc("indicadores", { p_pilar: pilar, p_id_linea: linea, p_id_equipo: equipo, p_desde: desde, p_hasta: null }).single(),
+    supabase.rpc("indicadores", { p_pilar: pilar, p_id_linea: linea, p_id_almacen: almacen, p_desde: desde, p_hasta: null }).single(),
     detenidos,
   ]);
   const i = ind as Indicadores | null;
   const lista = (abiertas ?? []) as OrdenDetalle[];
 
   const nombreLinea = cat.lineas.find((l) => l.id_linea === linea)?.nombre_linea;
-  const nombreEquipo = cat.equipos.find((e) => e.id_equipo === equipo)?.nombre_equipo;
-  const alcance = nombreEquipo ?? nombreLinea ?? (pilar === "dorsales" ? "Todas las líneas" : `Todos los equipos de ${info.etiqueta}`);
+  const nombreAlmacen = almacenes.find((a) => a.id_almacen === almacen)?.nombre_almacen;
+  const alcance = [nombreLinea, nombreAlmacen].filter(Boolean).join(" · ")
+    || (pilar === "dorsales" ? "Todas las líneas" : `Todos los equipos de ${info.etiqueta}`);
 
   const mttrOk = i?.mttr_horas != null && i.meta_mttr_horas != null ? i.mttr_horas <= i.meta_mttr_horas : null;
   const disp = i?.disponibilidad_pct ?? null;
@@ -62,8 +66,8 @@ export default async function PaginaIndicadores({
       <BarraFiltros
         resumen={`${alcance} · ${periodo.t}`}
         lineas={pilar === "dorsales" ? cat.lineas : undefined}
-        equipos={cat.equipos}
-        valores={{ linea: f.linea, equipo: f.equipo, periodo: f.periodo }}
+        almacenes={almacenes}
+        valores={{ linea: f.linea, almacen: f.almacen, periodo: f.periodo }}
       />
 
       <Seccion
@@ -123,7 +127,7 @@ export default async function PaginaIndicadores({
         sub="Abiertas = detenidos ahora; cerradas = métricas históricas e indicadores."
       >
         {lista.length === 0 ? (
-          <Vacio titulo="Nada detenido con este filtro">Cambia la línea, el equipo o el periodo para ampliar la búsqueda.</Vacio>
+          <Vacio titulo="Nada detenido con este filtro">Cambia la línea, el almacén o el periodo para ampliar la búsqueda.</Vacio>
         ) : (
           <div className="caja-panel overflow-x-auto">
             <table className="w-full min-w-[720px] text-[15px]">
