@@ -40,7 +40,7 @@ export function FormRegistro({ pilar, operaciones, usuario, almacenes, lineas, e
     recibe_nombre: operaciones ? "" : usuario.nombre, descripcion: "",
   };
   const [d, setD] = useState(vacio);
-  const [autoFolio, setAutoFolio] = useState(!dorsal);
+  const [autoFolio, setAutoFolio] = useState(false);
   const [res, setRes] = useState<Resultado | null>(null);
   const [folioMsg, setFolioMsg] = useState<string | null>(null);
   const [pend, start] = useTransition();
@@ -146,6 +146,12 @@ export function FormRegistro({ pilar, operaciones, usuario, almacenes, lineas, e
               </Campo>
               <Campo id="fecha_ingreso" etiqueta="Fecha y hora del ingreso">
                 <input id="fecha_ingreso" type="datetime-local" className="campo" value={d.fecha_ingreso} max={ahoraLocalInput()} onChange={(e) => set("fecha_ingreso", e.target.value)} />
+              </Campo>
+              <Campo id="folio" etiqueta="Folio de la orden (opcional)" error={err("folio")}
+                ayuda={folioMsg ?? `El número de tu orden, por ejemplo de SAP. Si lo dejas vacío se asigna uno automático (${pilar.slice(0, 3).toUpperCase()}-00001).`}>
+                <input id="folio" className="campo font-mono uppercase placeholder:font-sans placeholder:normal-case" value={d.folio} maxLength={20}
+                  placeholder="Ej. 4000123456" onChange={(e) => { set("folio", e.target.value); setFolioMsg(null); }} onBlur={revisarFolio}
+                  aria-invalid={!!err("folio") || folioMsg === "Ese folio ya existe"} />
               </Campo>
             </>
           )}
