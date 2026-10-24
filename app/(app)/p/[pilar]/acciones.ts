@@ -39,6 +39,7 @@ export async function registrarSolicitud(pilar: Pilar, d: {
   const campos: Record<string, string> = {};
   if (pilar === "dorsales" && !d.id_linea) campos.id_linea = "Selecciona la línea.";
   if (pilar !== "dorsales" && !d.id_equipo) campos.id_equipo = "Selecciona el equipo.";
+  if (pilar !== "dorsales" && !d.folio.trim()) campos.folio = "Escribe el folio de la orden.";
   if (!d.solicitante_nombre.trim()) campos.solicitante_nombre = "Escribe quién solicita.";
   if (!d.descripcion.trim()) campos.descripcion = "Describe la falla.";
   if (d.folio && !/^[A-Za-z0-9][A-Za-z0-9 \-]{1,19}$/.test(d.folio.trim()))

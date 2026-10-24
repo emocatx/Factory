@@ -147,10 +147,10 @@ export function FormRegistro({ pilar, operaciones, usuario, almacenes, lineas, e
               <Campo id="fecha_ingreso" etiqueta="Fecha y hora del ingreso">
                 <input id="fecha_ingreso" type="datetime-local" className="campo" value={d.fecha_ingreso} max={ahoraLocalInput()} onChange={(e) => set("fecha_ingreso", e.target.value)} />
               </Campo>
-              <Campo id="folio" etiqueta="Folio de la orden (opcional)" error={err("folio")}
-                ayuda={folioMsg ?? `El número de tu orden, por ejemplo de SAP. Si lo dejas vacío se asigna uno automático (${pilar.slice(0, 3).toUpperCase()}-00001).`}>
+              {/* El folio lo asigna quien registra, del formato recibido; se valida que no esté repetido. */}
+              <Campo id="folio" etiqueta="Folio de la orden" error={err("folio")} ayuda={folioMsg ?? "El que viene en el formato recibido. No se puede repetir."}>
                 <input id="folio" className="campo font-mono uppercase placeholder:font-sans placeholder:normal-case" value={d.folio} maxLength={20}
-                  placeholder="Ej. 4000123456" onChange={(e) => { set("folio", e.target.value); setFolioMsg(null); }} onBlur={revisarFolio}
+                  placeholder="Folio del formato" onChange={(e) => { set("folio", e.target.value); setFolioMsg(null); }} onBlur={revisarFolio}
                   aria-invalid={!!err("folio") || folioMsg === "Ese folio ya existe"} />
               </Campo>
             </>
