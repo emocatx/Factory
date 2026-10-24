@@ -22,6 +22,8 @@ type Props = {
   compacto?: boolean;
   /** Muestra un buscador cuando hay muchas opciones. */
   buscar?: boolean;
+  /** Envía el formulario al elegir una opción (barras de filtros). */
+  autoEnviar?: boolean;
   className?: string;
 };
 
@@ -33,7 +35,7 @@ const PUNTO = { paro: "bg-paro", ok: "bg-ok", alerta: "bg-alerta" } as const;
  */
 export function Desplegable({
   opciones, name, value, defaultValue, onChange, placeholder = "Selecciona…", id, icono, required, disabled,
-  invalido, describedBy, compacto, buscar, className = "",
+  invalido, describedBy, compacto, buscar, autoEnviar, className = "",
 }: Props) {
   const propio = useId();
   const idBoton = id ?? `dd-${propio}`;
@@ -47,6 +49,14 @@ export function Desplegable({
   const boton = useRef<HTMLButtonElement>(null);
   const lista = useRef<HTMLUListElement>(null);
   const conBuscador = buscar ?? opciones.length > 12;
+  const porEnviar = useRef(false);
+
+  // Se envía después de que el input oculto ya tiene el valor nuevo.
+  useEffect(() => {
+    if (!porEnviar.current) return;
+    porEnviar.current = false;
+    caja.current?.closest("form")?.requestSubmit();
+  }, [interno]);
 
   const visibles = useMemo(() => {
     const t = filtro.trim().toLowerCase();
@@ -73,6 +83,7 @@ export function Desplegable({
   }
   function elegir(o: Opcion) {
     if (o.deshabilitada) return;
+    if (autoEnviar && value === undefined && o.valor !== actual) porEnviar.current = true;
     if (value === undefined) setInterno(o.valor);
     onChange?.(o.valor);
     setAbierto(false);

@@ -48,35 +48,35 @@ export function BarraFiltros({
         {lineas && lineas.length > 0 && (
           <div>
             <label htmlFor="f-linea" className="etiqueta">Línea</label>
-            <Desplegable id="f-linea" name="linea" compacto defaultValue={valores.linea ?? ""}
+            <Desplegable id="f-linea" name="linea" compacto autoEnviar defaultValue={valores.linea ?? ""}
               opciones={[{ valor: "", etiqueta: "Todas las líneas" }, ...lineas.map((l) => ({ valor: l.id_linea, etiqueta: l.nombre_linea }))]} />
           </div>
         )}
         {almacenes && almacenes.length > 0 && (
           <div className="max-w-[300px]">
             <label htmlFor="f-almacen" className="etiqueta">Almacén</label>
-            <Desplegable id="f-almacen" name="almacen" compacto defaultValue={valores.almacen ?? ""} icono={<IcoAlmacen />}
+            <Desplegable id="f-almacen" name="almacen" compacto autoEnviar defaultValue={valores.almacen ?? ""} icono={<IcoAlmacen />}
               opciones={[{ valor: "", etiqueta: "Todos los almacenes" }, ...almacenes.map((a) => ({ valor: a.id_almacen, etiqueta: a.nombre_almacen }))]} />
           </div>
         )}
         {equipos && equipos.length > 0 && (
           <div className="max-w-[300px]">
             <label htmlFor="f-equipo" className="etiqueta">Equipo</label>
-            <Desplegable id="f-equipo" name="equipo" compacto defaultValue={valores.equipo ?? ""} icono={<IcoEquipo />}
+            <Desplegable id="f-equipo" name="equipo" compacto autoEnviar defaultValue={valores.equipo ?? ""} icono={<IcoEquipo />}
               opciones={[{ valor: "", etiqueta: "Todos los equipos" }, ...equipos.map((e) => ({ valor: e.id_equipo, etiqueta: e.nombre_equipo, detalle: e.sap_id ? `SAP ${e.sap_id}` : undefined }))]} />
           </div>
         )}
         {estados && (
           <div>
             <label htmlFor="f-estado" className="etiqueta">Estado</label>
-            <Desplegable id="f-estado" name="estado" compacto defaultValue={valores.estado ?? ""} icono={<IcoFiltro />}
+            <Desplegable id="f-estado" name="estado" compacto autoEnviar defaultValue={valores.estado ?? ""} icono={<IcoFiltro />}
               opciones={[{ valor: "", etiqueta: "Todos los estados" }, ...estados.map((e) => ({ valor: e.v, etiqueta: e.t }))]} />
           </div>
         )}
         {mostrarPeriodo && (
           <div>
             <label htmlFor="f-periodo" className="etiqueta">Periodo</label>
-            <Desplegable id="f-periodo" name="periodo" compacto defaultValue={valores.periodo ?? periodoDefecto} icono={<IcoCalendario />}
+            <Desplegable id="f-periodo" name="periodo" compacto autoEnviar defaultValue={valores.periodo ?? periodoDefecto} icono={<IcoCalendario />}
               opciones={PERIODOS.map((p) => ({ valor: p.v, etiqueta: p.t }))} />
           </div>
         )}
