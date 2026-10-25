@@ -57,9 +57,14 @@ export function EnVivo({ tenantId }: { tenantId: string }) {
   return (
     <div className="flex items-center gap-3">
       <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm text-suave" role="status" title={texto}>
-        <span className={`h-2 w-2 rounded-full ${punto}`} aria-hidden="true" />
-        <span className={`sr-only xl:not-sr-only ${estado === "sin_conexion" ? "font-medium text-paro-texto" : ""}`}>{texto}</span>
-        {ultima && <span className="hidden xl:inline">· {hora(ultima)}</span>}
+        {/* Sin conexión no se avisa: los datos siguen siendo correctos y "Actualizar" funciona igual. */}
+        {estado !== "sin_conexion" && (
+          <>
+            <span className={`h-2 w-2 rounded-full ${punto}`} aria-hidden="true" />
+            <span className="sr-only xl:not-sr-only">{texto}</span>
+          </>
+        )}
+        {ultima && <span className="hidden xl:inline">{estado !== "sin_conexion" && "· "}{hora(ultima)}</span>}
       </span>
       <button onClick={actualizar} className="btn-sec min-h-10 px-4 text-sm" aria-label="Actualizar datos">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"
