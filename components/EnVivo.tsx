@@ -32,13 +32,19 @@ export function EnVivo({ tenantId }: { tenantId: string }) {
     const canal = supabase
       .channel(`tenant:${tenantId}`, { config: { private: true } })
       .on("broadcast", { event: "cambio" }, refrescar);
+    // Al desmontar, el canal viejo avisa "CLOSED" tarde y taparía el estado del nuevo: se ignora.
+    let vigente = true;
     // Canal privado: Realtime necesita el token del usuario para aplicar la regla de realtime.messages.
-    supabase.realtime.setAuth().then(() =>
+    supabase.realtime.setAuth().then(() => {
+      if (!vigente) return;
       canal.subscribe((s) => {
+        if (!vigente) return;
         if (s === "SUBSCRIBED") setEstado("en_vivo");
         else if (s === "CHANNEL_ERROR" || s === "TIMED_OUT" || s === "CLOSED") setEstado("sin_conexion");
-      }));
+      });
+    });
     return () => {
+      vigente = false;
       if (espera.current) clearTimeout(espera.current);
       supabase.removeChannel(canal);
     };
@@ -56,7 +62,7 @@ export function EnVivo({ tenantId }: { tenantId: string }) {
 
   return (
     <div className="flex items-center gap-3">
-      <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm text-suave" role="status" title={texto}>
+      <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm text-suave" role="status" title={estado === "sin_conexion" ? undefined : texto}>
         {/* Sin conexión no se avisa: los datos siguen siendo correctos y "Actualizar" funciona igual. */}
         {estado !== "sin_conexion" && (
           <>
