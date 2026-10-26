@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PERIODOS } from "@/lib/filtros";
+import { refEquipo } from "@/lib/equipos";
 import { Desplegable } from "./Desplegable";
 import { FormFiltros } from "./FormFiltros";
 import { IcoAlmacen, IcoCalendario, IcoEquipo, IcoFiltro } from "./Iconos";
@@ -71,7 +72,7 @@ export function BarraFiltros({
           <div className="max-w-[300px]">
             <label htmlFor="f-equipo" className="etiqueta">Equipo</label>
             <Desplegable key={valores.equipo ?? ""} id="f-equipo" name="equipo" compacto autoEnviar defaultValue={valores.equipo ?? ""} icono={<IcoEquipo />}
-              opciones={[{ valor: "", etiqueta: "Todos los equipos" }, ...equipos.map((e) => ({ valor: e.id_equipo, etiqueta: e.nombre_equipo, detalle: e.sap_id ? `SAP ${e.sap_id}` : undefined }))]} />
+              opciones={[{ valor: "", etiqueta: "Todos los equipos" }, ...equipos.map((e) => ({ valor: e.id_equipo, etiqueta: e.nombre_equipo, detalle: refEquipo(e) ?? undefined }))]} />
           </div>
         )}
         {estados && (

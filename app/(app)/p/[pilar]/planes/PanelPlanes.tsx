@@ -5,10 +5,11 @@ import { Desplegable } from "@/components/Desplegable";
 import { IcoAlmacen } from "@/components/Iconos";
 import { Aviso } from "@/components/ui";
 import { frecuencia, TIPOS_PLAN } from "@/lib/planes";
+import { refEquipo } from "@/lib/equipos";
 import type { Almacen, PlanMantenimiento, TipoPlan } from "@/lib/tipos";
 import { asignarPlan, crearPlan, quitarPlan } from "./acciones";
 
-type EquipoLigero = { id: string; nombre: string; sap: string | null; id_almacen: string };
+type EquipoLigero = { id: string; nombre: string; sap: string | null; serie: string | null; id_almacen: string };
 type Res = { ok: boolean; mensaje: string } | null;
 
 /** Crear un plan y asignarlo seleccionando equipos (filtrables por almacén y búsqueda). */
@@ -39,7 +40,7 @@ export function PanelPlanes({ pilar, planes, equipos, almacenes, asignados, alma
   const nombreAlmacen = useMemo(() => new Map(almacenes.map((a) => [a.id_almacen, a.nombre_almacen])), [almacenes]);
   const visibles = useMemo(() => {
     const t = q.trim().toLowerCase();
-    return equipos.filter((e) => (!almacen || e.id_almacen === almacen) && (!t || e.nombre.toLowerCase().includes(t) || e.sap?.toLowerCase().includes(t)));
+    return equipos.filter((e) => (!almacen || e.id_almacen === almacen) && (!t || e.nombre.toLowerCase().includes(t) || e.sap?.toLowerCase().includes(t) || e.serie?.toLowerCase().includes(t)));
   }, [equipos, almacen, q]);
   const todosVisibles = visibles.length > 0 && visibles.every((e) => sel.has(e.id));
 
@@ -116,7 +117,7 @@ export function PanelPlanes({ pilar, planes, equipos, almacenes, asignados, alma
               </div>
               <label>
                 <span className="etiqueta">Buscar</span>
-                <input className="campo" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nombre o serie SAP" />
+                <input className="campo" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nombre, SAP o serie" />
               </label>
             </div>
 
@@ -133,7 +134,7 @@ export function PanelPlanes({ pilar, planes, equipos, almacenes, asignados, alma
                       <input type="checkbox" className="h-5 w-5" checked={sel.has(e.id)}
                         onChange={() => setSel((s) => { const n = new Set(s); if (n.has(e.id)) n.delete(e.id); else n.add(e.id); return n; })} />
                       <span className="min-w-0 flex-1 truncate font-medium">{e.nombre}</span>
-                      <span className="hidden text-[13px] text-suave sm:inline">{[e.sap && `SAP ${e.sap}`, nombreAlmacen.get(e.id_almacen)].filter(Boolean).join(" · ")}</span>
+                      <span className="hidden text-[13px] text-suave sm:inline">{[refEquipo({ sap_id: e.sap, serie: e.serie }), nombreAlmacen.get(e.id_almacen)].filter(Boolean).join(" · ")}</span>
                       {yaTienen.has(e.id) && <span className="chip bg-ok-suave text-ok-texto">Ya lo tiene</span>}
                     </label>
                   </li>

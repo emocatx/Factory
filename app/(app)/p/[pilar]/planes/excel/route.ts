@@ -12,8 +12,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ pilar: str
   const { pilar } = await sesionDePilar((await params).pilar);
   const supabase = await createClient();
   const [{ data: equipos }, { data: asignaciones }, { data: planes }] = await Promise.all([
-    todasLasPaginas<{ id_equipo: string; sap_id: string | null; nombre_equipo: string; almacenes: { nombre_almacen: string } | null }>((d, h) =>
-      supabase.from("equipos").select("id_equipo, sap_id, nombre_equipo, almacenes(nombre_almacen)").eq("tipo_pilar", pilar).neq("estatus", "baja")
+    todasLasPaginas<{ id_equipo: string; sap_id: string | null; serie: string | null; nombre_equipo: string; almacenes: { nombre_almacen: string } | null }>((d, h) =>
+      supabase.from("equipos").select("id_equipo, sap_id, serie, nombre_equipo, almacenes(nombre_almacen)").eq("tipo_pilar", pilar).neq("estatus", "baja")
         .order("nombre_equipo").order("id_equipo").range(d, h)),
     todasLasPaginas<PlanEquipo>((d, h) => supabase.from("v_plan_equipos").select("*").eq("pilar", pilar).order("plan").range(d, h)),
     supabase.from("planes_mantenimiento").select("id_plan, tareas").eq("pilar", pilar),
@@ -24,9 +24,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ pilar: str
   const ddmmaaaa = (iso: string | null) => (iso ? iso.split("-").reverse().join("/") : "");
   const celda = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
 
-  const filas = [["Serie SAP", "Equipo", "Almacén", "Servicio", "Tipo", "Cada (días)", "Último servicio", "Tareas", "Próximo (calculado)"]];
+  const filas = [["SAP", "Serie", "Equipo", "Almacén", "Servicio", "Tipo", "Cada (días)", "Último servicio", "Tareas", "Próximo (calculado)"]];
   for (const e of equipos) {
-    const base = [e.sap_id ?? "", e.nombre_equipo, e.almacenes?.nombre_almacen ?? ""];
+    const base = [e.sap_id ?? "", e.serie ?? "", e.nombre_equipo, e.almacenes?.nombre_almacen ?? ""];
     const suyas = porEquipo.get(e.id_equipo) ?? [];
     if (!suyas.length) filas.push([...base, "", "", "", "", "", ""]);
     for (const a of suyas) filas.push([...base, a.plan, etiquetaTipo(a.tipo), String(a.cada_dias ?? ""), ddmmaaaa(a.ultimo_servicio), tareas.get(a.id_plan) ?? "", ddmmaaaa(a.proximo)]);

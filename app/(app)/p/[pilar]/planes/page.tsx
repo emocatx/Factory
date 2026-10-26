@@ -235,7 +235,7 @@ export default async function Planes({
               almacenes={cat.almacenes}
               almacenInicial={almacen}
               asignados={todas.reduce<Record<string, string[]>>((m, a) => ((m[a.id_plan] ??= []).push(a.id_equipo), m), {})}
-              equipos={cat.equipos.map((e) => ({ id: e.id_equipo, nombre: e.nombre_equipo, sap: e.sap_id, id_almacen: e.id_almacen }))}
+              equipos={cat.equipos.map((e) => ({ id: e.id_equipo, nombre: e.nombre_equipo, sap: e.sap_id, serie: e.serie, id_almacen: e.id_almacen }))}
               sugerencia={f.nuevo ? { nombre: f.nuevo.slice(0, 80), tipo: "inspeccion", cada: 7 } : undefined}
             />
           </>

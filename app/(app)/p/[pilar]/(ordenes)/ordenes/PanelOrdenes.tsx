@@ -5,6 +5,7 @@ import { PRIORIDADES, puedeAsignar, puedeAtender } from "@/lib/catalogos";
 import { Desplegable } from "@/components/Desplegable";
 import { IcoAlerta, IcoAlmacen, IcoEquipo, IcoPersona } from "@/components/Iconos";
 import { ahoraLocalInput, fechaHora, horas } from "@/lib/formato";
+import { refEquipo } from "@/lib/equipos";
 import { Aviso, ChipEstado, ChipPrioridad, Vacio } from "@/components/ui";
 import type { Almacen, Equipo, Modo, OrdenDetalle, Origen, Pilar, Prioridad, Rol } from "@/lib/tipos";
 import { asignarOrden, cancelarOrden, concluirOrden, iniciarOrden, type Resultado } from "../../acciones";
@@ -121,7 +122,8 @@ function Detalle({ o, pilar, rol, miId, tz, tecnicos, origenes, modos, almacenes
   const filas: [string, React.ReactNode][] = [
     ...(pilar === "dorsales" ? [["Línea", o.nombre_linea] as [string, React.ReactNode]] : []),
     ["Equipo", o.nombre_equipo ?? "Por definir"],
-    ...(o.sap_id ? [["Serie SAP", <span key="s" className="font-mono">{o.sap_id}</span>] as [string, React.ReactNode]] : []),
+    ...(o.sap_id ? [["SAP", <span key="s" className="font-mono">{o.sap_id}</span>] as [string, React.ReactNode]] : []),
+    ...(o.serie ? [["Serie", <span key="n" className="font-mono">{o.serie}</span>] as [string, React.ReactNode]] : []),
     ["Almacén", o.nombre_almacen ?? (pilar === "dorsales" ? "Se define al cierre" : "—")],
     ["Ingreso", fechaHora(o.fecha_ingreso, tz)],
     ["Tiempo abierta", horas(o.horas_transcurridas)],
@@ -266,7 +268,7 @@ function FormCerrar({ o, pilar, origenes, modos, almacenes, equipos, pend, res, 
           <div>
             <label htmlFor="cierre-equipo" className="etiqueta">Equipo atendido (opcional)</label>
             <Desplegable id="cierre-equipo" value={equipo} onChange={setEquipo} icono={<IcoEquipo />}
-              opciones={[{ valor: "", etiqueta: "Sin equipo específico" }, ...equiposLinea.map((x) => ({ valor: x.id_equipo, etiqueta: x.nombre_equipo, detalle: x.sap_id ? `SAP ${x.sap_id}` : undefined }))]} />
+              opciones={[{ valor: "", etiqueta: "Sin equipo específico" }, ...equiposLinea.map((x) => ({ valor: x.id_equipo, etiqueta: x.nombre_equipo, detalle: refEquipo(x) ?? undefined }))]} />
           </div>
         </>
       )}

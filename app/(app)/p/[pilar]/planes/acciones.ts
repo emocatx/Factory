@@ -81,20 +81,22 @@ export async function quitarPlan(pilar: string, idPlan: string, equipos: string[
 /**
  * Carga desde Excel: una fila por equipo y servicio. Los planes se reconocen por nombre (se crean
  * si no existen; frecuencia y tareas se toman de la primera fila que las traiga). Los equipos, por
- * serie SAP o, si no hay, por nombre + almacén. Filas sin servicio se ignoran (equipo sin plan).
+ * SAP o serie o, si no hay, por nombre + almacén. Filas sin servicio se ignoran (equipo sin plan).
  */
 export async function importarPlan(pilar: string, filas: Record<string, string>[]): Promise<Resultado> {
   await exigirRol([...EDITORES]);
   if (!esPilar(pilar)) return { ok: false, mensaje: "Pilar inválido." };
   const supabase = await createClient();
   const [{ data: eqs }, { data: planesData }, { data: alm }] = await Promise.all([
-    todasLasPaginas<{ id_equipo: string; sap_id: string | null; nombre_equipo: string; id_almacen: string }>((d, h) =>
-      supabase.from("equipos").select("id_equipo, sap_id, nombre_equipo, id_almacen").eq("tipo_pilar", pilar).neq("estatus", "baja").order("id_equipo").range(d, h)),
+    todasLasPaginas<{ id_equipo: string; sap_id: string | null; serie: string | null; nombre_equipo: string; id_almacen: string }>((d, h) =>
+      supabase.from("equipos").select("id_equipo, sap_id, serie, nombre_equipo, id_almacen").eq("tipo_pilar", pilar).neq("estatus", "baja").order("id_equipo").range(d, h)),
     supabase.from("planes_mantenimiento").select("id_plan, nombre, tipo, cada_dias, tareas").eq("pilar", pilar),
     supabase.from("almacenes").select("id_almacen, nombre_almacen"),
   ]);
   const almacen = new Map((alm ?? []).map((a) => [a.id_almacen as string, clave(a.nombre_almacen as string)]));
-  const porSap = new Map(eqs.filter((e) => e.sap_id).map((e) => [clave(e.sap_id!), e.id_equipo]));
+  // SAP o serie: cualquiera de los dos identifica al equipo (los Excel viejos traen la serie como "Serie SAP").
+  const porSap = new Map(eqs.flatMap((e) => [e.serie, e.sap_id].filter(Boolean).map((v) => [clave(v!), e.id_equipo] as const)));
+  const porSerie = new Map(eqs.filter((e) => e.serie).map((e) => [clave(e.serie!), e.id_equipo]));
   const porNombre = new Map(eqs.map((e) => [`${clave(e.nombre_equipo)}|${almacen.get(e.id_almacen) ?? ""}`, e.id_equipo]));
   type PlanFila = { id_plan: string; nombre: string; tipo: TipoPlan; cada_dias: number | null; tareas: string | null };
   const planes = new Map((planesData ?? []).map((p) => [clave(p.nombre as string), p as PlanFila]));
@@ -108,8 +110,8 @@ export async function importarPlan(pilar: string, filas: Record<string, string>[
     const n = i + 2; // fila 1 = encabezados en Excel
     const servicio = (f.servicio ?? "").trim().replace(/\s+/g, " ");
     if (!servicio) return;
-    const id = (f.sap?.trim() && porSap.get(clave(f.sap))) || porNombre.get(`${clave(f.equipo ?? "")}|${clave(f.almacen ?? "")}`);
-    if (!id) { detalle.push(`Fila ${n}: no se encontró el equipo ${f.sap || f.equipo || ""}.`); return; }
+    const id = (f.sap?.trim() && porSap.get(clave(f.sap))) || (f.serie?.trim() && porSerie.get(clave(f.serie))) || porNombre.get(`${clave(f.equipo ?? "")}|${clave(f.almacen ?? "")}`);
+    if (!id) { detalle.push(`Fila ${n}: no se encontró el equipo ${f.sap || f.serie || f.equipo || ""}.`); return; }
     const ultimo = fecha(f.ultimo);
     if (ultimo === undefined) { detalle.push(`Fila ${n}: la fecha "${f.ultimo}" no es válida.`); return; }
     const dias = f.cada?.trim() ? Number(f.cada.replace(/[^\d]/g, "")) : NaN;

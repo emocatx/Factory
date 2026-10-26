@@ -3,11 +3,14 @@
  * Unidad de análisis: equipo (o línea en Dorsales, porque Operaciones suele reportar sin equipo).
  */
 
+import { refEquipo } from "./equipos";
+
 export type FilaFalla = {
   id_orden: string;
   id_equipo: string | null;
   nombre_equipo: string | null;
   sap_id: string | null;
+  serie: string | null;
   id_linea: string | null;
   nombre_linea: string | null;
   id_origen: string | null;
@@ -37,7 +40,7 @@ export function unidadDe(f: FilaFalla, porLinea: boolean): Unidad {
     if (f.id_linea) return { clave: f.id_linea, nombre: f.nombre_linea ?? "Línea", detalle: null };
     return { clave: SIN_EQUIPO, nombre: "Sin línea", detalle: null };
   }
-  if (f.id_equipo) return { clave: f.id_equipo, nombre: f.nombre_equipo ?? "Equipo", detalle: f.sap_id ? `SAP ${f.sap_id}` : null };
+  if (f.id_equipo) return { clave: f.id_equipo, nombre: f.nombre_equipo ?? "Equipo", detalle: refEquipo(f) };
   return { clave: SIN_EQUIPO, nombre: "Sin equipo identificado", detalle: null };
 }
 

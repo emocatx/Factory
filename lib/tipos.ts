@@ -42,16 +42,25 @@ export type TipoPlan = "preventivo" | "inspeccion" | "proveedor";
 export interface PlanMantenimiento { id_plan: string; pilar: Pilar; nombre: string; tipo: TipoPlan; cada_dias: number | null; tareas: string | null; activo: boolean }
 /** Asignación plan–equipo con el próximo servicio ya calculado (vista v_plan_equipos; null sin frecuencia). */
 export interface PlanEquipo {
-  id: string; id_plan: string; plan: string; tipo: TipoPlan; cada_dias: number | null; id_equipo: string; nombre_equipo: string; sap_id: string | null;
+  id: string; id_plan: string; plan: string; tipo: TipoPlan; cada_dias: number | null; id_equipo: string; nombre_equipo: string; sap_id: string | null; serie: string | null;
   id_almacen: string | null; nombre_almacen: string | null; ultimo_servicio: string | null; proximo: string | null; dias_restantes: number | null;
 }
+
+export type Propiedad = "propio" | "renta" | "leasing";
 
 export interface Equipo {
   id_equipo: string;
   id_almacen: string;
   id_linea: string | null;
+  /** Número SAP real; vacío mientras el equipo no lo tenga. */
   sap_id: string | null;
+  /** Serie del fabricante: siempre viene y es la llave para cruzar el listado. */
+  serie: string | null;
   clave_id: string | null;
+  propiedad: Propiedad;
+  modelo: string | null;
+  fabricante: string | null;
+  proveedor: string | null;
   nombre_equipo: string;
   tipo_pilar: Pilar;
   estatus: EstatusEquipo;
@@ -86,6 +95,7 @@ export interface OrdenDetalle {
   nombre_modo: string | null;
   nombre_equipo: string | null;
   sap_id: string | null;
+  serie: string | null;
   estatus_equipo: EstatusEquipo | null;
   nombre_almacen: string | null;
   nombre_linea: string | null;

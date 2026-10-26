@@ -15,7 +15,7 @@ export function ImportarPlan({ pilar, planes, importar }: {
   const existentes = useMemo(() => new Set(planes.map(clave)), [planes]);
   const validar = useCallback((f: Record<string, string>, _: number, todas: Record<string, string>[]) => {
     if (!f.servicio?.trim()) return "!Sin servicio: el equipo se queda sin plan";
-    if (!f.sap?.trim() && !f.equipo?.trim()) return "Falta la serie SAP o el nombre del equipo";
+    if (!f.sap?.trim() && !f.serie?.trim() && !f.equipo?.trim()) return "Falta el SAP, la serie o el nombre del equipo";
     if (f.ultimo?.trim() && !leerFecha(f.ultimo, "dmy")) return "Fecha de último servicio no válida (usa dd/mm/aaaa)";
     // Un plan nuevo basta con que una de sus filas traiga la frecuencia.
     const k = clave(f.servicio);
@@ -30,7 +30,8 @@ export function ImportarPlan({ pilar, planes, importar }: {
       ayuda="Descarga el Excel, llena Servicio, Tipo (Preventivo, Inspección o Proveedor), Cada (días), Último servicio y Tareas, y súbelo o pega las celdas."
       nombrePlantilla={`plantilla-plan-${pilar}.csv`}
       columnas={[
-        { clave: "sap", etiqueta: "Serie SAP", alias: ["sap", "serie", "no sap", "numero sap"], ejemplo: "100204" },
+        { clave: "sap", etiqueta: "SAP", alias: ["sap", "serie sap", "no sap", "numero sap"], ejemplo: "102580" },
+        { clave: "serie", etiqueta: "Serie", alias: ["no serie", "numero de serie"], ejemplo: "M331200016" },
         { clave: "equipo", etiqueta: "Equipo", alias: ["nombre", "nombre equipo"], ejemplo: "Montacarga HS 236" },
         { clave: "almacen", etiqueta: "Almacén", alias: ["almacen", "cedis", "ubicacion"], ejemplo: "CDN 3" },
         { clave: "servicio", etiqueta: "Servicio", alias: ["plan", "mantenimiento", "servicio preventivo"], ejemplo: "Servicio mensual" },

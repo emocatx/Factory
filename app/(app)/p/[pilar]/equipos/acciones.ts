@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { exigirRol } from "@/lib/sesion";
 import { esPilar } from "@/lib/catalogos";
 import { todasLasPaginas } from "@/lib/datos";
+import { leerPropiedad } from "@/lib/equipos";
 
 function volver(pilar: string, msg: string, error = false): never {
   revalidatePath(`/p/${pilar}`, "layout");
@@ -13,7 +14,8 @@ function volver(pilar: string, msg: string, error = false): never {
 }
 
 function traducir(m: string) {
-  if (m.includes("equipos_sap_unq")) return "Ya existe un equipo con esa serie SAP.";
+  if (m.includes("equipos_sap_unq")) return "Ya existe un equipo con ese número SAP.";
+  if (m.includes("equipos_serie_unq")) return "Ya existe un equipo con esa serie.";
   if (m.includes("equipos_clave_unq")) return "Ya existe un equipo con esa clave.";
   if (m.includes("row-level security")) return "No tienes permiso para modificar equipos.";
   return m;
@@ -25,7 +27,12 @@ function leer(form: FormData) {
     id_linea: String(form.get("id_linea") ?? "") || null,
     nombre_equipo: String(form.get("nombre") ?? "").trim(),
     sap_id: String(form.get("sap_id") ?? "").trim() || null,
+    serie: String(form.get("serie") ?? "").trim() || null,
     clave_id: String(form.get("clave_id") ?? "").trim() || null,
+    propiedad: leerPropiedad(String(form.get("propiedad") ?? "")) ?? "propio",
+    modelo: String(form.get("modelo") ?? "").trim() || null,
+    fabricante: String(form.get("fabricante") ?? "").trim() || null,
+    proveedor: String(form.get("proveedor") ?? "").trim() || null,
   };
 }
 
@@ -77,9 +84,22 @@ export async function moverEquipos(form: FormData) {
   volver(pilar, error ? traducir(error.message) : `${ids.length} equipo${ids.length === 1 ? "" : "s"} actualizado${ids.length === 1 ? "" : "s"}`, !!error);
 }
 
+/** Celda vacía o error de Excel (#N/A, N/A, -) → null. */
+const dato = (v: unknown) => {
+  const t = String(v ?? "").trim().replace(/\s+/g, " ");
+  return !t || /^(#.*|n\/?a|-+|sin dato)$/i.test(t) ? null : t;
+};
+
+type FilaEquipo = {
+  nombre_equipo: string; sap_id: string | null; serie: string | null; clave_id: string | null; id_almacen: string;
+  tipo_pilar: string; propiedad: string; modelo: string | null; fabricante: string | null; proveedor: string | null;
+};
+
 /**
- * Alta masiva de equipos de un pilar. El almacén se indica por nombre.
- * Omite series SAP o claves que ya existen en la organización; opcionalmente crea los almacenes que falten.
+ * Carga masiva del listado de equipos de un pilar. Cada fila se cruza por serie (siempre viene)
+ * o, si no trae, por SAP: si el equipo ya existe se actualiza con lo que traiga la fila (así se le
+ * pone el SAP cuando llega); si no, se da de alta. El almacén se indica por nombre y,
+ * opcionalmente, se crean los que falten.
  */
 export async function importarEquipos(
   pilar: string,
@@ -91,17 +111,20 @@ export async function importarEquipos(
   const supabase = await createClient();
   const clave = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
 
+  type Existente = FilaEquipo & { id_equipo: string };
   const [{ data: alm }, { data: eqs }] = await Promise.all([
     supabase.from("almacenes").select("id_almacen, nombre_almacen"),
-    todasLasPaginas<{ sap_id: string | null; clave_id: string | null }>((d, h) => supabase.from("equipos").select("sap_id, clave_id").order("id_equipo").range(d, h)),
+    todasLasPaginas<Existente>((d, h) => supabase.from("equipos")
+      .select("id_equipo, nombre_equipo, sap_id, serie, clave_id, id_almacen, tipo_pilar, propiedad, modelo, fabricante, proveedor")
+      .order("id_equipo").range(d, h)),
   ]);
   const almacenes = new Map((alm ?? []).map((a) => [clave(a.nombre_almacen as string), a.id_almacen as string]));
-  const saps = new Set((eqs ?? []).map((e) => e.sap_id as string | null).filter(Boolean).map((s) => clave(s!)));
-  const claves = new Set((eqs ?? []).map((e) => e.clave_id as string | null).filter(Boolean).map((s) => clave(s!)));
+  const porSerie = new Map(eqs.filter((e) => e.serie).map((e) => [clave(e.serie!), e]));
+  const porSap = new Map(eqs.filter((e) => e.sap_id).map((e) => [clave(e.sap_id!), e]));
+  const porClave = new Map(eqs.filter((e) => e.clave_id).map((e) => [clave(e.clave_id!), e]));
 
   const lote = filas.slice(0, 2000);
-  // Almacenes faltantes
-  const faltan = [...new Set(lote.map((f) => String(f.almacen ?? "").trim().replace(/\s+/g, " ")).filter((n) => n && !almacenes.has(clave(n))))];
+  const faltan = [...new Set(lote.map((f) => dato(f.almacen)).filter((n): n is string => !!n && !almacenes.has(clave(n))))];
   if (faltan.length && crearAlmacenes) {
     const { data: creados, error } = await supabase.from("almacenes").insert(faltan.map((n) => ({ nombre_almacen: n }))).select("id_almacen, nombre_almacen");
     if (error) return { ok: false, mensaje: traducir(error.message) };
@@ -109,30 +132,60 @@ export async function importarEquipos(
   }
 
   const detalle: string[] = [];
-  const nuevos: { nombre_equipo: string; sap_id: string | null; clave_id: string | null; id_almacen: string; tipo_pilar: string }[] = [];
+  const nuevos: FilaEquipo[] = [];
+  const cambios = new Map<string, Existente>();
   lote.forEach((f, i) => {
     const n = i + 1;
-    const nombre = String(f.nombre ?? "").trim();
-    const sap = String(f.sap ?? "").trim() || null;
-    const cl = String(f.clave ?? "").trim() || null;
-    const a = String(f.almacen ?? "").trim().replace(/\s+/g, " ");
-    if (!nombre || !a) { detalle.push(`Fila ${n}: falta nombre o almacén.`); return; }
-    const idAlm = almacenes.get(clave(a));
-    if (!idAlm) { detalle.push(`Fila ${n} (${nombre}): el almacén "${a}" no existe.`); return; }
-    if (sap && saps.has(clave(sap))) { detalle.push(`Fila ${n} (${nombre}): la serie SAP ${sap} ya existe; se omitió.`); return; }
-    if (cl && claves.has(clave(cl))) { detalle.push(`Fila ${n} (${nombre}): la clave ${cl} ya existe; se omitió.`); return; }
-    if (sap) saps.add(clave(sap));
-    if (cl) claves.add(clave(cl));
-    nuevos.push({ nombre_equipo: nombre, sap_id: sap, clave_id: cl, id_almacen: idAlm, tipo_pilar: pilar });
+    const serie = dato(f.serie), sap = dato(f.sap), cl = dato(f.clave), a = dato(f.almacen), nombre = dato(f.nombre);
+    const ya = (serie && porSerie.get(clave(serie))) || (sap && porSap.get(clave(sap))) || undefined;
+    const ref = nombre ?? serie ?? sap ?? "";
+    if (ya && ya.tipo_pilar !== pilar) { detalle.push(`Fila ${n} (${ref}): ese equipo está en otro pilar; se omitió.`); return; }
+    if (ya && cambios.has(ya.id_equipo)) { detalle.push(`Fila ${n} (${ref}): el equipo viene repetido en la lista; se omitió.`); return; }
+    const idAlm = a ? almacenes.get(clave(a)) : undefined;
+    if (a && !idAlm) { detalle.push(`Fila ${n} (${ref}): el almacén "${a}" no existe.`); return; }
+    if (!ya && (!nombre || !idAlm)) { detalle.push(`Fila ${n}: falta nombre o almacén.`); return; }
+    // El SAP o la clave no pueden ser de otro equipo.
+    const otro = (m: Map<string, Existente>, v: string | null) => (v ? m.get(clave(v)) : undefined);
+    const delSap = otro(porSap, sap), deClave = otro(porClave, cl);
+    if (delSap && delSap !== ya) { detalle.push(`Fila ${n} (${ref}): el SAP ${sap} ya es de ${delSap.nombre_equipo}; se omitió.`); return; }
+    if (deClave && deClave !== ya) { detalle.push(`Fila ${n} (${ref}): la clave ${cl} ya es de ${deClave.nombre_equipo}; se omitió.`); return; }
+    if (!ya && serie && porSerie.has(clave(serie))) { detalle.push(`Fila ${n} (${ref}): la serie ${serie} viene repetida; se omitió.`); return; }
+
+    const fila: FilaEquipo = {
+      nombre_equipo: nombre ?? ya!.nombre_equipo,
+      sap_id: sap ?? ya?.sap_id ?? null,
+      serie: serie ?? ya?.serie ?? null,
+      clave_id: cl ?? ya?.clave_id ?? null,
+      id_almacen: idAlm ?? ya!.id_almacen,
+      tipo_pilar: pilar,
+      propiedad: leerPropiedad(f.propiedad) ?? ya?.propiedad ?? "propio",
+      modelo: dato(f.modelo) ?? ya?.modelo ?? null,
+      fabricante: dato(f.fabricante) ?? ya?.fabricante ?? null,
+      proveedor: dato(f.proveedor) ?? ya?.proveedor ?? null,
+    };
+    const reg = { ...fila, id_equipo: ya?.id_equipo ?? "" };
+    if (fila.sap_id) porSap.set(clave(fila.sap_id), ya ?? reg);
+    if (fila.clave_id) porClave.set(clave(fila.clave_id), ya ?? reg);
+    if (ya) cambios.set(ya.id_equipo, reg);
+    else { if (fila.serie) porSerie.set(clave(fila.serie), reg); nuevos.push(fila); }
   });
 
+  const actualizar = [...cambios.values()];
+  for (let i = 0; i < actualizar.length; i += 500) {
+    const { error } = await supabase.from("equipos").upsert(actualizar.slice(i, i + 500), { onConflict: "id_equipo" });
+    if (error) return { ok: false, mensaje: `Se detuvo al actualizar el bloque ${i / 500 + 1}: ${traducir(error.message)}`, detalle };
+  }
   for (let i = 0; i < nuevos.length; i += 500) {
     const { error } = await supabase.from("equipos").insert(nuevos.slice(i, i + 500));
     if (error) return { ok: false, mensaje: `Se detuvo en el bloque ${i / 500 + 1}: ${traducir(error.message)}`, detalle };
   }
   revalidatePath(`/p/${pilar}`, "layout");
   const creadosAlm = crearAlmacenes && faltan.length ? ` y ${faltan.length} almacén(es) nuevos` : "";
-  return { ok: true, mensaje: `${nuevos.length} equipo(s) dados de alta${creadosAlm}${detalle.length ? `; ${detalle.length} fila(s) omitidas` : ""}.`, detalle };
+  return {
+    ok: true,
+    mensaje: `${nuevos.length} equipo(s) dados de alta, ${actualizar.length} actualizado(s)${creadosAlm}${detalle.length ? `; ${detalle.length} fila(s) omitidas` : ""}.`,
+    detalle,
+  };
 }
 
 export type FallaImport = {

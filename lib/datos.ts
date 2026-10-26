@@ -31,7 +31,7 @@ export async function catalogosPilar(pilar: Pilar, { equipos = true }: { equipos
     !equipos ? Promise.resolve({ data: [] as Equipo[] }) : todasLasPaginas<Equipo>((desde, hasta) =>
       supabase
         .from("equipos")
-        .select("id_equipo, id_almacen, id_linea, sap_id, clave_id, nombre_equipo, tipo_pilar, estatus")
+        .select("id_equipo, id_almacen, id_linea, sap_id, serie, clave_id, nombre_equipo, tipo_pilar, estatus, propiedad")
         .eq("tipo_pilar", pilar)
         .neq("estatus", "baja")
         .order("nombre_equipo")

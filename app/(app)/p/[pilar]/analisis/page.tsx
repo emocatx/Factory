@@ -40,7 +40,7 @@ export default async function Analisis({ params, searchParams }: { params: Promi
   const desdeHist = desde ? new Date(new Date(desde).getTime() - 30 * 86400e3).toISOString() : null;
   let q = supabase
     .from("v_ordenes_detalle")
-    .select("id_orden, id_equipo, nombre_equipo, sap_id, id_linea, nombre_linea, id_origen, nombre_origen, id_modo, nombre_modo, estatus_orden, fecha_ingreso, fecha_cierre, tiempo_paro_horas, horas_transcurridas")
+    .select("id_orden, id_equipo, nombre_equipo, sap_id, serie, id_linea, nombre_linea, id_origen, nombre_origen, id_modo, nombre_modo, estatus_orden, fecha_ingreso, fecha_cierre, tiempo_paro_horas, horas_transcurridas")
     .eq("pilar", pilar)
     .neq("estatus_orden", "cancelada")
     .order("fecha_ingreso", { ascending: true })

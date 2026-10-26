@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useRef, useState, useTransition } from "react";
 import { PRIORIDADES } from "@/lib/catalogos";
 import { ahoraLocalInput } from "@/lib/formato";
+import { refEquipo } from "@/lib/equipos";
 import { Aviso } from "@/components/ui";
 import { Diente } from "@/components/Sierra";
 import { Desplegable } from "@/components/Desplegable";
@@ -59,7 +60,7 @@ export function FormRegistro({ pilar, operaciones, usuario, almacenes, lineas, e
     return {
       valor: e.id_equipo,
       etiqueta: e.nombre_equipo,
-      detalle: [e.sap_id ? `SAP ${e.sap_id}` : null, folio ? `Detenido · orden ${folio}` : "Disponible"].filter(Boolean).join(" · "),
+      detalle: [refEquipo(e), folio ? `Detenido · orden ${folio}` : "Disponible"].filter(Boolean).join(" · "),
       deshabilitada: !!folio || e.estatus === "en_paro",
       tono: (folio || e.estatus === "en_paro" ? "paro" : "ok") as "paro" | "ok",
     };

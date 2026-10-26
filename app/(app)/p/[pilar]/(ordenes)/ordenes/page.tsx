@@ -40,7 +40,7 @@ export default async function OrdenesAbiertas({
   const t = f.q?.trim().toLowerCase();
   if (t) {
     ordenes = ordenes.filter((o) =>
-      [o.folio_ticket, o.nombre_linea, o.nombre_equipo, o.sap_id, o.solicitante_nombre, o.nombre_almacen].some((v) => v?.toLowerCase().includes(t)),
+      [o.folio_ticket, o.nombre_linea, o.nombre_equipo, o.sap_id, o.serie, o.solicitante_nombre, o.nombre_almacen].some((v) => v?.toLowerCase().includes(t)),
     );
   }
 

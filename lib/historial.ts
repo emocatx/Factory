@@ -12,7 +12,7 @@
 export type Fila = Record<string, string>;
 export type OrdenFecha = "dmy" | "mdy";
 
-export type EquipoRef = { id: string; sap: string | null; clave: string | null; nombre: string; id_almacen: string };
+export type EquipoRef = { id: string; sap: string | null; serie?: string | null; clave: string | null; nombre: string; id_almacen: string };
 export type Catalogo = { id: string; nombre: string };
 
 export type OrdenImport = {
@@ -47,7 +47,7 @@ export type Resultado = {
 
 /** Columnas reconocidas (encabezados equivalentes en `alias`). */
 export const COLUMNAS_HISTORIAL = [
-  { clave: "sap", etiqueta: "Serie SAP", alias: ["sap", "serie", "serie sap", "equipolookup", "equipo sap", "no sap", "numero sap"] },
+  { clave: "sap", etiqueta: "SAP o serie", alias: ["sap", "serie", "serie sap", "no serie", "equipolookup", "equipo sap", "no sap", "numero sap"] },
   { clave: "nombre", etiqueta: "Equipo", alias: ["titulo", "equipo", "nombre equipo", "nombre", "activo"] },
   { clave: "clave", etiqueta: "Clave", alias: ["clave interna", "codigo"] },
   { clave: "tipo", etiqueta: "Tipo de evento", alias: ["tipoevento", "tipo evento", "evento", "movimiento"] },
@@ -122,6 +122,8 @@ export function convertirHistorial(
   const porSap = new Map<string, EquipoRef>(), porClave = new Map<string, EquipoRef>(), porNombre = new Map<string, EquipoRef>();
   for (const e of cat.equipos) {
     if (e.sap && !porSap.has(suave(e.sap))) porSap.set(suave(e.sap), e);
+    // Los archivos viejos traen la serie en la columna "Serie SAP": también la reconoce.
+    if (e.serie && !porSap.has(suave(e.serie))) porSap.set(suave(e.serie), e);
     if (e.clave && !porClave.has(suave(e.clave))) porClave.set(suave(e.clave), e);
     if (!porNombre.has(norm(e.nombre))) porNombre.set(norm(e.nombre), e);
   }
@@ -175,7 +177,7 @@ export function convertirHistorial(
     const horas = cierre ? Math.round(((Date.parse(cierre) - Date.parse(ing.fecha)) / 36e5) * 100) / 100 : null;
     if (horas !== null && horas > 720) avisos.push({ fila: ing.n, grave: false, texto: `Paro de ${Math.round(horas / 24)} días; revisa que la salida sea la correcta.` });
     return {
-      ref: (f.folio ?? "").trim() || `${ing.eq.sap || ing.eq.clave || ing.eq.nombre}|${ing.fecha}`,
+      ref: (f.folio ?? "").trim() || `${ing.eq.serie || ing.eq.sap || ing.eq.clave || ing.eq.nombre}|${ing.fecha}`,
       id_equipo: ing.eq.id,
       equipo: ing.eq.nombre,
       id_almacen: alm.id,

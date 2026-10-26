@@ -12,7 +12,7 @@ import type { OrdenDetalle } from "@/lib/tipos";
 export const metadata = { title: "Órdenes cerradas" };
 
 /** Solo lo que muestra la tabla y lo que usa la búsqueda. */
-const COLUMNAS = "id_orden, folio_ticket, estatus_orden, fecha_ingreso, fecha_cierre, tiempo_paro_horas, notas_cierre, motivo_cancelacion, nombre_equipo, nombre_linea, nombre_almacen, nombre_modo, nombre_origen, sap_id, solicitante_nombre";
+const COLUMNAS = "id_orden, folio_ticket, estatus_orden, fecha_ingreso, fecha_cierre, tiempo_paro_horas, notas_cierre, motivo_cancelacion, nombre_equipo, nombre_linea, nombre_almacen, nombre_modo, nombre_origen, sap_id, serie, solicitante_nombre";
 
 export default async function Cerradas({
   params,
@@ -36,7 +36,7 @@ export default async function Cerradas({
   const [{ data }, lineas] = await Promise.all([q, pilar === "dorsales" ? catalogosPilar(pilar, { equipos: false }).then((c) => c.lineas) : undefined]);
   let ordenes = (data ?? []) as OrdenDetalle[];
   const t = f.q?.trim().toLowerCase();
-  if (t) ordenes = ordenes.filter((o) => [o.folio_ticket, o.nombre_linea, o.nombre_equipo, o.sap_id, o.solicitante_nombre].some((v) => v?.toLowerCase().includes(t)));
+  if (t) ordenes = ordenes.filter((o) => [o.folio_ticket, o.nombre_linea, o.nombre_equipo, o.sap_id, o.serie, o.solicitante_nombre].some((v) => v?.toLowerCase().includes(t)));
 
   return (
     <>
