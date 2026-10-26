@@ -45,6 +45,13 @@ export default async function Equipos({
   const editar = esUuid(f.editar) ? equipos.find((e) => e.id_equipo === f.editar) ?? null : null;
   const alm = new Map(cat.almacenes.map((a) => [a.id_almacen, a.nombre_almacen]));
   const lin = new Map(cat.lineas.map((l) => [l.id_linea, l.nombre_linea]));
+  // Conteos de lo que se está viendo (respetan búsqueda y filtros).
+  const conteos = [
+    { etiqueta: equipos.length === 1 ? "equipo" : "equipos", valor: equipos.length, fuerte: true },
+    ...PROPIEDADES.map((x) => ({ etiqueta: x.etiqueta.toLowerCase(), valor: equipos.filter((e) => e.propiedad === x.valor).length, fuerte: false })),
+    { etiqueta: "sin SAP", valor: equipos.filter((e) => !e.sap_id).length, fuerte: false },
+    ...(f.bajas ? [{ etiqueta: "de baja", valor: equipos.filter((e) => e.estatus === "baja").length, fuerte: false }] : []),
+  ].filter((c) => c.fuerte || c.valor > 0);
 
   return (
     <>
@@ -83,6 +90,14 @@ export default async function Equipos({
             </label>
             <button className="btn-primario min-h-11">Buscar</button>
           </form>
+
+          <p className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-[15px] text-suave" aria-live="polite">
+            {conteos.map((c) => (
+              <span key={c.etiqueta}>
+                <span className={`tabular-nums ${c.fuerte ? "text-lg font-semibold text-tinta" : "font-semibold text-tinta"}`}>{c.valor.toLocaleString("es-MX")}</span> {c.etiqueta}
+              </span>
+            ))}
+          </p>
 
           {equipos.length === 0 ? (
             <Vacio titulo={t ? "Sin coincidencias" : "Aún no hay equipos en este pilar"}>
