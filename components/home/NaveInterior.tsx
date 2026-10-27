@@ -157,7 +157,7 @@ function Muro({ x, z, w, d, alto, p }: { x: number; z: number; w: number; d: num
   );
 }
 
-function Operacion({ nave, p, i }: { nave: NaveEscena; p: Paleta; i: number }) {
+function Operacion({ nave, p, i, ligera, simple }: { nave: NaveEscena; p: Paleta; i: number; ligera: boolean; simple: boolean }) {
   const zc = (N_ATRAS + N_FRENTE) / 2;
   return (
     <group>
@@ -173,15 +173,16 @@ function Operacion({ nave, p, i }: { nave: NaveEscena; p: Paleta; i: number }) {
       <Muro x={X1 + 0.1} z={zc} w={0.2} d={N_FRENTE - N_ATRAS} alto={0.4} p={p} />
       <Racks p={p} semilla={i + 1} />
       <Rotulo texto={`OPERACIÓN · ${nave.total - nave.paro}`} fondo={p.rotuloOk} p={p} posicion={[-3.2, 2.55, N_ATRAS + 0.05]} ancho={2.4} />
-      {nave.operando.map(([modelo, renta], k) => (
-        <Equipo key={k} p={p} tipo={tipoDeModelo(modelo)} estado={renta ? "renta" : "normal"} moviendo
+      {/* en la versión ligera no se dibujan los equipos que operan (son los que más pesan) */}
+      {!ligera && nave.operando.map(([modelo, renta], k) => (
+        <Equipo key={k} p={p} tipo={tipoDeModelo(modelo)} estado={renta ? "renta" : "normal"} moviendo simple={simple}
           posicion={[[-2.6, 2.0, -0.4, 3.4][k], 0.04, [-0.95, -0.95, -3.42, -3.42][k]]} rot={k % 2 ? Math.PI : 0} />
       ))}
     </group>
   );
 }
 
-function Taller({ nave, p }: { nave: NaveEscena; p: Paleta }) {
+function Taller({ nave, p, simple }: { nave: NaveEscena; p: Paleta; simple: boolean }) {
   const fondo = T_FRENTE - T_ATRAS;
   const tF = useFranjas(p, ANCHO * 2.5);
   const tL = useFranjas(p, fondo * 2.5);
@@ -227,15 +228,19 @@ function Taller({ nave, p }: { nave: NaveEscena; p: Paleta }) {
         </mesh>
       ))}
       {enTaller.map((modelo, k) => (
-        <Equipo key={k} p={p} tipo={tipoDeModelo(modelo)} estado="paro" posicion={[cx(k), 0.06, (zBoca + zFondo) / 2 + 0.15]} rot={Math.PI / 2} />
+        <Equipo key={k} p={p} tipo={tipoDeModelo(modelo)} estado="paro" simple={simple} posicion={[cx(k), 0.06, (zBoca + zFondo) / 2 + 0.15]} rot={Math.PI / 2} />
       ))}
       <Rotulo texto={`TALLER · ${nave.paro}`} fondo={p.rotuloParo} p={p} posicion={[0, 1.55, T_ATRAS + 0.05]} ancho={2.2} />
     </group>
   );
 }
 
-export function NaveInterior({ nave, i, p, seleccionada, onSelect, onTaller }: {
+export function NaveInterior({ nave, i, p, seleccionada, onSelect, onTaller, ligera = false, simple = false }: {
   nave: NaveEscena; i: number; p: Paleta; seleccionada: boolean; onSelect: (id: string) => void; onTaller: (id: string) => void;
+  /** Versión liviana para los almacenes sin equipos en taller cuando hay muchos en la escena. */
+  ligera?: boolean;
+  /** Equipos como fichas simples (vista general con muchos almacenes). */
+  simple?: boolean;
 }) {
   const [hover, setHover] = useState(false);
   const activo = hover || seleccionada;
@@ -256,11 +261,11 @@ export function NaveInterior({ nave, i, p, seleccionada, onSelect, onTaller }: {
         onPointerOut={() => { setHover(false); document.body.style.cursor = ""; }}
         onClick={(e) => { e.stopPropagation(); onSelect(nave.id); }}
       >
-        <Operacion nave={nave} p={p} i={i} />
+        <Operacion nave={nave} p={p} i={i} ligera={ligera} simple={simple} />
         <Plano x={0} z={(N_FRENTE + T_ATRAS) / 2} w={ANCHO} d={T_ATRAS - N_FRENTE} color={p.pisoNave} y={0.03} />
         {/* clic en el taller: abre la lista de equipos en taller de esta nave */}
         <group onClick={(e) => { e.stopPropagation(); onTaller(nave.id); }}>
-          <Taller nave={nave} p={p} />
+          <Taller nave={nave} p={p} simple={simple} />
         </group>
         {activo && (
           <mesh position={[0, 0.09, 0]} rotation={[-Math.PI / 2, 0, 0]}>

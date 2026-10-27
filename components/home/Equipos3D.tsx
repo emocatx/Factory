@@ -202,8 +202,27 @@ const MODELOS = { contrapeso: Contrapeso, reach: ReachPie, doble: ReachDoble, pa
  * Torreta verde si opera, roja si está en taller; los de taller llevan además un anillo que pulsa
  * (el estado no depende solo del color).
  */
-export function Equipo({ tipo, estado = "normal", p, posicion: pos, rot = 0, moviendo = false, escala = 0.55 }: {
+/** Versión de 3 piezas (carrocería, mástil, torreta) para la vista general con muchos almacenes. */
+function Ficha({ c, p, tipo }: { c: string; p: Paleta; tipo: TipoEquipo }) {
+  const alto = tipo === "patin" ? 0.75 : 1.1;
+  return (
+    <group>
+      <mesh position={[-0.2, alto / 2 + 0.1, 0]} castShadow>
+        <boxGeometry args={[1.1, alto, 0.9]} />
+        <Mat color={c} r={0.4} />
+      </mesh>
+      <mesh position={[0.45, tipo === "patin" ? 0.55 : 1.2, 0]}>
+        <boxGeometry args={[0.12, tipo === "patin" ? 1.0 : 2.3, 0.6]} />
+        <Mat color={p.estructura} r={0.4} />
+      </mesh>
+    </group>
+  );
+}
+
+export function Equipo({ tipo, estado = "normal", p, posicion: pos, rot = 0, moviendo = false, escala = 0.55, simple = false }: {
   tipo: TipoEquipo; estado?: "normal" | "paro" | "renta"; p: Paleta; posicion: V3; rot?: number; moviendo?: boolean; escala?: number;
+  /** Vista general: el equipo como ficha simple (mismo color de estado), para que la escena siga fluida. */
+  simple?: boolean;
 }) {
   const ref = useRef<Group>(null);
   const anillo = useRef<Mesh>(null);
@@ -222,7 +241,7 @@ export function Equipo({ tipo, estado = "normal", p, posicion: pos, rot = 0, mov
   });
   return (
     <group ref={ref} position={pos} rotation={[0, rot, 0]} scale={escala}>
-      <Modelo c={color} p={p} />
+      {simple ? <Ficha c={color} p={p} tipo={tipo} /> : <Modelo c={color} p={p} />}
       <mesh position={[-0.35, tipo === "patin" ? 1.1 : 2.3, 0]}>
         <sphereGeometry args={[0.1, 12, 12]} />
         <Mat color={estado === "paro" ? p.paro : p.torretaOk} glow />

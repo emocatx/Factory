@@ -4,7 +4,6 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { Almacen, DatosHome, Ind } from "@/lib/home";
-import { NAVES_EN_ESCENA } from "@/lib/homeComun";
 import { indicadoresAlmacen } from "@/app/(app)/p/[pilar]/resumen/acciones";
 
 // La escena solo se descarga en escritorio con WebGL (ver useModoVista).
@@ -132,9 +131,8 @@ export function HomeMoviles({ datos, base, almacenInicial }: { datos: DatosHome;
   const pOp = v.total ? (100 * operando) / v.total : 0;
   const pTaller = v.total ? (100 * v.paro) / v.total : 0;
   const pExt = v.total ? (100 * v.externos) / v.total : 0;
-  const naves = useMemo(() => almacenes.slice(0, NAVES_EN_ESCENA).map(({ id, nombre, total, paro, detenidos, operando }) => ({ id, nombre, total, paro, detenidos, operando })), [almacenes]);
-  // Para la escena: solo se enfoca si el almacén elegido está dibujado.
-  const seleccionEscena = naves.some((n) => n.id === seleccion) ? seleccion : null;
+  // La planta dibuja todos los almacenes (los de más equipos en taller primero).
+  const naves = useMemo(() => almacenes.map(({ id, nombre, total, paro, detenidos, operando }) => ({ id, nombre, total, paro, detenidos, operando })), [almacenes]);
   const masAntiguo = [...v.taller].sort((a, b) => b.dias - a.dias)[0];
   const delta = v.fallas - v.fallasPrevias;
   const ordenados = useMemo(() => [...almacenes].sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { numeric: true })), [almacenes]);
@@ -254,7 +252,7 @@ export function HomeMoviles({ datos, base, almacenInicial }: { datos: DatosHome;
     // Escritorio: la planta ocupa todo; título, filtros, paneles y medidores flotan encima.
     return (
       <section className="relative h-[calc(100dvh-96px)] min-h-[680px] overflow-hidden rounded-caja bg-papel" aria-label="Resumen de Móviles: planta">
-        <Escena3D naves={naves} seleccion={seleccionEscena} onSelect={elegir} onTaller={abrirTaller} quieto={quieto} />
+        <Escena3D naves={naves} seleccion={seleccion} onSelect={elegir} onTaller={abrirTaller} quieto={quieto} />
         <div className="pointer-events-none absolute inset-x-5 top-5 z-[2] flex items-start gap-4">
           <div className="pointer-events-auto w-[320px] shrink-0">{titulo}</div>
           <div className="pointer-events-auto mx-auto pt-1">{filtros}</div>
