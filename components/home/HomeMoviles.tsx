@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { Almacen, DatosHome, Ind } from "@/lib/home";
 import { indicadoresAlmacen } from "@/app/(app)/p/[pilar]/resumen/acciones";
@@ -117,7 +118,25 @@ function PanelTaller({ abierto, onCerrar, titulo, lista, total, base, almacen }:
   );
 }
 
-export function HomeMoviles({ datos, base, almacenInicial }: { datos: DatosHome; base: string; almacenInicial: string | null }) {
+/** Filtro en píldora: etiqueta tenue y el valor elegido en negritas, con un select nativo (teclado y lector de pantalla). */
+function Filtro({ id, etiqueta, value, onChange, children }: { id: string; etiqueta: string; value: string; onChange: (v: string) => void; children: React.ReactNode }) {
+  return (
+    <div className="inline-flex items-center gap-2 rounded-full border border-borde/60 bg-vidrio py-1 pl-4 pr-1 backdrop-blur-xl">
+      <label htmlFor={id} className="text-[13px] text-suave">{etiqueta}</label>
+      <select id={id} value={value} onChange={(e) => onChange(e.target.value)}
+        className="selector min-h-9 w-auto max-w-[220px] truncate rounded-full border-0 bg-panel-2 py-0 pl-3.5 text-[14px] font-semibold text-tinta hover:bg-borde/60">
+        {children}
+      </select>
+    </div>
+  );
+}
+
+export function HomeMoviles({ datos, base, almacenInicial, pilares }: {
+  datos: DatosHome; base: string; almacenInicial: string | null;
+  /** Pilares del usuario, para cambiar de pilar desde los filtros. */
+  pilares: { valor: string; etiqueta: string }[];
+}) {
+  const router = useRouter();
   const { modo, quieto } = useModoVista();
   const oscuro = useTema() === "oscuro";
   const [seleccion, setSeleccion] = useState<string | null>(almacenInicial);
@@ -178,17 +197,20 @@ export function HomeMoviles({ datos, base, almacenInicial }: { datos: DatosHome;
 
   const filtros = (
     <div className="flex flex-wrap items-center gap-2">
-      <label className="sr-only" htmlFor="home-almacen">Almacén</label>
-      <select id="home-almacen" value={seleccion ?? ""} onChange={(e) => elegir(e.target.value || null)} className="selector min-h-10 w-auto rounded-full bg-vidrio-fuerte text-[14px]">
-        <option value="">Todos los almacenes</option>
+      {pilares.length > 1 && (
+        <Filtro id="home-pilar" etiqueta="Pilar" value={base.split("/").pop()!} onChange={(v) => router.push(`/p/${v}/resumen`)}>
+          {pilares.map((p) => <option key={p.valor} value={p.valor}>{p.etiqueta}</option>)}
+        </Filtro>
+      )}
+      <Filtro id="home-almacen" etiqueta="Almacén" value={seleccion ?? ""} onChange={(v) => elegir(v || null)}>
+        <option value="">Todos</option>
         {ordenados.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
-      </select>
-      <nav aria-label="Periodo" className="inline-flex rounded-full bg-vidrio p-1 backdrop-blur-xl">
-        {[["hoy", "Hoy"], ["7d", "7 días"], ["30d", "30 días"]].map(([p, t]) => (
-          <Link key={p} href={qPeriodo(p)} scroll={false} aria-current={periodo.v === p ? "true" : undefined}
-            className={`flex min-h-8 items-center rounded-full px-3 text-[13px] ${periodo.v === p ? "bg-tinta font-semibold text-sobre-tinta" : "text-suave hover:text-tinta"}`}>{t}</Link>
-        ))}
-      </nav>
+      </Filtro>
+      <Filtro id="home-periodo" etiqueta="Periodo" value={periodo.v} onChange={(v) => router.push(qPeriodo(v), { scroll: false })}>
+        <option value="hoy">Hoy</option>
+        <option value="7d">7 días</option>
+        <option value="30d">30 días</option>
+      </Filtro>
     </div>
   );
 

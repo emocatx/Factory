@@ -6,7 +6,7 @@ import { esUuid } from "@/lib/filtros";
 import { HomeMoviles } from "@/components/home/HomeMoviles";
 import { sesionDePilar } from "@/lib/sesion";
 import { todasLasPaginas } from "@/lib/datos";
-import { infoPilar } from "@/lib/catalogos";
+import { etiquetaPilar, infoPilar } from "@/lib/catalogos";
 import { horas, pct } from "@/lib/formato";
 import type { OrdenDetalle } from "@/lib/tipos";
 
@@ -45,7 +45,7 @@ export default async function Resumen({
   searchParams: Promise<{ periodo?: string; almacen?: string }>;
 }) {
   const { pilar: p } = await params;
-  const { pilar, tenant, perfil } = await sesionDePilar(p);
+  const { pilar, tenant, perfil, pilares } = await sesionDePilar(p);
   // Operaciones no tiene Resumen (su espacio es Seguimiento), ni aunque escriba la dirección a mano.
   if (perfil.rol === "operaciones") redirect(`/p/${pilar}/ordenes`);
   const { periodo: pv, almacen } = await searchParams;
@@ -56,7 +56,8 @@ export default async function Resumen({
       pilar, periodo: pv, rol: perfil.rol, idUsuario: perfil.id,
       metas: { disponibilidad: tenant.meta_disponibilidad_pct ?? null, mttr: tenant.meta_mttr_horas ?? null, mtbf: tenant.meta_mtbf_horas ?? null },
     });
-    return <HomeMoviles datos={datos} base={`/p/${pilar}`} almacenInicial={esUuid(almacen) ? almacen : null} />;
+    return <HomeMoviles datos={datos} base={`/p/${pilar}`} almacenInicial={esUuid(almacen) ? almacen : null}
+      pilares={pilares.map((v) => ({ valor: v, etiqueta: etiquetaPilar(v) }))} />;
   }
   const periodo = PERIODOS.find((x) => x.v === pv) ?? PERIODOS[2];
   const ahora = Date.now();
