@@ -133,8 +133,11 @@ export function HomeMoviles({ datos, base, almacenInicial }: { datos: DatosHome;
   const pOp = v.total ? (100 * operando) / v.total : 0;
   const pTaller = v.total ? (100 * v.paro) / v.total : 0;
   const pExt = v.total ? (100 * v.externos) / v.total : 0;
-  // La planta dibuja todos los almacenes (los de más equipos en taller primero).
-  const naves = useMemo(() => almacenes.map(({ id, nombre, total, paro, detenidos, operando }) => ({ id, nombre, total, paro, detenidos, operando })), [almacenes]);
+  // Vista general: todos los almacenes (los de más equipos en taller primero).
+  // Al filtrar uno, la planta dibuja solo ese almacén, centrado y con todo el detalle.
+  const naves = useMemo(() => almacenes
+    .filter((a) => !seleccion || a.id === seleccion)
+    .map(({ id, nombre, total, paro, detenidos, operando }) => ({ id, nombre, total, paro, detenidos, operando })), [almacenes, seleccion]);
   const masAntiguo = [...v.taller].sort((a, b) => b.dias - a.dias)[0];
   const delta = v.fallas - v.fallasPrevias;
   const ordenados = useMemo(() => [...almacenes].sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { numeric: true })), [almacenes]);

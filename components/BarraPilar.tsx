@@ -102,8 +102,8 @@ export function BarraPilar({ items, generales, abiertas, pilar, usuario, accion 
   );
 }
 
-/** El Resumen de Móviles (planta 3D) usa todo el espacio; las demás páginas, su columna de 1240px. */
+/** Todas las páginas del pilar usan el ancho completo junto a la barra lateral; la planta 3D, además, sin margen arriba. */
 export function ContenidoPilar({ children }: { children: React.ReactNode }) {
-  const completo = usePathname().endsWith("/moviles/resumen");
-  return <div className={completo ? "min-w-0" : "min-w-0 max-w-[1240px] lg:pt-4"}>{children}</div>;
+  const planta = usePathname().endsWith("/moviles/resumen");
+  return <div className={planta ? "min-w-0" : "min-w-0 lg:px-2 lg:pt-4"}>{children}</div>;
 }

@@ -4,6 +4,7 @@ import { BotonEnviar } from "@/components/BotonEnviar";
 import { etiquetaRol } from "@/lib/catalogos";
 import type { Rol } from "@/lib/tipos";
 import { InterruptorTema } from "@/components/Tema";
+import { MenuDesplegable } from "@/components/MenuDesplegable";
 
 const trazo = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
 const ICONOS: Record<string, React.ReactNode> = {
@@ -34,7 +35,7 @@ export function MenuUsuario({ nombre, correo, rol, empresa, enlaces }: {
   const historial = enlaces.filter((e) => e.href === "/historial");
   const ajustes = enlaces.filter((e) => e.href !== "/historial");
   return (
-    <details className="relative">
+    <MenuDesplegable className="relative">
       <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-full bg-papel py-1 pl-1 pr-3 text-sm hover:bg-panel-2" aria-label={`Cuenta de ${nombre}`}>
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-tinta text-[13px] font-semibold text-sobre-tinta" aria-hidden="true">{iniciales}</span>
         <span className="hidden font-medium sm:inline">{nombre.split(" ")[0]}</span>
@@ -71,6 +72,6 @@ export function MenuUsuario({ nombre, correo, rol, empresa, enlaces }: {
           </form>
         </div>
       </div>
-    </details>
+    </MenuDesplegable>
   );
 }

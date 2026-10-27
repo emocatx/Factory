@@ -13,7 +13,3 @@ export function Ancho({ como: Etiqueta = "div", pilar, normal, children }: {
   return <Etiqueta className={enPilar ? pilar : normal}>{children}</Etiqueta>;
 }
 
-/** Lo que solo se muestra fuera de las páginas de pilar (ahí va en la barra lateral). */
-export function FueraDePilar({ children }: { children: React.ReactNode }) {
-  return usePathname().startsWith("/p/") ? null : <>{children}</>;
-}

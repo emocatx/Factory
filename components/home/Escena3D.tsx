@@ -25,7 +25,7 @@ const OFFSET_CAMARA: [number, number, number] = [34, 30, 34];
 type Malla = { cols: number; filas: number; ancho: number; fondo: number };
 
 function malla(n: number): Malla {
-  const cols = n <= 6 ? 3 : Math.ceil(Math.sqrt(n * 1.4));
+  const cols = n <= 3 ? Math.max(1, n) : n <= 6 ? 3 : Math.ceil(Math.sqrt(n * 1.4));
   const filas = Math.max(1, Math.ceil(n / cols));
   return { cols, filas, ancho: cols * SEP_X, fondo: filas * SEP_Z };
 }

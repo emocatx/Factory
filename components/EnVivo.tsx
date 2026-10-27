@@ -62,15 +62,16 @@ export function EnVivo({ tenantId }: { tenantId: string }) {
 
   return (
     <div className="flex items-center gap-3">
-      <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm text-suave" role="status" title={estado === "sin_conexion" ? undefined : texto}>
-        {/* Sin conexión no se avisa: los datos siguen siendo correctos y "Actualizar" funciona igual. */}
+      {/* Solo el punto de estado (el texto y la hora quedan en el tooltip y para lectores de pantalla).
+          Sin conexión no se avisa: los datos siguen siendo correctos y "Actualizar" funciona igual. */}
+      <span className="inline-flex items-center" role="status"
+        title={estado === "sin_conexion" ? undefined : `${texto}${ultima ? ` · actualizado ${hora(ultima)}` : ""}`}>
         {estado !== "sin_conexion" && (
           <>
             <span className={`h-2 w-2 rounded-full ${punto}`} aria-hidden="true" />
-            <span className="sr-only xl:not-sr-only">{texto}</span>
+            <span className="sr-only">{texto}{ultima ? `, actualizado ${hora(ultima)}` : ""}</span>
           </>
         )}
-        {ultima && <span className="hidden xl:inline">{estado !== "sin_conexion" && "· "}{hora(ultima)}</span>}
       </span>
       <button onClick={actualizar} className="btn-sec min-h-10 px-4 text-sm" aria-label="Actualizar datos">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"

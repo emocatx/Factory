@@ -5,7 +5,7 @@ import { Marca } from "@/components/Marca";
 import { EnVivo } from "@/components/EnVivo";
 import { MenuUsuario } from "@/components/MenuUsuario";
 import { Tour } from "@/components/Tour";
-import { Ancho, FueraDePilar } from "@/components/Ancho";
+import { Ancho } from "@/components/Ancho";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { perfil, tenant, tourVisto } = await obtenerSesion();
@@ -27,15 +27,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <FueraDePilar>
-            <nav aria-label="General" className="hidden items-center gap-1 text-[14px] lg:flex">
-              {enlaces.map((e) => (
-                <Link key={e.href} href={e.href} className="rounded-full px-3 py-2 text-tinta/80 hover:text-tinta">
-                  {e.texto}
-                </Link>
-              ))}
-            </nav>
-            </FueraDePilar>
+            {/* Historial, Configuración y Usuarios viven en el menú de cuenta y en la barra lateral del pilar */}
             <EnVivo tenantId={tenant.id} />
             <MenuUsuario nombre={perfil.nombre} correo={perfil.correo} rol={perfil.rol} empresa={tenant.nombre_empresa} enlaces={enlaces} />
           </div>
