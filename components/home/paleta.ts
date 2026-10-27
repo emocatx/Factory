@@ -9,7 +9,7 @@ export const PALETA = {
   letrero: "#1d4fa8", rotuloOk: "#1f6f43", rotuloParo: "#b3262b", banco: "#6e6e73", gabinete: "#3a3a3c",
   cuerpo: "#f2a900", paro: "#e5484d", renta: "#5e5ce6", ok: "#2f9e62", torretaOk: "#34c759",
   estructura: "#48484a", estructuraClara: "#8e8e93", asiento: "#2c2c2e", rin: "#aeaeb2", llanta: "#1d1d1f",
-  sel: "#0071e3", selSuave: "#e3eefc", arbol: "#9ccb9f",
+  sel: "#0071e3", selSuave: "#e3eefc", arbol: "#9ccb9f", techo: "#c9ccd4", fachada: "#eef0f3",
   luz: 1.45, ambiente: 0.35, env: 0.45, ao: 2.6,
 };
 
@@ -22,7 +22,7 @@ export const PALETA_OSCURA: typeof PALETA = {
   letrero: "#1f5f86", rotuloOk: "#0f7a5f", rotuloParo: "#b3243f", banco: "#3e464b", gabinete: "#24292c",
   cuerpo: "#c99a2e", paro: "#ff5a5f", renta: "#a78bfa", ok: "#3dd6ac", torretaOk: "#3dd6ac",
   estructura: "#3e464b", estructuraClara: "#5c656a", asiento: "#0a0d18", rin: "#5c656a", llanta: "#05070d",
-  sel: "#3dd6ac", selSuave: "#13302a", arbol: "#1e3a33",
+  sel: "#3dd6ac", selSuave: "#13302a", arbol: "#1e3a33", techo: "#343b40", fachada: "#262c30",
   luz: 1.1, ambiente: 0.35, env: 0.35, ao: 3.4,
 };
 

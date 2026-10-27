@@ -2,16 +2,17 @@
 
 // Escena 3D del home de Móviles (react-three-fiber). Se carga solo en escritorio y con carga diferida
 // (ver HomeMoviles): en celular no se descarga ni un byte de Three.js.
-// Dibuja TODOS los almacenes en una cuadrícula; los que tienen equipos en taller (o el elegido) van con
-// todo el detalle y los demás en versión ligera, para que la escena siga fluida.
-import { useEffect, useMemo, useRef, useState } from "react";
+// Vista general: todos los almacenes como edificios cerrados (geometría instanciada, muy ligera).
+// Al elegir uno se dibuja solo ese, por dentro, ampliado y con todos sus equipos.
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Vector3, type Group } from "three";
 import { Environment, Lightformer, OrbitControls, OrthographicCamera, PerformanceMonitor, RoundedBox, SoftShadows } from "@react-three/drei";
 import { EffectComposer, N8AO, SMAA, Vignette } from "@react-three/postprocessing";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { Mat } from "./Equipos3D";
-import { NaveInterior, type NaveEscena } from "./NaveInterior";
+import { medidas, NaveInterior, type NaveEscena } from "./NaveInterior";
+import { ANEXO, Exteriores } from "./NaveExterior";
 import { PALETA, PALETA_OSCURA, type Paleta } from "./paleta";
 
 const SEP_X = 13;
@@ -22,6 +23,7 @@ const FRANJAS_ALTO = 280;
 /** Offset de la cámara respecto a su objetivo (vista isométrica). */
 const OFFSET_CAMARA: [number, number, number] = [34, 30, 34];
 
+type V3 = [number, number, number];
 type Malla = { cols: number; filas: number; ancho: number; fondo: number };
 
 function malla(n: number): Malla {
@@ -30,7 +32,7 @@ function malla(n: number): Malla {
   return { cols, filas, ancho: cols * SEP_X, fondo: filas * SEP_Z };
 }
 
-function posicion(i: number, m: Malla): [number, number, number] {
+function posicion(i: number, m: Malla): V3 {
   const col = i % m.cols;
   const fila = Math.floor(i / m.cols);
   return [(col - (m.cols - 1) / 2) * SEP_X, 0, (fila - (m.filas - 1) / 2) * SEP_Z];
@@ -92,7 +94,7 @@ function Alerta({ p, pos }: { p: Paleta; pos: [number, number, number] }) {
     if (ref.current && !p.quieto) ref.current.position.y = 3.4 + Math.sin(clock.elapsedTime * 2) * 0.18;
   });
   return (
-    <group ref={ref} position={[pos[0], 3.4, pos[2] + 2.9]}>
+    <group ref={ref} position={[pos[0] + ANEXO[0], 3.4, pos[2] + ANEXO[2]]}>
       <mesh rotation={[Math.PI, 0, 0]}>
         <coneGeometry args={[0.35, 0.7, 20]} />
         <Mat color={p.paro} glow r={0.3} />
@@ -105,26 +107,18 @@ function Alerta({ p, pos }: { p: Paleta; pos: [number, number, number] }) {
   );
 }
 
-// Al cambiar la selección (o el tamaño) lleva la cámara a la nave elegida o al conjunto, y se detiene:
-// después el usuario puede girar y acercar a mano sin que la cámara regrese sola.
-function Enfoque({ naves, seleccion, m }: { naves: NaveEscena[]; seleccion: string | null; m: Malla }) {
+// Al cambiar lo que se ve (o el tamaño) encuadra la escena y se detiene: después el usuario puede
+// girar y acercar a mano sin que la cámara regrese sola.
+function Enfoque({ w, d, clave }: { w: number; d: number; clave: string }) {
   const controls = useThree((s) => s.controls) as unknown as OrbitControlsImpl | null;
   const { width: ancho, height: alto } = useThree((s) => s.size);
   const meta = useMemo(() => new Vector3(), []);
   const animando = useRef(true);
-  useEffect(() => { animando.current = true; }, [seleccion, ancho, alto]);
+  useEffect(() => { animando.current = true; }, [clave, ancho, alto]);
   useFrame(() => {
     if (!controls || !animando.current) return;
-    const i = naves.findIndex((n) => n.id === seleccion);
-    let zoom: number;
-    if (i >= 0) {
-      const [x, , z] = posicion(i, m);
-      zoom = Math.min(34, zoomPara(ancho, alto, 11.4, 10.4) * 0.9);
-      objetivo(x, z, zoom, meta);
-    } else {
-      zoom = zoomPara(ancho, alto, m.ancho, m.fondo);
-      objetivo(0, 0, zoom, meta);
-    }
+    const zoom = Math.min(34, zoomPara(ancho, alto, w, d));
+    objetivo(0, 0, zoom, meta);
     const cam = controls.object as unknown as { zoom: number; position: Vector3; updateProjectionMatrix: () => void };
     cam.zoom += (zoom - cam.zoom) * 0.1;
     cam.updateProjectionMatrix();
@@ -143,7 +137,7 @@ function Enfoque({ naves, seleccion, m }: { naves: NaveEscena[]; seleccion: stri
 // los demás la muestran al acercarse o al elegirlos (si no, se enciman).
 const ZOOM_ETIQUETAS = 16;
 
-function Proyector({ naves, refs, m, seleccion }: { naves: NaveEscena[]; refs: React.RefObject<(HTMLButtonElement | null)[]>; m: Malla; seleccion: string | null }) {
+function Proyector({ naves, refs, punto, seleccion }: { naves: NaveEscena[]; refs: React.RefObject<(HTMLButtonElement | null)[]>; punto: (i: number) => V3; seleccion: string | null }) {
   const { camera, size } = useThree();
   const v = useMemo(() => new Vector3(), []);
   useFrame(() => {
@@ -154,8 +148,7 @@ function Proyector({ naves, refs, m, seleccion }: { naves: NaveEscena[]; refs: R
       const ver = n.paro > 0 || cerca || n.id === seleccion;
       el.style.visibility = ver ? "visible" : "hidden";
       if (!ver) return;
-      const [x, , z] = posicion(i, m);
-      v.set(x, 3.6, z - 2.4).project(camera);
+      v.set(...punto(i)).project(camera);
       el.style.transform = `translate(-50%, -50%) translate(${((v.x + 1) / 2) * size.width}px, ${((1 - v.y) / 2) * size.height}px)`;
     });
   });
@@ -168,9 +161,13 @@ export default function Escena3D({ naves, seleccion, onSelect, onTaller, quieto,
   const p: Paleta = { ...(oscuro ? PALETA_OSCURA : PALETA), quieto, oscuro };
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const [alta, setAlta] = useState(true);
-  const m = useMemo(() => malla(naves.length), [naves.length]);
-  // Con más de 6 naves se baja el detalle de lo que no está enfocado y se quitan las sombras suaves.
-  const muchas = naves.length > 6;
+  // con un almacén elegido la escena es solo esa nave, del tamaño que pidan sus equipos
+  const unica = seleccion ? naves.find((n) => n.id === seleccion) ?? null : null;
+  const dims = unica ? medidas(unica) : null;
+  const m = useMemo<Malla>(() => dims ? { cols: 1, filas: 1, ancho: dims.ancho, fondo: dims.fondo } : malla(naves.length),
+    [dims?.ancho, dims?.fondo, naves.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pos = useCallback((i: number) => posicion(i, m), [m]);
+  const punto = useCallback((i: number): V3 => unica ? [0, 3.6, -m.fondo / 2 + 1] : [pos(i)[0], 3.6, pos(i)[2] - 2.4], [unica, m, pos]);
   const peor = naves.reduce((a, n, i) => (n.paro > (naves[a]?.paro ?? -1) ? i : a), 0);
   const sombra = Math.max(m.ancho, m.fondo) / 2 + 6;
   const esquina: [number, number, number] = [-m.ancho / 2 - 1.5, 0, -m.fondo / 2 - 2];
@@ -178,11 +175,12 @@ export default function Escena3D({ naves, seleccion, onSelect, onTaller, quieto,
 
   return (
     <>
-      <Canvas shadows={alta} dpr={alta ? [1, muchas ? 1.5 : 2] : 1} gl={{ antialias: false }} onPointerMissed={() => onSelect(null)} aria-hidden="true">
+      <Canvas shadows={alta} dpr={alta ? [1, 1.75] : 1} gl={{ antialias: false }} onPointerMissed={() => onSelect(null)} aria-hidden="true">
         {/* Si el equipo no da los cuadros por segundo, se apagan sombras y efectos y baja la resolución. */}
         <PerformanceMonitor onDecline={() => setAlta(false)} />
         <color attach="background" args={[p.fondo]} />
-        {alta && !muchas && <SoftShadows size={18} samples={8} focus={0.6} />}
+        {/* fijo en ambas vistas: encender o apagar SoftShadows recompila todos los shaders (congela la escena) */}
+        {alta && <SoftShadows size={18} samples={8} focus={0.6} />}
         <OrthographicCamera makeDefault position={OFFSET_CAMARA} zoom={10} near={-300} far={600} />
         <OrbitControls makeDefault enablePan={false} enableZoom minZoom={3} maxZoom={48} minPolarAngle={Math.PI / 5} maxPolarAngle={Math.PI / 3} target={[0, 0, 0]} />
         <ambientLight intensity={p.ambiente} />
@@ -196,19 +194,16 @@ export default function Escena3D({ naves, seleccion, onSelect, onTaller, quieto,
           <Lightformer intensity={1.2} position={[20, 4, -10]} rotation-y={-Math.PI / 2} scale={[20, 6, 1]} />
         </Environment>
         <Calles p={p} m={m} />
-        {naves.map((n, i) => (
-          <group key={n.id} position={posicion(i, m)}>
-            <NaveInterior nave={n} i={i} p={p} seleccionada={seleccion === n.id} onSelect={onSelect} onTaller={onTaller}
-              ligera={muchas && n.paro === 0 && seleccion !== n.id} simple={muchas && seleccion !== n.id} />
-          </group>
-        ))}
+        {unica
+          ? <NaveInterior nave={unica} i={0} p={p} onTaller={onTaller} />
+          : <Exteriores naves={naves} pos={pos} p={p} seleccion={seleccion} onSelect={onSelect} />}
         <Arbol p={p} posicion={esquina} />
         <Arbol p={p} posicion={[esquina[0] + 1.5, 0, esquina[2] - 0.6]} s={0.7} />
         <Arbol p={p} posicion={esquina2} />
         <Arbol p={p} posicion={[esquina2[0] - 1.6, 0, esquina2[2] + 0.6]} s={0.8} />
-        {naves[peor]?.paro > 0 && <Alerta p={p} pos={posicion(peor, m)} />}
-        <Enfoque naves={naves} seleccion={seleccion} m={m} />
-        <Proyector naves={naves} refs={refs} m={m} seleccion={seleccion} />
+        {!unica && naves[peor]?.paro > 0 && <Alerta p={p} pos={pos(peor)} />}
+        <Enfoque w={m.ancho} d={m.fondo} clave={seleccion ?? ""} />
+        <Proyector naves={naves} refs={refs} punto={punto} seleccion={seleccion} />
         {alta && (
           <EffectComposer multisampling={0} enableNormalPass={false}>
             <N8AO aoRadius={1.6} intensity={p.ao} distanceFalloff={0.6} quality="medium" halfRes />

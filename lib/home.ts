@@ -11,6 +11,8 @@ import { NAVES_EN_ESCENA, PERIODOS_HOME } from "@/lib/homeComun";
  */
 
 const DIA = 86_400_000;
+/** Tope de equipos operando que se mandan por almacén para dibujar la nave por dentro. */
+const MAX_EQUIPOS_NAVE = 120;
 
 export type Ind = { disp: number | null; mttr: number | null; mtbf: number | null };
 export type EnTaller = { idOrden: string; folio: string; equipo: string; modelo: string | null; dias: number; falla: string };
@@ -27,7 +29,7 @@ export type Resumen = {
 export type Almacen = Resumen & {
   id: string;
   nombre: string;
-  /** Modelo de cada equipo en taller y una muestra de los que operan ([modelo, rentado]). */
+  /** Modelo de cada equipo en taller y de cada uno que opera ([modelo, rentado]). */
   detenidos: string[];
   operando: [string, boolean][];
   ind: Ind | null;
@@ -111,10 +113,10 @@ export async function datosHome({ pilar, periodo: pv, rol, idUsuario, metas }: {
   }
 
   const resumenVacio = (): Resumen => ({ total: 0, paro: 0, externos: 0, fallas: 0, fallasPrevias: 0, origen: null, peor: null, taller: [] });
-  const porAlm = new Map<string, Resumen & { origenes: Map<string, number>; peores: Map<string, number>; modelosOp: Map<string, number>; renta: string | null }>();
+  const porAlm = new Map<string, Resumen & { origenes: Map<string, number>; peores: Map<string, number>; op: [string, boolean][] }>();
   const obtener = (id: string) => {
     let r = porAlm.get(id);
-    if (!r) { r = { ...resumenVacio(), origenes: new Map(), peores: new Map(), modelosOp: new Map(), renta: null }; porAlm.set(id, r); }
+    if (!r) { r = { ...resumenVacio(), origenes: new Map(), peores: new Map(), op: [] }; porAlm.set(id, r); }
     return r;
   };
   for (const e of cat.equipos) {
@@ -122,8 +124,7 @@ export async function datosHome({ pilar, periodo: pv, rol, idUsuario, metas }: {
     r.total++;
     if (e.propiedad !== "propio") r.externos++;
     if (!equiposEnTaller.has(e.id_equipo)) {
-      suma(r.modelosOp, modelo.get(e.id_equipo) ?? "");
-      if (e.propiedad !== "propio" && !r.renta) r.renta = modelo.get(e.id_equipo) ?? "";
+      r.op.push([modelo.get(e.id_equipo) ?? "", e.propiedad !== "propio"]);
     }
   }
   for (const [alm, lista] of enTaller) obtener(alm).taller = lista;
@@ -159,12 +160,10 @@ export async function datosHome({ pilar, periodo: pv, rol, idUsuario, metas }: {
   const almacenes: Almacen[] = [...porAlm.entries()]
     .filter(([id, r]) => r.total > 0 && nombreAlmacen.has(id))
     .map(([id, r]) => {
-      const muestra = [...r.modelosOp.entries()].sort((a, b) => b[1] - a[1]).slice(0, r.renta ? 3 : 4).map(([m]) => [m, false] as [string, boolean]);
-      if (r.renta !== null) muestra.push([r.renta, true]);
       return {
         id, nombre: nombreAlmacen.get(id)!, total: r.total, paro: r.taller.length, externos: r.externos,
         fallas: r.fallas, fallasPrevias: r.fallasPrevias, origen: top(r.origenes), peor: peorEquipo(r.peores, false),
-        taller: r.taller, detenidos: r.taller.map((x) => x.modelo ?? ""), operando: muestra.slice(0, Math.min(4, r.total - r.taller.length)), ind: null,
+        taller: r.taller, detenidos: r.taller.map((x) => x.modelo ?? ""), operando: r.op.slice(0, MAX_EQUIPOS_NAVE), ind: null,
       };
     })
     .sort((a, b) => b.paro - a.paro || b.total - a.total);

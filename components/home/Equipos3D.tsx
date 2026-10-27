@@ -5,8 +5,8 @@
 // La carrocería lleva el color del estado; la estructura (mástil, guarda, horquillas) va en gris oscuro.
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { RoundedBox } from "@react-three/drei";
-import type { Group, Mesh, MeshBasicMaterial } from "three";
+import { BoxGeometry, CylinderGeometry, MeshStandardMaterial, SphereGeometry, TorusGeometry, type BufferGeometry, type Group, type Mesh, type MeshBasicMaterial } from "three";
+import { RoundedBoxGeometry } from "three-stdlib";
 import type { Paleta } from "./paleta";
 
 type V3 = [number, number, number];
@@ -21,21 +21,31 @@ export function tipoDeModelo(modelo = ""): TipoEquipo {
   return "contrapeso";
 }
 
+// Geometrías y materiales compartidos: un equipo son ~30 piezas y una nave puede tener cien equipos;
+// crearlos una sola vez evita que la escena se congele al entrar a un almacén.
+const GEOS = new Map<string, BufferGeometry>();
+const MATS = new Map<string, MeshStandardMaterial>();
+function compartida(clave: string, crear: () => BufferGeometry) {
+  let g = GEOS.get(clave);
+  if (!g) { g = crear(); GEOS.set(clave, g); }
+  return g;
+}
+const caja = (a: V3, rad = 0) => compartida(`c${a}|${rad}`, () => rad ? new RoundedBoxGeometry(a[0], a[1], a[2], 3, rad) : new BoxGeometry(...a));
+const cilindro = (r: number, h: number, seg: number) => compartida(`y${r}|${h}|${seg}`, () => new CylinderGeometry(r, r, h, seg));
+
 export function Mat({ color, r = 0.55, m = 0, glow }: { color: string; r?: number; m?: number; glow?: boolean }) {
-  return <meshStandardMaterial color={color} roughness={r} metalness={m} emissive={glow ? color : "#000000"} emissiveIntensity={glow ? 1.6 : 0} />;
+  const clave = `${color}|${r}|${m}|${glow ? 1 : 0}`;
+  let mat = MATS.get(clave);
+  if (!mat) {
+    mat = new MeshStandardMaterial({ color, roughness: r, metalness: m, emissive: glow ? color : "#000000", emissiveIntensity: glow ? 1.6 : 0 });
+    MATS.set(clave, mat);
+  }
+  return <primitive object={mat} attach="material" />;
 }
 
 function Caja({ args, pos, color, r, m, rad = 0, sombra = true }: { args: V3; pos: V3; color: string; r?: number; m?: number; rad?: number; sombra?: boolean }) {
-  if (rad) {
-    return (
-      <RoundedBox args={args} radius={rad} smoothness={3} position={pos} castShadow={sombra} receiveShadow>
-        <Mat color={color} r={r} m={m} />
-      </RoundedBox>
-    );
-  }
   return (
-    <mesh position={pos} castShadow={sombra} receiveShadow>
-      <boxGeometry args={args} />
+    <mesh position={pos} geometry={caja(args, rad)} castShadow={sombra} receiveShadow>
       <Mat color={color} r={r} m={m} />
     </mesh>
   );
@@ -44,12 +54,10 @@ function Caja({ args, pos, color, r, m, rad = 0, sombra = true }: { args: V3; po
 function Rueda({ pos, radio = 0.2, ancho = 0.14, p }: { pos: V3; radio?: number; ancho?: number; p: Paleta }) {
   return (
     <group position={pos}>
-      <mesh rotation={[Math.PI / 2, 0, 0]} castShadow>
-        <cylinderGeometry args={[radio, radio, ancho, 20]} />
+      <mesh rotation={[Math.PI / 2, 0, 0]} geometry={cilindro(radio, ancho, 20)} castShadow>
         <Mat color={p.llanta} r={0.9} />
       </mesh>
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[radio * 0.45, radio * 0.45, ancho + 0.01, 12]} />
+      <mesh rotation={[Math.PI / 2, 0, 0]} geometry={cilindro(radio * 0.45, ancho + 0.01, 12)}>
         <Mat color={p.rin} r={0.4} m={0.5} />
       </mesh>
     </group>
@@ -93,8 +101,7 @@ function Contrapeso({ c, p }: { c: string; p: Paleta }) {
       <Caja args={[1.0, 0.42, 0.9]} pos={[0.2, 0.4, 0]} color={c} r={0.35} rad={0.12} />
       <Caja args={[0.5, 0.16, 0.86]} pos={[-0.25, 1.0, 0]} color={p.estructura} r={0.6} rad={0.05} />
       <Caja args={[0.3, 0.32, 0.44]} pos={[-0.28, 1.22, 0]} color={p.asiento} r={0.8} rad={0.08} />
-      <mesh position={[0.28, 1.25, 0]} rotation={[0, 0, -0.5]} castShadow>
-        <torusGeometry args={[0.13, 0.025, 8, 20]} />
+      <mesh position={[0.28, 1.25, 0]} rotation={[0, 0, -0.5]} geometry={compartida("volante", () => new TorusGeometry(0.13, 0.025, 8, 20))} castShadow>
         <Mat color={p.asiento} r={0.6} />
       </mesh>
       <Caja args={[0.06, 0.4, 0.06]} pos={[0.33, 1.02, 0]} color={p.estructura} r={0.4} />
@@ -157,8 +164,7 @@ function ReachDoble({ c, p }: { c: string; p: Paleta }) {
         {[-0.18, 0.18].map((z) => (
           <group key={z}>
             {[0.55, -0.55].map((rz) => (
-              <mesh key={rz} position={[0.3, 0, z]} rotation={[0, 0, rz]} castShadow>
-                <boxGeometry args={[0.72, 0.06, 0.05]} />
+              <mesh key={rz} position={[0.3, 0, z]} rotation={[0, 0, rz]} geometry={caja([0.72, 0.06, 0.05])} castShadow>
                 <Mat color={e} r={0.35} m={0.5} />
               </mesh>
             ))}
@@ -207,20 +213,20 @@ function Ficha({ c, p, tipo }: { c: string; p: Paleta; tipo: TipoEquipo }) {
   const alto = tipo === "patin" ? 0.75 : 1.1;
   return (
     <group>
-      <mesh position={[-0.2, alto / 2 + 0.1, 0]} castShadow>
-        <boxGeometry args={[1.1, alto, 0.9]} />
+      <mesh position={[-0.2, alto / 2 + 0.1, 0]} geometry={caja([1.1, alto, 0.9])} castShadow>
         <Mat color={c} r={0.4} />
       </mesh>
-      <mesh position={[0.45, tipo === "patin" ? 0.55 : 1.2, 0]}>
-        <boxGeometry args={[0.12, tipo === "patin" ? 1.0 : 2.3, 0.6]} />
+      <mesh position={[0.45, tipo === "patin" ? 0.55 : 1.2, 0]} geometry={caja([0.12, tipo === "patin" ? 1.0 : 2.3, 0.6])}>
         <Mat color={p.estructura} r={0.4} />
       </mesh>
     </group>
   );
 }
 
-export function Equipo({ tipo, estado = "normal", p, posicion: pos, rot = 0, moviendo = false, escala = 0.55, simple = false }: {
+export function Equipo({ tipo, estado = "normal", p, posicion: pos, rot = 0, moviendo = false, recorrido = 1.1, escala = 0.55, simple = false }: {
   tipo: TipoEquipo; estado?: "normal" | "paro" | "renta"; p: Paleta; posicion: V3; rot?: number; moviendo?: boolean; escala?: number;
+  /** Cuánto se desplaza de ida y vuelta un equipo que opera. */
+  recorrido?: number;
   /** Vista general: el equipo como ficha simple (mismo color de estado), para que la escena siga fluida. */
   simple?: boolean;
 }) {
@@ -232,7 +238,7 @@ export function Equipo({ tipo, estado = "normal", p, posicion: pos, rot = 0, mov
   useFrame(({ clock }) => {
     if (p.quieto) return;
     const t = clock.elapsedTime;
-    if (moviendo && ref.current) ref.current.position.x = pos[0] + Math.sin(t * 0.5 + fase) * 1.1;
+    if (moviendo && ref.current) ref.current.position.x = pos[0] + Math.sin(t * 0.5 + fase) * recorrido;
     if (estado === "paro" && anillo.current) {
       const k = (t * 0.8 + fase) % 1;
       anillo.current.scale.setScalar(1 + k * 0.9);
@@ -242,8 +248,7 @@ export function Equipo({ tipo, estado = "normal", p, posicion: pos, rot = 0, mov
   return (
     <group ref={ref} position={pos} rotation={[0, rot, 0]} scale={escala}>
       {simple ? <Ficha c={color} p={p} tipo={tipo} /> : <Modelo c={color} p={p} />}
-      <mesh position={[-0.35, tipo === "patin" ? 1.1 : 2.3, 0]}>
-        <sphereGeometry args={[0.1, 12, 12]} />
+      <mesh position={[-0.35, tipo === "patin" ? 1.1 : 2.3, 0]} geometry={compartida("torreta", () => new SphereGeometry(0.1, 12, 12))}>
         <Mat color={estado === "paro" ? p.paro : p.torretaOk} glow />
       </mesh>
       {estado === "paro" && (

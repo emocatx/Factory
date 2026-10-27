@@ -1,6 +1,6 @@
 // Constantes del home de Móviles que usan tanto el servidor (lib/home.ts) como el navegador.
 
-/** Naves que se dibujan en la escena 3D (las de más equipos en taller). */
+/** Almacenes (los de más equipos en taller) cuyos indicadores se calculan de entrada. */
 export const NAVES_EN_ESCENA = 6;
 
 export const PERIODOS_HOME = [
