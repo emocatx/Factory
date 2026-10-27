@@ -272,7 +272,7 @@ function Taller({ nave, p, t }: { nave: NaveEscena; p: Paleta; t: Trazo }) {
       {enTaller.map((modelo, k) => (
         <Equipo key={k} p={p} tipo={tipoDeModelo(modelo)} estado="paro" posicion={[cx(k), 0.06, zCajon(k) + 0.15]} rot={Math.PI / 2} />
       ))}
-      <Rotulo texto={`TALLER · ${nave.paro}`} fondo={p.rotuloParo} p={p} posicion={[0, 1.55, t.tAtras + 0.05]} ancho={2.2} />
+      <Rotulo texto={`MANTTO · ${nave.paro}`} fondo={p.rotuloParo} p={p} posicion={[0, 1.55, t.tAtras + 0.05]} ancho={2.2} />
     </group>
   );
 }

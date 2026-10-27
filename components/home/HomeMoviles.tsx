@@ -2,7 +2,6 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { Almacen, DatosHome, Ind } from "@/lib/home";
 import { indicadoresAlmacen } from "@/app/(app)/p/[pilar]/resumen/acciones";
@@ -93,10 +92,10 @@ function PanelTaller({ abierto, onCerrar, titulo, lista, total, base, almacen }:
             <h2 id="taller-tit" className="text-[20px] font-semibold">{titulo}</h2>
             <p className="text-[13px] text-suave">{total} equipo{total === 1 ? "" : "s"} · del más antiguo al más reciente</p>
           </div>
-          <button type="button" onClick={onCerrar} className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-papel text-[18px] hover:bg-panel-2" aria-label="Cerrar lista de equipos en taller">×</button>
+          <button type="button" onClick={onCerrar} className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-papel text-[18px] hover:bg-panel-2" aria-label="Cerrar lista de equipos en Mantto">×</button>
         </div>
         <ul className="flex-1 overflow-y-auto px-2">
-          {visibles.length === 0 && <li className="px-3 py-8 text-center text-suave">Ningún equipo en taller.</li>}
+          {visibles.length === 0 && <li className="px-3 py-8 text-center text-suave">Ningún equipo en Mantto.</li>}
           {visibles.map((o) => (
             <li key={o.idOrden}>
               <Link href={`${base}/ordenes?q=${encodeURIComponent(o.folio)}`} className="flex items-start gap-3 rounded-2xl p-3 hover:bg-papel">
@@ -131,12 +130,7 @@ function Filtro({ id, etiqueta, value, onChange, children }: { id: string; etiqu
   );
 }
 
-export function HomeMoviles({ datos, base, almacenInicial, pilares }: {
-  datos: DatosHome; base: string; almacenInicial: string | null;
-  /** Pilares del usuario, para cambiar de pilar desde los filtros. */
-  pilares: { valor: string; etiqueta: string }[];
-}) {
-  const router = useRouter();
+export function HomeMoviles({ datos, base, almacenInicial }: { datos: DatosHome; base: string; almacenInicial: string | null }) {
   const { modo, quieto } = useModoVista();
   const oscuro = useTema() === "oscuro";
   const [seleccion, setSeleccion] = useState<string | null>(almacenInicial);
@@ -152,7 +146,7 @@ export function HomeMoviles({ datos, base, almacenInicial, pilares }: {
   const pOp = v.total ? (100 * operando) / v.total : 0;
   const pTaller = v.total ? (100 * v.paro) / v.total : 0;
   const pExt = v.total ? (100 * v.externos) / v.total : 0;
-  // Vista general: todos los almacenes (los de más equipos en taller primero).
+  // Vista general: todos los almacenes (los de más equipos en Mantto primero).
   // Al filtrar uno, la planta dibuja solo ese almacén, centrado y con todo el detalle.
   const naves = useMemo(() => almacenes
     .filter((a) => !seleccion || a.id === seleccion)
@@ -181,7 +175,7 @@ export function HomeMoviles({ datos, base, almacenInicial, pilares }: {
 
   const qPeriodo = (p: string) => `?periodo=${p}${seleccion ? `&almacen=${seleccion}` : ""}`;
   const hallazgo = alm
-    ? `${alm.nombre}: ${alm.paro} de ${alm.total} equipos en taller${masAntiguo ? `; el más antiguo lleva ${masAntiguo.dias} días` : ""}`
+    ? `${alm.nombre}: ${alm.paro} de ${alm.total} equipos en Mantto${masAntiguo ? `; el más antiguo lleva ${masAntiguo.dias} días` : ""}`
     : datos.hallazgo;
   const enlaceInd = `${base}/indicadores${alm ? `?almacen=${alm.id}` : ""}`;
   const periodoAnalisis = periodo.v === "hoy" ? "7d" : periodo.v;
@@ -197,20 +191,16 @@ export function HomeMoviles({ datos, base, almacenInicial, pilares }: {
 
   const filtros = (
     <div className="flex flex-wrap items-center gap-2">
-      {pilares.length > 1 && (
-        <Filtro id="home-pilar" etiqueta="Pilar" value={base.split("/").pop()!} onChange={(v) => router.push(`/p/${v}/resumen`)}>
-          {pilares.map((p) => <option key={p.valor} value={p.valor}>{p.etiqueta}</option>)}
-        </Filtro>
-      )}
       <Filtro id="home-almacen" etiqueta="Almacén" value={seleccion ?? ""} onChange={(v) => elegir(v || null)}>
         <option value="">Todos</option>
         {ordenados.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
       </Filtro>
-      <Filtro id="home-periodo" etiqueta="Periodo" value={periodo.v} onChange={(v) => router.push(qPeriodo(v), { scroll: false })}>
-        <option value="hoy">Hoy</option>
-        <option value="7d">7 días</option>
-        <option value="30d">30 días</option>
-      </Filtro>
+      <nav aria-label="Periodo" className="inline-flex rounded-full border border-borde/60 bg-vidrio p-1 backdrop-blur-xl">
+        {[["hoy", "Hoy"], ["7d", "7 días"], ["30d", "30 días"]].map(([p, t]) => (
+          <Link key={p} href={qPeriodo(p)} scroll={false} aria-current={periodo.v === p ? "true" : undefined}
+            className={`flex min-h-9 items-center rounded-full px-3.5 text-[14px] ${periodo.v === p ? "bg-tinta font-semibold text-sobre-tinta" : "text-suave hover:text-tinta"}`}>{t}</Link>
+        ))}
+      </nav>
     </div>
   );
 
@@ -230,7 +220,7 @@ export function HomeMoviles({ datos, base, almacenInicial, pilares }: {
         {alm && <button type="button" onClick={() => elegir(null)} className="chip cursor-pointer bg-papel text-tinta hover:bg-panel-2" aria-label="Quitar filtro de almacén">{alm.nombre} ×</button>}
       </div>
       <p className="mt-1 text-[38px] font-semibold leading-none tracking-tight tabular-nums">{num(v.total)}</p>
-      <div className="mt-4 flex h-1.5 gap-[3px] overflow-hidden rounded-full bg-panel-2" role="img" aria-label={`${pct(pOp)} operando, ${pct(pTaller)} en taller`}>
+      <div className="mt-4 flex h-1.5 gap-[3px] overflow-hidden rounded-full bg-panel-2" role="img" aria-label={`${pct(pOp)} operando, ${pct(pTaller)} en Mantto`}>
         <span className="rounded-full bg-ok" style={{ width: `${pOp}%` }} />
         <span className="rounded-full bg-paro" style={{ width: `${pTaller}%` }} />
       </div>
@@ -238,11 +228,11 @@ export function HomeMoviles({ datos, base, almacenInicial, pilares }: {
         <div className="grid grid-cols-[12px_1fr_44px_52px] items-center gap-1 py-1"><span className="h-2 w-2 rounded-full bg-ok" /><dt className="text-suave">Operando</dt><dd className="text-right tabular-nums">{num(operando)}</dd><dd className="text-right tabular-nums">{pct(pOp)}</dd></div>
         <button type="button" onClick={() => setTaller(true)} aria-haspopup="dialog"
           className="-mx-2 grid w-[calc(100%+16px)] cursor-pointer grid-cols-[12px_1fr_44px_52px_10px] items-center gap-1 rounded-xl bg-paro-suave px-2 py-1 text-left hover:bg-paro-hover">
-          <span className="h-2 w-2 rounded-full bg-paro" /><span className="text-paro-texto">En taller</span><span className="text-right tabular-nums">{v.paro}</span><span className="text-right tabular-nums">{pct(pTaller)}</span><span className="text-suave" aria-hidden="true">›</span>
+          <span className="h-2 w-2 rounded-full bg-paro" /><span className="text-paro-texto">En Mantto</span><span className="text-right tabular-nums">{v.paro}</span><span className="text-right tabular-nums">{pct(pTaller)}</span><span className="text-suave" aria-hidden="true">›</span>
         </button>
         <div className="grid grid-cols-[12px_1fr_44px_52px] items-center gap-1 py-1"><span className="h-2 w-2 rounded-full bg-renta" /><dt className="text-suave">Renta / leasing</dt><dd className="text-right tabular-nums">{v.externos}</dd><dd className="text-right tabular-nums">{pct(pExt)}</dd></div>
       </dl>
-      <button type="button" onClick={() => setTaller(true)} aria-haspopup="dialog" className="enlace mt-3 cursor-pointer text-[14px]">Ver equipos en taller ›</button>
+      <button type="button" onClick={() => setTaller(true)} aria-haspopup="dialog" className="enlace mt-3 cursor-pointer text-[14px]">Ver equipos en Mantto ›</button>
     </div>
   );
 
@@ -271,7 +261,7 @@ export function HomeMoviles({ datos, base, almacenInicial, pilares }: {
     <Medidor key="b" etiqueta="MTBF · entre fallas" texto={horas(ind?.mtbf ?? null)} meta={ind && ind.mtbf === null ? `sin fallas en ${periodo.nombre}` : metas.mtbf ? `meta ${metas.mtbf} h` : "sin meta definida"} href={enlaceInd}
       frac={ind?.mtbf != null ? (metas.mtbf ? ind.mtbf / metas.mtbf : 1) : null} tono={ind?.mtbf == null || metas.mtbf == null ? "neutro" : ind.mtbf >= metas.mtbf ? "ok" : "alerta"} />,
   ];
-  const panel = <PanelTaller abierto={taller} onCerrar={cerrarTaller} titulo={`En taller${alm ? ` · ${alm.nombre}` : ""}`} lista={v.taller} total={v.paro} base={base} almacen={alm?.nombre ?? null} />;
+  const panel = <PanelTaller abierto={taller} onCerrar={cerrarTaller} titulo={`En Mantto${alm ? ` · ${alm.nombre}` : ""}`} lista={v.taller} total={v.paro} base={base} almacen={alm?.nombre ?? null} />;
 
   if (modo === null) return <div className="esqueleto h-[calc(100dvh-96px)] min-h-[560px]" aria-hidden="true" />;
 
@@ -310,7 +300,7 @@ export function HomeMoviles({ datos, base, almacenInicial, pilares }: {
       <div className="grid gap-4 md:grid-cols-2">
         {panelFlota}
         <section className={`p-5 ${VIDRIO}`} aria-labelledby="alm-tit">
-          <h2 id="alm-tit" className="text-[15px] font-semibold">Almacenes con equipos en taller</h2>
+          <h2 id="alm-tit" className="text-[15px] font-semibold">Almacenes con equipos en Mantto</h2>
           <ul className="mt-3 space-y-1">
             {almacenes.filter((a) => a.paro > 0).slice(0, 12).map((a) => (
               <li key={a.id}>

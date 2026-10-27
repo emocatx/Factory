@@ -11,7 +11,7 @@ type Paso = { titulo: string; texto: string };
 function pasosDe(rol: Rol, empresa: string, nombre: string): Paso[] {
   const inicio: Paso = { titulo: `Hola, ${nombre}`, texto: `Te damos la bienvenida a Factory de ${empresa}. Entraste como ${etiquetaRol(rol).toLowerCase()}. Este recorrido toma un minuto.` };
   const pilares: Paso = { titulo: "Pilares y secciones", texto: "Arriba eliges el pilar (Móviles, Críticos, Infraestructura). Dentro de cada uno, las pestañas te llevan a Resumen, Órdenes, Registro, Indicadores y Análisis." };
-  const resumen: Paso = { titulo: "El Resumen", texto: "En la computadora verás la planta en 3D: los equipos en taller van en rojo y los que operan en amarillo con torreta verde. En el celular verás las mismas cifras en tarjetas. Toca \"En taller\" para ver qué equipos están detenidos." };
+  const resumen: Paso = { titulo: "El Resumen", texto: "En la computadora verás la planta en 3D: los equipos en Mantto van en rojo y los que operan en amarillo con torreta verde. En el celular verás las mismas cifras en tarjetas. Toca \"En Mantto\" para ver qué equipos están detenidos." };
   const final: Paso = { titulo: "Listo", texto: "Puedes volver a ver este recorrido cuando quieras desde tu menú, arriba a la derecha." };
   const porRol: Record<Rol, Paso[]> = {
     admin: [resumen, { titulo: "Administración", texto: "En Configuración defines almacenes, equipos, catálogos de falla y metas. En Usuarios das de alta a cualquier rol." }],

@@ -87,7 +87,7 @@ function Calles({ p, m }: { p: Paleta; m: Malla }) {
   );
 }
 
-/** Marcador rojo que flota sobre el taller del almacén con más equipos en taller. */
+/** Marcador rojo que flota sobre el taller del almacén con más equipos en Mantto. */
 function Alerta({ p, pos }: { p: Paleta; pos: [number, number, number] }) {
   const ref = useRef<Group>(null);
   useFrame(({ clock }) => {
@@ -133,7 +133,7 @@ function Enfoque({ w, d, clave }: { w: number; d: number; clave: string }) {
 
 // Etiquetas HTML sobre cada nave, proyectando su punto 3D a la pantalla.
 // (Se evita <Html> de drei: con React 19 a veces desmonta la primera etiqueta.)
-// Con muchos almacenes, en la vista general solo llevan etiqueta los que tienen equipos en taller;
+// Con muchos almacenes, en la vista general solo llevan etiqueta los que tienen equipos en Mantto;
 // los demás la muestran al acercarse o al elegirlos (si no, se enciman).
 const ZOOM_ETIQUETAS = 16;
 
@@ -218,8 +218,8 @@ export default function Escena3D({ naves, seleccion, onSelect, onTaller, quieto,
             className={`pointer-events-auto absolute left-0 top-0 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border bg-vidrio-fuerte py-0.5 pl-0.5 pr-2.5 font-medium text-tinta shadow-[0_4px_16px_rgb(0_0_0/0.08)] backdrop-blur-md hover:z-10 hover:border-azul ${n.paro > 0 ? "text-[12px]" : "text-[11px] text-suave"} ${seleccion === n.id ? "z-10 border-azul" : i === peor && n.paro > 0 ? "border-paro/60" : "border-borde/50"}`}>
             <span className={`rounded-full ring-inset ring-panel ${n.paro > 0 ? "h-5 w-5 bg-paro ring-[5px]" : "h-4 w-4 bg-ok ring-[4px]"}`} aria-hidden="true" />
             <span>
-              {i === peor && n.paro > 0 && <small className="block text-[10px] font-semibold leading-none text-paro-texto">Más equipos en taller</small>}
-              {n.nombre}{n.paro > 0 ? ` · ${n.paro} en taller` : ""}
+              {i === peor && n.paro > 0 && <small className="block text-[10px] font-semibold leading-none text-paro-texto">Más equipos en Mantto</small>}
+              {n.nombre}{n.paro > 0 ? ` · ${n.paro} en Mantto` : ""}
             </span>
           </button>
         ))}

@@ -29,7 +29,7 @@ export type Resumen = {
 export type Almacen = Resumen & {
   id: string;
   nombre: string;
-  /** Modelo de cada equipo en taller y de cada uno que opera ([modelo, rentado]). */
+  /** Modelo de cada equipo en Mantto y de cada uno que opera ([modelo, rentado]). */
   detenidos: string[];
   operando: [string, boolean][];
   ind: Ind | null;
@@ -195,8 +195,8 @@ export async function datosHome({ pilar, periodo: pv, rol, idUsuario, metas }: {
   const diasDe = (iso: string) => Math.floor((ahora - new Date(iso).getTime()) / DIA);
   const puedeRegistrar = rol !== "lector" && rol !== "gerente";
   let hallazgo = peor && peor.paro > 0
-    ? `${peor.nombre} tiene ${peor.paro} de ${peor.total} equipos en taller (${Math.round((100 * peor.paro) / peor.total)}%)`
-    : "Ningún equipo en taller";
+    ? `${peor.nombre} tiene ${peor.paro} de ${peor.total} equipos en Mantto (${Math.round((100 * peor.paro) / peor.total)}%)`
+    : "Ningún equipo en Mantto";
   let accion: Accion = puedeRegistrar ? { texto: "Registrar falla", href: `${base}/registro` } : { texto: "Ver indicadores", href: `${base}/indicadores` };
   if ((rol === "supervisor" || rol === "coordinador") && sinAsignar.length) {
     hallazgo = `${sinAsignar.length} orden${sinAsignar.length === 1 ? "" : "es"} sin asignar; la más antigua lleva ${diasDe(sinAsignar[0].fecha_ingreso)} días`;
