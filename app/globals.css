@@ -29,19 +29,22 @@
   --color-paro: #e5484d;
   --color-paro-texto: #b3262b;
   --color-paro-suave: #fdecec;
-  --color-alerta: #f08c00;
-  --color-alerta-texto: #8a4b00;
-  --color-alerta-suave: #fff1dc;
-  --color-ok: #2f9e62;
-  --color-ok-texto: #1f6f43;
-  --color-ok-suave: #e7f5ec;
+  --color-alerta: #c2410c;      /* naranja: alerta (distinto del ámbar de renta) */
+  --color-alerta-texto: #9a3412;
+  --color-alerta-suave: #ffedd5;
+  --color-ok: #1f9d55;          /* verde: opera / bien (el mismo de los equipos en 3D) */
+  --color-ok-texto: #166534;
+  --color-ok-suave: #e6f6ec;
   --color-info-texto: #1d4fa8;
   --color-info-suave: #e8eefb;
 
   /* Roles agregados para el modo oscuro (en claro valen lo mismo que los colores fijos de antes) */
   --color-campo: #ffffff;              /* fondo de campos y listas */
-  --color-vidrio: rgb(255 255 255 / 0.8);        /* paneles que flotan sobre la planta 3D */
-  --color-vidrio-fuerte: rgb(255 255 255 / 0.9);
+  --color-vidrio: rgb(255 255 255 / 0.62);       /* paneles que flotan sobre la planta 3D */
+  --color-vidrio-fuerte: rgb(255 255 255 / 0.84);
+  --color-vidrio-borde: rgb(255 255 255 / 0.75); /* canto claro del vidrio */
+  --color-vidrio-brillo: rgb(255 255 255 / 0.95); /* reflejo de la arista superior */
+  --color-vidrio-sombra: rgb(32 36 52 / 0.10);
   --color-sobre-tinta: #ffffff;        /* texto sobre una superficie bg-tinta (botón activo) */
   --color-sobre-azul: #ffffff;         /* texto sobre el color de acción */
   --color-azul-hover: #0077ed;
@@ -49,8 +52,9 @@
   --color-sec-hover: #e1e1e6;
   --color-paro-hover: #fbdcdc;
   --color-placeholder: #86868b;
-  --color-borde-hover: #a1a1a6;
-  --color-renta: #d99a00;
+  --color-borde-hover: #8e8e93;
+  --color-borde-campo: #8e8e93;        /* contorno de campos (3.3:1 contra blanco) */
+  --color-renta: #a16207;               /* ámbar: equipos de renta (4.9:1 sobre blanco) */
   --color-reja: #f0f0f2;               /* rejilla de gráficas */
 }
 
@@ -73,17 +77,20 @@
   --color-paro: #ff5a5f;
   --color-paro-texto: #ff8a8e;
   --color-paro-suave: #3a1c1f;
-  --color-alerta: #fbbf24;
-  --color-alerta-texto: #fcd34d;
-  --color-alerta-suave: #3a2e12;
-  --color-ok: #3dd6ac;
-  --color-ok-texto: #6ee7c3;
-  --color-ok-suave: #12302a;
+  --color-alerta: #fb923c;
+  --color-alerta-texto: #fdba74;
+  --color-alerta-suave: #3a2212;
+  --color-ok: #4ade80;                 /* verde de estado; el menta queda solo para acción y selección */
+  --color-ok-texto: #86efac;
+  --color-ok-suave: #10301c;
   --color-info-texto: #9db8ff;
   --color-info-suave: #1c2440;
   --color-campo: #111416;
-  --color-vidrio: rgb(24 27 29 / 0.62);
-  --color-vidrio-fuerte: rgb(24 27 29 / 0.86);
+  --color-vidrio: rgb(18 21 23 / 0.58);
+  --color-vidrio-fuerte: rgb(18 21 23 / 0.84);
+  --color-vidrio-borde: rgb(255 255 255 / 0.08);
+  --color-vidrio-brillo: rgb(255 255 255 / 0.07);
+  --color-vidrio-sombra: rgb(0 0 0 / 0.45);
   --color-sobre-tinta: #0b0c0d;
   --color-sobre-azul: #06140f;
   --color-azul-hover: #5be0bb;
@@ -91,8 +98,9 @@
   --color-sec-hover: #2a2f33;
   --color-paro-hover: #4a2226;
   --color-placeholder: #6f7774;
-  --color-borde-hover: #3e464b;
-  --color-renta: #f5b82e;
+  --color-borde-hover: #4a5257;
+  --color-borde-campo: #626b70;
+  --color-renta: #facc15;
   --color-reja: #23282b;
 }
 
@@ -132,13 +140,26 @@ form[data-cargando] ~ * { opacity: 0.5; pointer-events: none; }
 }
 
 @utility caja { @apply rounded-caja bg-papel; }
+/* Vidrio esmerilado (paneles sobre la planta 3D): fondo translúcido con desenfoque, canto fino,
+   reflejo en la arista superior y sombra suave. Mismo recurso en claro y oscuro; cambian los tokens. */
+@utility vidrio {
+  background-color: var(--color-vidrio);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  backdrop-filter: blur(22px) saturate(170%);
+  border: 1px solid var(--color-vidrio-borde);
+  box-shadow: inset 0 1px 0 var(--color-vidrio-brillo), 0 12px 32px -8px var(--color-vidrio-sombra);
+}
+@utility vidrio-fuerte {
+  @apply vidrio;
+  background-color: var(--color-vidrio-fuerte);
+}
 @utility caja-panel { @apply rounded-caja bg-panel; }
 @utility tarjeta-enlace {
   @apply rounded-caja bg-panel transition-[box-shadow,transform] duration-300 ease-out hover:shadow-[0_4px_28px_rgb(0_0_0/0.08)] motion-safe:hover:scale-[1.01];
 }
 @utility etiqueta { @apply mb-1.5 block text-sm font-medium text-suave; }
 @utility campo {
-  @apply min-h-12 w-full rounded-[var(--radius-control)] border border-borde bg-campo px-4 py-2.5 text-[17px] text-tinta outline-none
+  @apply min-h-12 w-full rounded-[var(--radius-control)] border border-borde-campo bg-campo px-4 py-2.5 text-[17px] text-tinta outline-none
     transition-[border-color,box-shadow] duration-150 placeholder:text-placeholder hover:border-borde-hover
     focus:border-azul focus:ring-4 focus:ring-azul/20 disabled:cursor-not-allowed disabled:bg-papel disabled:text-suave
     aria-invalid:border-paro aria-invalid:focus:ring-paro/20;

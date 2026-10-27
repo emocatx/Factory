@@ -184,10 +184,10 @@ export default function Escena3D({ naves, seleccion, onSelect, onTaller, quieto,
         <OrthographicCamera makeDefault position={OFFSET_CAMARA} zoom={10} near={-300} far={600} />
         <OrbitControls makeDefault enablePan={false} enableZoom minZoom={3} maxZoom={48} minPolarAngle={Math.PI / 5} maxPolarAngle={Math.PI / 3} target={[0, 0, 0]} />
         <ambientLight intensity={p.ambiente} />
-        <hemisphereLight args={oscuro ? ["#bfefe2", "#0a0e1c", 0.35] : ["#fff6e8", "#c9d3e2", 0.35]} />
+        <hemisphereLight args={oscuro ? ["#d3dbe0", "#0a0d10", 0.35] : ["#fff6e8", "#c9d3e2", 0.35]} />
         <directionalLight position={[16, 32, 22]} intensity={p.luz} castShadow shadow-mapSize={[2048, 2048]} shadow-bias={-0.0003} shadow-normalBias={0.02}
           shadow-camera-left={-sombra} shadow-camera-right={sombra} shadow-camera-top={sombra} shadow-camera-bottom={-sombra} shadow-camera-far={200} />
-        <directionalLight position={[-18, 14, -20]} intensity={oscuro ? 0.5 : 0.35} color={oscuro ? "#3dd6ac" : "#cfe0ff"} />
+        <directionalLight position={[-18, 14, -20]} intensity={oscuro ? 0.5 : 0.35} color={oscuro ? "#8aa3b8" : "#cfe0ff"} />
         <Environment resolution={128} environmentIntensity={p.env}>
           <Lightformer intensity={2.5} position={[0, 12, 0]} rotation-x={Math.PI / 2} scale={[30, 30, 1]} />
           <Lightformer intensity={1.2} position={[-20, 4, 10]} rotation-y={Math.PI / 2} scale={[20, 6, 1]} />

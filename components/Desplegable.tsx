@@ -136,7 +136,7 @@ export function Desplegable({
         onClick={() => (abierto ? setAbierto(false) : abrir())}
         className={`flex w-full cursor-pointer items-center gap-2.5 rounded-[14px] border bg-campo text-left text-tinta outline-none transition-[border-color,box-shadow] duration-150
           ${compacto ? "min-h-11 min-w-44 px-3.5 text-[15px]" : "min-h-12 px-4 text-[17px]"}
-          ${invalido ? "border-paro" : abierto ? "border-azul ring-4 ring-azul/15" : "border-borde hover:border-borde-hover"}
+          ${invalido ? "border-paro" : abierto ? "border-azul ring-4 ring-azul/15" : "border-borde-campo hover:border-borde-hover"}
           focus-visible:border-azul focus-visible:ring-4 focus-visible:ring-azul/20 disabled:cursor-not-allowed disabled:bg-papel disabled:text-suave`}
       >
         {icono && <span aria-hidden="true" className="shrink-0 text-tinta/80">{icono}</span>}

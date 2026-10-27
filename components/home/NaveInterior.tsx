@@ -203,7 +203,7 @@ function Operacion({ nave, p, i, t, simple }: { nave: NaveEscena; p: Paleta; i: 
       {Array.from({ length: t.pasillos }, (_, k) => (
         <group key={k}>
           <Plano x={0} z={zPasillo(t, k) - 0.55} w={t.ancho - 0.6} d={0.05} color={p.amarillo} />
-          <Plano x={0} z={zPasillo(t, k)} w={t.ancho - 1.2} d={0.5} color={p.ok} brillo opacidad={0.1} />
+          <Plano x={0} z={zPasillo(t, k)} w={t.ancho - 1.2} d={0.5} color={p.oscuro ? "#ffffff" : p.estructuraClara} brillo opacidad={0.06} />
         </group>
       ))}
       <Muro x={0} z={t.nAtras - 0.1} w={t.ancho + 0.2} d={0.2} alto={ALTO} p={p} />

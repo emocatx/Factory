@@ -14,7 +14,7 @@ const num = (n: number) => n.toLocaleString("es-MX");
 const pct = (n: number | null) => (n === null ? "—" : `${n.toFixed(1)}%`);
 const horas = (h: number | null) => (h === null ? "—" : h < 48 ? `${h.toFixed(1)} h` : `${num(Math.round(h))} h`);
 /** Superficie de vidrio para lo que flota sobre la escena (en 2D es una tarjeta blanca normal). */
-const VIDRIO = "rounded-[22px] bg-vidrio backdrop-blur-xl lg:shadow-[0_8px_24px_rgb(0_0_0/0.06)]";
+const VIDRIO = "rounded-[22px] vidrio";
 
 function Cargando() {
   return <div className="flex h-full items-center justify-center text-[14px] text-suave">Cargando la planta…</div>;
@@ -88,7 +88,7 @@ function PanelTaller({ abierto, onCerrar, titulo, lista, total, base, almacen, q
     <>
       <div className="fixed inset-0 z-40 bg-black/20 lg:hidden" onClick={onCerrar} aria-hidden="true" />
       <aside ref={ref} role="dialog" aria-modal="true" aria-labelledby="taller-tit"
-        className="fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col rounded-t-[24px] bg-panel shadow-[0_-12px_40px_rgb(0_0_0/0.18)] lg:absolute lg:inset-x-auto lg:bottom-4 lg:right-4 lg:top-4 lg:max-h-none lg:w-[380px] lg:rounded-[24px] lg:bg-vidrio-fuerte lg:backdrop-blur-2xl">
+        className="fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col rounded-t-[24px] bg-panel shadow-[0_-12px_40px_rgb(0_0_0/0.18)] lg:absolute lg:inset-x-auto lg:bottom-4 lg:right-4 lg:top-4 lg:max-h-none lg:w-[380px] lg:rounded-[24px] lg:vidrio-fuerte">
         <div className="flex items-start gap-3 p-5 pb-3">
           <div className="min-w-0 flex-1">
             <h2 id="taller-tit" className="text-[20px] font-semibold">{titulo}</h2>
@@ -122,7 +122,7 @@ function PanelTaller({ abierto, onCerrar, titulo, lista, total, base, almacen, q
 /** Filtro en píldora: etiqueta tenue y el valor elegido en negritas, con un select nativo (teclado y lector de pantalla). */
 function Filtro({ id, etiqueta, value, onChange, children }: { id: string; etiqueta: string; value: string; onChange: (v: string) => void; children: React.ReactNode }) {
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-borde/60 bg-vidrio py-1 pl-4 pr-1 backdrop-blur-xl">
+    <div className="inline-flex items-center gap-2 rounded-full vidrio py-1 pl-4 pr-1">
       <label htmlFor={id} className="text-[13px] text-suave">{etiqueta}</label>
       <select id={id} value={value} onChange={(e) => onChange(e.target.value)}
         className="selector min-h-9 w-auto max-w-[220px] truncate rounded-full border-0 bg-panel-2 py-0 pl-3.5 text-[14px] font-semibold text-tinta hover:bg-borde/60">
@@ -198,7 +198,7 @@ export function HomeMoviles({ datos, base, almacenInicial }: { datos: DatosHome;
         <option value="">Todos</option>
         {ordenados.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
       </Filtro>
-      <nav aria-label="Periodo" className="inline-flex rounded-full border border-borde/60 bg-vidrio p-1 backdrop-blur-xl">
+      <nav aria-label="Periodo" className="inline-flex rounded-full vidrio p-1">
         {[["hoy", "Hoy"], ["7d", "7 días"], ["30d", "30 días"]].map(([p, t]) => (
           <Link key={p} href={qPeriodo(p)} scroll={false} aria-current={periodo.v === p ? "true" : undefined}
             className={`flex min-h-9 items-center rounded-full px-3.5 text-[14px] ${periodo.v === p ? "bg-tinta font-semibold text-sobre-tinta" : "text-suave hover:text-tinta"}`}>{t}</Link>
