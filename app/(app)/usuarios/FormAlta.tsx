@@ -33,7 +33,7 @@ export function FormAlta({ roles, disponibles, rolInicial, alcance, sitio }: Pro
         <div role="radiogroup" aria-label="Forma de alta" className="inline-flex rounded-full bg-papel p-1 text-[14px]">
           {([["clave", "Contraseña temporal"], ["correo", "Invitación por correo"]] as const).map(([v, t]) => (
             <button key={v} type="button" role="radio" aria-checked={modo === v} onClick={() => setModo(v)}
-              className={`min-h-9 cursor-pointer rounded-full px-4 ${modo === v ? "bg-tinta font-medium text-white" : "text-tinta hover:bg-panel-2"}`}>{t}</button>
+              className={`min-h-9 cursor-pointer rounded-full px-4 ${modo === v ? "bg-tinta font-medium text-sobre-tinta" : "text-tinta hover:bg-panel-2"}`}>{t}</button>
           ))}
         </div>
       </div>
@@ -48,7 +48,7 @@ export function FormAlta({ roles, disponibles, rolInicial, alcance, sitio }: Pro
           <legend className="etiqueta">Pilares (administrador y gerente ven todos)</legend>
           <div className="flex flex-wrap gap-1.5">
             {PILARES.filter((p) => disponibles.includes(p.valor)).map((p) => (
-              <label key={p.valor} className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full bg-papel px-3 text-sm has-[:checked]:bg-tinta has-[:checked]:text-white">
+              <label key={p.valor} className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full bg-papel px-3 text-sm has-[:checked]:bg-tinta has-[:checked]:text-sobre-tinta">
                 <input type="checkbox" name="pilares" value={p.valor} defaultChecked className="sr-only" /> {p.etiqueta}
               </label>
             ))}

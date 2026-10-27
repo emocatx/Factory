@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { Almacen, DatosHome, Ind } from "@/lib/home";
 import { indicadoresAlmacen } from "@/app/(app)/p/[pilar]/resumen/acciones";
+import { useTema } from "@/components/Tema";
 
 // La escena solo se descarga en escritorio con WebGL (ver useModoVista).
 const Escena3D = dynamic(() => import("./Escena3D"), { ssr: false, loading: () => <Cargando /> });
@@ -13,7 +14,7 @@ const num = (n: number) => n.toLocaleString("es-MX");
 const pct = (n: number | null) => (n === null ? "—" : `${n.toFixed(1)}%`);
 const horas = (h: number | null) => (h === null ? "—" : h < 48 ? `${h.toFixed(1)} h` : `${num(Math.round(h))} h`);
 /** Superficie de vidrio para lo que flota sobre la escena (en 2D es una tarjeta blanca normal). */
-const VIDRIO = "rounded-[22px] bg-white/80 backdrop-blur-xl lg:shadow-[0_8px_24px_rgb(0_0_0/0.06)]";
+const VIDRIO = "rounded-[22px] bg-vidrio backdrop-blur-xl lg:shadow-[0_8px_24px_rgb(0_0_0/0.06)]";
 
 function Cargando() {
   return <div className="flex h-full items-center justify-center text-[14px] text-suave">Cargando la planta…</div>;
@@ -42,7 +43,7 @@ function Medidor({ etiqueta, texto, meta, frac, tono, href }: { etiqueta: string
   const f = frac === null ? 0 : Math.max(0, Math.min(1, frac));
   const trazo = { ok: "stroke-ok", alerta: "stroke-alerta", paro: "stroke-paro", neutro: "stroke-suave" }[tono];
   return (
-    <Link href={href} className={`flex items-center gap-3 p-2.5 pr-4 transition-colors hover:bg-white ${VIDRIO}`}>
+    <Link href={href} className={`flex items-center gap-3 p-2.5 pr-4 transition-colors hover:bg-vidrio-fuerte ${VIDRIO}`}>
       <svg viewBox="0 0 64 64" className="h-14 w-14 shrink-0" aria-hidden="true">
         <circle cx="32" cy="32" r={r} fill="none" strokeWidth="5" strokeLinecap="round" className="stroke-panel-2" strokeDasharray={`${arco} ${c}`} transform="rotate(135 32 32)" />
         <circle cx="32" cy="32" r={r} fill="none" strokeWidth="5" strokeLinecap="round" className={`${trazo} transition-[stroke-dasharray] duration-500`} strokeDasharray={`${arco * f} ${c}`} transform="rotate(135 32 32)" />
@@ -60,7 +61,7 @@ function Medidor({ etiqueta, texto, meta, frac, tono, href }: { etiqueta: string
 /** Tarjeta de acceso con dato: lleva a la herramienta que ya existe. */
 function Acceso({ href, titulo, valor, pie, chico }: { href: string; titulo: string; valor: string; pie: React.ReactNode; chico?: boolean }) {
   return (
-    <Link href={href} className={`block p-4 transition-colors hover:bg-white ${VIDRIO}`}>
+    <Link href={href} className={`block p-4 transition-colors hover:bg-vidrio-fuerte ${VIDRIO}`}>
       <span className="flex items-center justify-between text-[14px] font-semibold">{titulo} <span className="text-suave" aria-hidden="true">›</span></span>
       <span className={`mt-2 block font-semibold leading-tight tabular-nums ${chico ? "line-clamp-2 text-[17px]" : "text-[28px] leading-none"}`}>{valor}</span>
       <span className="mt-1.5 block text-[12px] text-suave">{pie}</span>
@@ -85,7 +86,7 @@ function PanelTaller({ abierto, onCerrar, titulo, lista, total, base, almacen }:
     <>
       <div className="fixed inset-0 z-40 bg-black/20 lg:hidden" onClick={onCerrar} aria-hidden="true" />
       <aside ref={ref} role="dialog" aria-modal="true" aria-labelledby="taller-tit"
-        className="fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col rounded-t-[24px] bg-white shadow-[0_-12px_40px_rgb(0_0_0/0.18)] lg:absolute lg:inset-x-auto lg:bottom-4 lg:right-4 lg:top-4 lg:max-h-none lg:w-[380px] lg:rounded-[24px] lg:bg-white/90 lg:backdrop-blur-2xl">
+        className="fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col rounded-t-[24px] bg-panel shadow-[0_-12px_40px_rgb(0_0_0/0.18)] lg:absolute lg:inset-x-auto lg:bottom-4 lg:right-4 lg:top-4 lg:max-h-none lg:w-[380px] lg:rounded-[24px] lg:bg-vidrio-fuerte lg:backdrop-blur-2xl">
         <div className="flex items-start gap-3 p-5 pb-3">
           <div className="min-w-0 flex-1">
             <h2 id="taller-tit" className="text-[20px] font-semibold">{titulo}</h2>
@@ -118,6 +119,7 @@ function PanelTaller({ abierto, onCerrar, titulo, lista, total, base, almacen }:
 
 export function HomeMoviles({ datos, base, almacenInicial }: { datos: DatosHome; base: string; almacenInicial: string | null }) {
   const { modo, quieto } = useModoVista();
+  const oscuro = useTema() === "oscuro";
   const [seleccion, setSeleccion] = useState<string | null>(almacenInicial);
   const [taller, setTaller] = useState(false);
   const [indCache, setIndCache] = useState<Record<string, Ind>>({});
@@ -174,14 +176,14 @@ export function HomeMoviles({ datos, base, almacenInicial }: { datos: DatosHome;
   const filtros = (
     <div className="flex flex-wrap items-center gap-2">
       <label className="sr-only" htmlFor="home-almacen">Almacén</label>
-      <select id="home-almacen" value={seleccion ?? ""} onChange={(e) => elegir(e.target.value || null)} className="selector min-h-10 w-auto rounded-full bg-white/90 text-[14px]">
+      <select id="home-almacen" value={seleccion ?? ""} onChange={(e) => elegir(e.target.value || null)} className="selector min-h-10 w-auto rounded-full bg-vidrio-fuerte text-[14px]">
         <option value="">Todos los almacenes</option>
         {ordenados.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
       </select>
-      <nav aria-label="Periodo" className="inline-flex rounded-full bg-white/80 p-1 backdrop-blur-xl">
+      <nav aria-label="Periodo" className="inline-flex rounded-full bg-vidrio p-1 backdrop-blur-xl">
         {[["hoy", "Hoy"], ["7d", "7 días"], ["30d", "30 días"]].map(([p, t]) => (
           <Link key={p} href={qPeriodo(p)} scroll={false} aria-current={periodo.v === p ? "true" : undefined}
-            className={`flex min-h-8 items-center rounded-full px-3 text-[13px] ${periodo.v === p ? "bg-tinta font-semibold text-white" : "text-suave hover:text-tinta"}`}>{t}</Link>
+            className={`flex min-h-8 items-center rounded-full px-3 text-[13px] ${periodo.v === p ? "bg-tinta font-semibold text-sobre-tinta" : "text-suave hover:text-tinta"}`}>{t}</Link>
         ))}
       </nav>
     </div>
@@ -210,10 +212,10 @@ export function HomeMoviles({ datos, base, almacenInicial }: { datos: DatosHome;
       <dl className="mt-3 space-y-0.5 text-[14px]">
         <div className="grid grid-cols-[12px_1fr_44px_52px] items-center gap-1 py-1"><span className="h-2 w-2 rounded-full bg-ok" /><dt className="text-suave">Operando</dt><dd className="text-right tabular-nums">{num(operando)}</dd><dd className="text-right tabular-nums">{pct(pOp)}</dd></div>
         <button type="button" onClick={() => setTaller(true)} aria-haspopup="dialog"
-          className="-mx-2 grid w-[calc(100%+16px)] cursor-pointer grid-cols-[12px_1fr_44px_52px_10px] items-center gap-1 rounded-xl bg-paro-suave px-2 py-1 text-left hover:bg-[#fbdcdc]">
+          className="-mx-2 grid w-[calc(100%+16px)] cursor-pointer grid-cols-[12px_1fr_44px_52px_10px] items-center gap-1 rounded-xl bg-paro-suave px-2 py-1 text-left hover:bg-paro-hover">
           <span className="h-2 w-2 rounded-full bg-paro" /><span className="text-paro-texto">En taller</span><span className="text-right tabular-nums">{v.paro}</span><span className="text-right tabular-nums">{pct(pTaller)}</span><span className="text-suave" aria-hidden="true">›</span>
         </button>
-        <div className="grid grid-cols-[12px_1fr_44px_52px] items-center gap-1 py-1"><span className="h-2 w-2 rounded-full bg-[#5e5ce6]" /><dt className="text-suave">Renta / leasing</dt><dd className="text-right tabular-nums">{v.externos}</dd><dd className="text-right tabular-nums">{pct(pExt)}</dd></div>
+        <div className="grid grid-cols-[12px_1fr_44px_52px] items-center gap-1 py-1"><span className="h-2 w-2 rounded-full bg-renta" /><dt className="text-suave">Renta / leasing</dt><dd className="text-right tabular-nums">{v.externos}</dd><dd className="text-right tabular-nums">{pct(pExt)}</dd></div>
       </dl>
       <button type="button" onClick={() => setTaller(true)} aria-haspopup="dialog" className="enlace mt-3 cursor-pointer text-[14px]">Ver equipos en taller ›</button>
     </div>
@@ -252,7 +254,7 @@ export function HomeMoviles({ datos, base, almacenInicial }: { datos: DatosHome;
     // Escritorio: la planta ocupa todo; título, filtros, paneles y medidores flotan encima.
     return (
       <section className="relative h-[calc(100dvh-96px)] min-h-[680px] overflow-hidden rounded-caja bg-papel" aria-label="Resumen de Móviles: planta">
-        <Escena3D naves={naves} seleccion={seleccion} onSelect={elegir} onTaller={abrirTaller} quieto={quieto} />
+        <Escena3D naves={naves} seleccion={seleccion} onSelect={elegir} onTaller={abrirTaller} quieto={quieto} oscuro={oscuro} />
         <div className="pointer-events-none absolute inset-x-5 top-5 z-[2] flex items-start gap-4">
           <div className="pointer-events-auto w-[320px] shrink-0">{titulo}</div>
           <div className="pointer-events-auto mx-auto pt-1">{filtros}</div>

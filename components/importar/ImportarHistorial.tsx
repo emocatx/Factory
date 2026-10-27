@@ -159,7 +159,7 @@ export function ImportarHistorial({ pilar, equipos, almacenes, origenes, modos, 
                   </thead>
                   <tbody>
                     {[...r.cerradas, ...r.abiertas].slice(0, 200).map((o, i) => (
-                      <tr key={i} className="odd:bg-white/60 align-top">
+                      <tr key={i} className="odd:bg-panel/60 align-top">
                         <td className="px-3 py-1.5">{o.equipo}</td>
                         <td className="px-3 py-1.5">{o.almacen || "—"}</td>
                         <td className="whitespace-nowrap px-3 py-1.5 tabular-nums">{fmt(o.fecha_ingreso)}</td>

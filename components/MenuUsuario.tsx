@@ -3,6 +3,7 @@ import { cerrarSesion } from "@/app/login/actions";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { etiquetaRol } from "@/lib/catalogos";
 import type { Rol } from "@/lib/tipos";
+import { InterruptorTema } from "@/components/Tema";
 
 const trazo = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
 const ICONOS: Record<string, React.ReactNode> = {
@@ -35,13 +36,13 @@ export function MenuUsuario({ nombre, correo, rol, empresa, enlaces }: {
   return (
     <details className="relative">
       <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-full bg-papel py-1 pl-1 pr-3 text-sm hover:bg-panel-2" aria-label={`Cuenta de ${nombre}`}>
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-tinta text-[13px] font-semibold text-white" aria-hidden="true">{iniciales}</span>
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-tinta text-[13px] font-semibold text-sobre-tinta" aria-hidden="true">{iniciales}</span>
         <span className="hidden font-medium sm:inline">{nombre.split(" ")[0]}</span>
       </summary>
       <div className="absolute right-0 z-40 mt-2 w-[min(320px,calc(100vw-24px))] rounded-[24px] bg-papel p-1.5 shadow-[0_16px_40px_rgb(17_18_20/0.18)]">
         {/* tarjeta de perfil */}
         <div className="flex items-center gap-3 rounded-[18px] bg-panel p-3">
-          <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-tinta text-[15px] font-semibold text-white" aria-hidden="true">
+          <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-tinta text-[15px] font-semibold text-sobre-tinta" aria-hidden="true">
             {iniciales}
             <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-ok ring-2 ring-panel" />
           </span>
@@ -58,6 +59,7 @@ export function MenuUsuario({ nombre, correo, rol, empresa, enlaces }: {
           {historial.map((e) => <Fila key={e.href} href={e.href} icono="historial" texto={e.texto} />)}
           <div className="mx-3 my-1.5 h-px bg-panel-2" aria-hidden="true" />
           {ajustes.map((e) => <Fila key={e.href} href={e.href} icono={e.href.slice(1)} texto={e.texto} />)}
+          <InterruptorTema />
           <Fila href="?tour=1" icono="recorrido" texto="Ver recorrido de bienvenida" recarga />
         </div>
 

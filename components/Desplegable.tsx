@@ -134,21 +134,21 @@ export function Desplegable({
         aria-describedby={describedBy}
         aria-activedescendant={abierto && activo >= 0 ? `${idLista}-${activo}` : undefined}
         onClick={() => (abierto ? setAbierto(false) : abrir())}
-        className={`flex w-full cursor-pointer items-center gap-2.5 rounded-[14px] border bg-white text-left text-tinta outline-none transition-[border-color,box-shadow] duration-150
+        className={`flex w-full cursor-pointer items-center gap-2.5 rounded-[14px] border bg-campo text-left text-tinta outline-none transition-[border-color,box-shadow] duration-150
           ${compacto ? "min-h-11 min-w-44 px-3.5 text-[15px]" : "min-h-12 px-4 text-[17px]"}
-          ${invalido ? "border-paro" : abierto ? "border-azul ring-4 ring-azul/15" : "border-borde hover:border-[#a1a1a6]"}
+          ${invalido ? "border-paro" : abierto ? "border-azul ring-4 ring-azul/15" : "border-borde hover:border-borde-hover"}
           focus-visible:border-azul focus-visible:ring-4 focus-visible:ring-azul/20 disabled:cursor-not-allowed disabled:bg-papel disabled:text-suave`}
       >
         {icono && <span aria-hidden="true" className="shrink-0 text-tinta/80">{icono}</span>}
         {elegida?.tono && <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${PUNTO[elegida.tono]}`} />}
-        <span className={`min-w-0 flex-1 truncate ${elegida ? "font-medium" : "text-[#86868b]"}`}>{elegida?.etiqueta ?? placeholder}</span>
+        <span className={`min-w-0 flex-1 truncate ${elegida ? "font-medium" : "text-placeholder"}`}>{elegida?.etiqueta ?? placeholder}</span>
         <svg aria-hidden="true" width="14" height="9" viewBox="0 0 14 9" className={`shrink-0 transition-transform duration-200 ${abierto ? "rotate-180" : ""}`}>
           <path d="M1.5 1.5l5.5 5.5 5.5-5.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
 
       {abierto && (
-        <div className="absolute left-0 right-0 z-50 mt-2 min-w-full overflow-hidden rounded-[18px] bg-white shadow-[0_12px_40px_rgb(0_0_0/0.14),0_0_0_1px_rgb(0_0_0/0.04)] motion-safe:animate-[entrar_160ms_ease-out]">
+        <div className="absolute left-0 right-0 z-50 mt-2 min-w-full overflow-hidden rounded-[18px] bg-panel shadow-[0_12px_40px_rgb(0_0_0/0.14),0_0_0_1px_rgb(0_0_0/0.04)] motion-safe:animate-[entrar_160ms_ease-out]">
           {conBuscador && (
             <div className="border-b border-papel p-2">
               <input autoFocus value={filtro} onChange={(e) => { setFiltro(e.target.value); setActivo(0); }} placeholder="Buscar…"

@@ -86,8 +86,8 @@ export default async function Historial({ searchParams }: { searchParams: Promis
     <>
       <Encabezado ruta={[{ href: "/", texto: "Pilares" }]} titulo="Historial general" sub={`Registro de auditoría de ${tenant.nombre_empresa}.`}>
         <nav aria-label="Vista" className="inline-flex rounded-full bg-papel p-1 text-[15px]">
-          <Link href={qs({ vista: "ordenes", p: "" })} aria-current={vista === "ordenes" ? "page" : undefined} className={`inline-flex min-h-10 items-center rounded-full px-4 font-semibold ${vista === "ordenes" ? "bg-tinta text-white" : "text-suave hover:text-tinta"}`}>Órdenes</Link>
-          <Link href={qs({ vista: "bitacora", p: "" })} aria-current={vista === "bitacora" ? "page" : undefined} className={`inline-flex min-h-10 items-center rounded-full px-4 font-semibold ${vista === "bitacora" ? "bg-tinta text-white" : "text-suave hover:text-tinta"}`}>Movimientos</Link>
+          <Link href={qs({ vista: "ordenes", p: "" })} aria-current={vista === "ordenes" ? "page" : undefined} className={`inline-flex min-h-10 items-center rounded-full px-4 font-semibold ${vista === "ordenes" ? "bg-tinta text-sobre-tinta" : "text-suave hover:text-tinta"}`}>Órdenes</Link>
+          <Link href={qs({ vista: "bitacora", p: "" })} aria-current={vista === "bitacora" ? "page" : undefined} className={`inline-flex min-h-10 items-center rounded-full px-4 font-semibold ${vista === "bitacora" ? "bg-tinta text-sobre-tinta" : "text-suave hover:text-tinta"}`}>Movimientos</Link>
         </nav>
       </Encabezado>
 

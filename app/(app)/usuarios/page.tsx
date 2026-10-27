@@ -14,7 +14,7 @@ function Pilares({ marcados, prefijo, disponibles }: { marcados: Pilar[]; prefij
   return (
     <div className="flex flex-wrap gap-1.5">
       {PILARES.filter((p) => disponibles.includes(p.valor)).map((p) => (
-        <label key={p.valor} className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full bg-papel px-3 text-sm has-[:checked]:bg-tinta has-[:checked]:text-white">
+        <label key={p.valor} className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full bg-papel px-3 text-sm has-[:checked]:bg-tinta has-[:checked]:text-sobre-tinta">
           <input type="checkbox" name="pilares" value={p.valor} defaultChecked={marcados.includes(p.valor)} className="sr-only" id={`${prefijo}-${p.valor}`} />
           {p.etiqueta}
         </label>

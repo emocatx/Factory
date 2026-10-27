@@ -24,16 +24,16 @@ export function GraficaTendencia({ datos, grano }: { datos: PuntoTendencia[]; gr
       <div className="h-72 w-full" aria-hidden="true">
         <ResponsiveContainer>
           <BarChart data={filas} margin={{ top: 8, right: 4, left: -20, bottom: 0 }} barGap={3}>
-            <CartesianGrid vertical={false} stroke="#ffffff" strokeWidth={2} />
-            <XAxis dataKey="x" tickLine={false} axisLine={false} fontSize={13} stroke="#55585e" />
-            <YAxis allowDecimals={false} tickLine={false} axisLine={false} fontSize={13} stroke="#55585e" />
+            <CartesianGrid vertical={false} stroke="var(--color-panel)" strokeWidth={2} />
+            <XAxis dataKey="x" tickLine={false} axisLine={false} fontSize={13} stroke="var(--color-suave)" />
+            <YAxis allowDecimals={false} tickLine={false} axisLine={false} fontSize={13} stroke="var(--color-suave)" />
             <Tooltip
-              cursor={{ fill: "#e9e9e6" }}
+              cursor={{ fill: "var(--color-panel-2)" }}
               contentStyle={{ borderRadius: 12, border: 0, fontSize: 14, boxShadow: "0 8px 24px rgb(17 18 20 / 0.14)" }}
               formatter={(v, n) => [v, n === "ingresadas" ? "Ingresos" : "Cierres"]}
             />
-            <Bar dataKey="ingresadas" fill="#f08c00" radius={[6, 6, 0, 0]} maxBarSize={22} isAnimationActive={false} />
-            <Bar dataKey="cerradas" fill="#111214" radius={[6, 6, 0, 0]} maxBarSize={22} isAnimationActive={false} />
+            <Bar dataKey="ingresadas" fill="var(--color-alerta)" radius={[6, 6, 0, 0]} maxBarSize={22} isAnimationActive={false} />
+            <Bar dataKey="cerradas" fill="var(--color-tinta)" radius={[6, 6, 0, 0]} maxBarSize={22} isAnimationActive={false} />
           </BarChart>
         </ResponsiveContainer>
       </div>

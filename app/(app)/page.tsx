@@ -89,7 +89,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
           const contenido = (
             <>
               <div className="flex items-start justify-between gap-3">
-                <MiniPilar pilar={p.valor as Pilar} ancho={104} alto={48} hueco="#ffffff" />
+                <MiniPilar pilar={p.valor as Pilar} ancho={104} alto={48} hueco="var(--color-panel)" />
                 <span className={`chip ${chip.clase}`}>{chip.texto}</span>
               </div>
               <div>

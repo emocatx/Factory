@@ -77,7 +77,7 @@ export function PanelPlanes({ pilar, planes, equipos, almacenes, asignados, alma
           <legend className="etiqueta">Tipo</legend>
           <div className="flex gap-2">
             {TIPOS_PLAN.map((t) => (
-              <label key={t.valor} className={`btn min-h-10 flex-1 px-2 text-[14px] ${nuevo.tipo === t.valor ? "bg-tinta text-white" : "bg-papel hover:bg-panel-2"}`}>
+              <label key={t.valor} className={`btn min-h-10 flex-1 px-2 text-[14px] ${nuevo.tipo === t.valor ? "bg-tinta text-sobre-tinta" : "bg-papel hover:bg-panel-2"}`}>
                 <input type="radio" name="tipo" className="sr-only" checked={nuevo.tipo === t.valor} onChange={() => setNuevo({ ...nuevo, tipo: t.valor })} />
                 {t.etiqueta}
               </label>

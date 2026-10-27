@@ -15,10 +15,10 @@ import {
 export const metadata = { title: "Análisis de falla" };
 
 const COLOR_CUADRANTE: Record<Cuadrante, { punto: string; chip: string }> = {
-  agudo_cronico: { punto: "#e5484d", chip: "bg-paro-suave text-paro-texto" },
-  cronico: { punto: "#f08c00", chip: "bg-alerta-suave text-alerta-texto" },
-  agudo: { punto: "#0071e3", chip: "bg-info-suave text-info-texto" },
-  control: { punto: "#86868b", chip: "bg-panel-2 text-suave" },
+  agudo_cronico: { punto: "var(--color-paro)", chip: "bg-paro-suave text-paro-texto" },
+  cronico: { punto: "var(--color-alerta)", chip: "bg-alerta-suave text-alerta-texto" },
+  agudo: { punto: "var(--color-azul)", chip: "bg-info-suave text-info-texto" },
+  control: { punto: "var(--color-placeholder)", chip: "bg-panel-2 text-suave" },
 };
 
 type Filtros = { linea?: string; periodo?: string; metrica?: string; cruce?: string };
@@ -208,7 +208,7 @@ export default async function Analisis({ params, searchParams }: { params: Promi
                       const a = v ? 0.12 + 0.88 * (v / mx.max) : 0;
                       return (
                         <td key={c.clave} className="h-11 rounded-[10px] text-center tabular-nums"
-                          style={{ background: v ? `rgb(0 113 227 / ${a.toFixed(2)})` : "var(--color-papel)", color: a > 0.55 ? "#fff" : v ? "var(--color-tinta)" : "#a1a1a6", fontWeight: v ? 600 : 400 }}>
+                          style={{ background: v ? `color-mix(in srgb, var(--color-azul) ${Math.round(a * 100)}%, transparent)` : "var(--color-papel)", color: a > 0.55 ? "var(--color-sobre-azul)" : v ? "var(--color-tinta)" : "var(--color-placeholder)", fontWeight: v ? 600 : 400 }}>
                           {v || "·"}
                         </td>
                       );
@@ -256,7 +256,7 @@ function Segmentado({ etiqueta, opciones, actual }: { etiqueta: string; opciones
     <nav aria-label={etiqueta} className="inline-flex rounded-full bg-panel p-1 text-[14px]">
       {opciones.map((o) => (
         <Link key={o.v} href={o.href} aria-current={actual === o.v ? "true" : undefined}
-          className={`inline-flex min-h-9 items-center rounded-full px-4 transition-colors duration-150 ${actual === o.v ? "bg-tinta font-medium text-white" : "text-tinta hover:bg-panel-2"}`}>
+          className={`inline-flex min-h-9 items-center rounded-full px-4 transition-colors duration-150 ${actual === o.v ? "bg-tinta font-medium text-sobre-tinta" : "text-tinta hover:bg-panel-2"}`}>
           {o.t}
         </Link>
       ))}
@@ -278,33 +278,33 @@ function Dispersion({ puntos, limX, limY }: { puntos: PuntoActor[]; limX: number
       <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="Dispersión de frecuencia de fallas contra tiempo medio de reparación">
         {ticks(maxX).map((t) => (
           <g key={`x${t}`}>
-            <line x1={sx(t)} x2={sx(t)} y1={m.t} y2={H - m.b} stroke="#f0f0f2" />
-            <text x={sx(t)} y={H - m.b + 18} textAnchor="middle" fontSize="12" fill="#6e6e73">{t}</text>
+            <line x1={sx(t)} x2={sx(t)} y1={m.t} y2={H - m.b} stroke="var(--color-reja)" />
+            <text x={sx(t)} y={H - m.b + 18} textAnchor="middle" fontSize="12" fill="var(--color-suave)">{t}</text>
           </g>
         ))}
         {ticks(maxY).map((t) => (
           <g key={`y${t}`}>
-            <line x1={m.l} x2={W - m.r} y1={sy(t)} y2={sy(t)} stroke="#f0f0f2" />
-            <text x={m.l - 8} y={sy(t) + 4} textAnchor="end" fontSize="12" fill="#6e6e73">{t}</text>
+            <line x1={m.l} x2={W - m.r} y1={sy(t)} y2={sy(t)} stroke="var(--color-reja)" />
+            <text x={m.l - 8} y={sy(t) + 4} textAnchor="end" fontSize="12" fill="var(--color-suave)">{t}</text>
           </g>
         ))}
-        <line x1={sx(limX)} x2={sx(limX)} y1={m.t} y2={H - m.b} stroke="#1d1d1f" strokeDasharray="4 4" strokeOpacity="0.5" />
-        <line x1={m.l} x2={W - m.r} y1={sy(limY)} y2={sy(limY)} stroke="#1d1d1f" strokeDasharray="4 4" strokeOpacity="0.5" />
-        <text x={W - m.r - 6} y={m.t + 14} textAnchor="end" fontSize="12" fontWeight="600" fill="#b3262b">Agudo y crónico</text>
-        <text x={W - m.r - 6} y={sy(limY) + 16} textAnchor="end" fontSize="12" fontWeight="600" fill="#8a4b00">Crónico</text>
-        <text x={m.l + 6} y={m.t + 14} fontSize="12" fontWeight="600" fill="#1d4fa8">Agudo</text>
+        <line x1={sx(limX)} x2={sx(limX)} y1={m.t} y2={H - m.b} stroke="var(--color-tinta)" strokeDasharray="4 4" strokeOpacity="0.5" />
+        <line x1={m.l} x2={W - m.r} y1={sy(limY)} y2={sy(limY)} stroke="var(--color-tinta)" strokeDasharray="4 4" strokeOpacity="0.5" />
+        <text x={W - m.r - 6} y={m.t + 14} textAnchor="end" fontSize="12" fontWeight="600" fill="var(--color-paro-texto)">Agudo y crónico</text>
+        <text x={W - m.r - 6} y={sy(limY) + 16} textAnchor="end" fontSize="12" fontWeight="600" fill="var(--color-alerta-texto)">Crónico</text>
+        <text x={m.l + 6} y={m.t + 14} fontSize="12" fontWeight="600" fill="var(--color-info-texto)">Agudo</text>
         {puntos.map((x) => (
           <g key={x.clave}>
-            <circle cx={sx(x.fallas)} cy={sy(x.mttr)} r={7} fill={COLOR_CUADRANTE[x.cuadrante].punto} fillOpacity="0.9" stroke="#fff" strokeWidth="2">
+            <circle cx={sx(x.fallas)} cy={sy(x.mttr)} r={7} fill={COLOR_CUADRANTE[x.cuadrante].punto} fillOpacity="0.9" stroke="var(--color-panel)" strokeWidth="2">
               <title>{`${x.nombre}: ${x.fallas} fallas, ${x.mttr.toFixed(1)} h por reparación`}</title>
             </circle>
             {nombrados.has(x.clave) && (
-              <text x={sx(x.fallas) > W * 0.7 ? sx(x.fallas) - 11 : sx(x.fallas) + 11} textAnchor={sx(x.fallas) > W * 0.7 ? "end" : "start"} y={sy(x.mttr) + 4} fontSize="12" fill="#1d1d1f">{x.nombre.length > 22 ? x.nombre.slice(0, 21) + "…" : x.nombre}</text>
+              <text x={sx(x.fallas) > W * 0.7 ? sx(x.fallas) - 11 : sx(x.fallas) + 11} textAnchor={sx(x.fallas) > W * 0.7 ? "end" : "start"} y={sy(x.mttr) + 4} fontSize="12" fill="var(--color-tinta)">{x.nombre.length > 22 ? x.nombre.slice(0, 21) + "…" : x.nombre}</text>
             )}
           </g>
         ))}
-        <text x={(m.l + W - m.r) / 2} y={H - 8} textAnchor="middle" fontSize="12" fill="#6e6e73">Número de fallas →</text>
-        <text transform={`translate(14 ${(m.t + H - m.b) / 2}) rotate(-90)`} textAnchor="middle" fontSize="12" fill="#6e6e73">Horas por reparación (MTTR) →</text>
+        <text x={(m.l + W - m.r) / 2} y={H - 8} textAnchor="middle" fontSize="12" fill="var(--color-suave)">Número de fallas →</text>
+        <text transform={`translate(14 ${(m.t + H - m.b) / 2}) rotate(-90)`} textAnchor="middle" fontSize="12" fill="var(--color-suave)">Horas por reparación (MTTR) →</text>
       </svg>
       <table className="sr-only">
         <caption>Malos actores</caption>

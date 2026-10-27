@@ -179,7 +179,7 @@ export default async function Equipos({
               <legend className="etiqueta">Propiedad</legend>
               <div className="flex gap-2">
                 {PROPIEDADES.map((x) => (
-                  <label key={x.valor} className="btn min-h-10 flex-1 cursor-pointer px-2 text-[14px] has-[:checked]:bg-tinta has-[:checked]:text-white bg-papel hover:bg-panel-2">
+                  <label key={x.valor} className="btn min-h-10 flex-1 cursor-pointer px-2 text-[14px] has-[:checked]:bg-tinta has-[:checked]:text-sobre-tinta bg-papel hover:bg-panel-2">
                     <input type="radio" name="propiedad" value={x.valor} className="sr-only" defaultChecked={(editar?.propiedad ?? "propio") === x.valor} />
                     {x.etiqueta}
                   </label>

@@ -136,7 +136,7 @@ function Rotulo({ texto, fondo, p, posicion: pos, ancho = 2.2, alto = 0.55 }: { 
       ))}
       <mesh castShadow>
         <boxGeometry args={[ancho, alto, 0.06]} />
-        <meshStandardMaterial map={tex} roughness={0.4} emissive="#ffffff" emissiveMap={tex} emissiveIntensity={0.15} />
+        <meshStandardMaterial map={tex} roughness={0.4} emissive="#ffffff" emissiveMap={tex} emissiveIntensity={p.oscuro ? 0.85 : 0.15} />
       </mesh>
     </group>
   );

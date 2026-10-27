@@ -15,7 +15,7 @@ export const etiquetaPilar = (p: Pilar) => PILARES.find((x) => x.valor === p)?.e
 export const ESTADOS: Record<EstatusOrden, { etiqueta: string; clase: string }> = {
   pendiente:  { etiqueta: "Pendiente",  clase: "bg-alerta-suave text-alerta-texto" },
   asignada:   { etiqueta: "Asignada",   clase: "bg-info-suave text-info-texto" },
-  en_proceso: { etiqueta: "En proceso", clase: "bg-tinta text-white" },
+  en_proceso: { etiqueta: "En proceso", clase: "bg-tinta text-sobre-tinta" },
   cerrada:    { etiqueta: "Cerrada",    clase: "bg-ok-suave text-ok-texto" },
   cancelada:  { etiqueta: "Cancelada",  clase: "bg-panel text-suave" },
 };

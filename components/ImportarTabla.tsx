@@ -87,7 +87,7 @@ export function ImportarTabla({
           <div role="radiogroup" aria-label="Origen de los datos" className="inline-flex rounded-full bg-papel p-1 text-[14px]">
             {([["pegar", "Pegar desde Excel"], ["archivo", "Subir archivo"]] as const).map(([v, t]) => (
               <button key={v} type="button" role="radio" aria-checked={modo === v} onClick={() => { setModo(v); setFilas([]); setRes(null); }}
-                className={`min-h-9 cursor-pointer rounded-full px-4 ${modo === v ? "bg-tinta font-medium text-white" : "text-tinta hover:bg-panel-2"}`}>{t}</button>
+                className={`min-h-9 cursor-pointer rounded-full px-4 ${modo === v ? "bg-tinta font-medium text-sobre-tinta" : "text-tinta hover:bg-panel-2"}`}>{t}</button>
             ))}
           </div>
           <button type="button" onClick={descargarPlantilla} className="enlace cursor-pointer text-[14px]">Descargar plantilla ›</button>
@@ -130,7 +130,7 @@ export function ImportarTabla({
                 </thead>
                 <tbody>
                   {filas.slice(0, 300).map((f, i) => (
-                    <tr key={i} className={esError(errores[i]) ? "bg-paro-suave/60" : "odd:bg-white/60"}>
+                    <tr key={i} className={esError(errores[i]) ? "bg-paro-suave/60" : "odd:bg-panel/60"}>
                       <td className="px-3 py-1.5 tabular-nums text-suave">{i + 1}</td>
                       {columnas.map((c) => <td key={c.clave} className="px-3 py-1.5">{f[c.clave] || <span className="text-suave">—</span>}</td>)}
                       <td className={`px-3 py-1.5 ${esError(errores[i]) ? "text-paro-texto" : errores[i] ? "text-alerta-texto" : "text-ok-texto"}`}>{errores[i] ? errores[i]!.replace(/^!/, "") : "OK"}</td>

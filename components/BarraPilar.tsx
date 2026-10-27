@@ -62,7 +62,7 @@ export function BarraPilar({ items, generales, abiertas, pilar, usuario, accion 
         <div className="group absolute left-0 top-0 flex w-14 flex-col overflow-hidden rounded-[22px] bg-panel/90 p-1.5 backdrop-blur-xl transition-[width,box-shadow] duration-200 ease-out hover:w-[200px] hover:shadow-[0_12px_32px_rgb(0_0_0/0.12)] focus-within:w-[200px] focus-within:shadow-[0_12px_32px_rgb(0_0_0/0.12)]">
           {/* quién soy y en qué pilar estoy */}
           <Link href="/" title="Volver a pilares" className="flex min-h-12 items-center gap-2.5 rounded-xl px-1.5 hover:bg-papel">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-tinta text-[12px] font-semibold text-white" aria-hidden="true">{iniciales}</span>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-tinta text-[12px] font-semibold text-sobre-tinta" aria-hidden="true">{iniciales}</span>
             <span className="min-w-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
               <span className="block truncate text-[13px] font-semibold leading-tight">{usuario}</span>
               <span className="block whitespace-nowrap text-[11px] text-enlace">‹ {pilar}</span>
@@ -76,7 +76,7 @@ export function BarraPilar({ items, generales, abiertas, pilar, usuario, accion 
           {accion && (
             <Link href={accion.href} title={accion.texto}
               className="mt-2 flex min-h-11 items-center gap-2.5 rounded-2xl bg-papel p-1.5 hover:bg-panel-2">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-azul text-[18px] leading-none text-white" aria-hidden="true">+</span>
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-azul text-[18px] leading-none text-sobre-azul" aria-hidden="true">+</span>
               <span className="whitespace-nowrap text-[13px] font-semibold opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">{accion.texto}</span>
             </Link>
           )}
@@ -90,9 +90,9 @@ export function BarraPilar({ items, generales, abiertas, pilar, usuario, accion 
           {datos.map((i) => (
             <li key={i.href}>
               <Link href={i.href} aria-current={i.activo ? "page" : undefined}
-                className={`flex min-h-10 items-center gap-1.5 rounded-full px-3.5 text-[14px] ${i.activo ? "bg-tinta font-semibold text-white" : "bg-panel text-tinta"}`}>
+                className={`flex min-h-10 items-center gap-1.5 rounded-full px-3.5 text-[14px] ${i.activo ? "bg-tinta font-semibold text-sobre-tinta" : "bg-panel text-tinta"}`}>
                 {i.texto}
-                {i.etiqueta && <span className={`rounded-full px-1.5 text-[11px] font-semibold ${i.activo ? "bg-white/20" : "bg-paro-suave text-paro-texto"}`}>{i.etiqueta}</span>}
+                {i.etiqueta && <span className={`rounded-full px-1.5 text-[11px] font-semibold ${i.activo ? "bg-sobre-tinta/20" : "bg-paro-suave text-paro-texto"}`}>{i.etiqueta}</span>}
               </Link>
             </li>
           ))}

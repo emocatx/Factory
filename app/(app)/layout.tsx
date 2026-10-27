@@ -17,7 +17,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl backdrop-saturate-150">
+      <header className="sticky top-0 z-30 bg-papel/80 backdrop-blur-xl backdrop-saturate-150">
         <Ancho pilar="flex items-center justify-between gap-x-6 gap-y-2 px-4 py-2 md:px-5"
           normal="mx-auto flex max-w-[1240px] items-center justify-between gap-x-6 gap-y-2 px-4 py-2 md:px-8">
           <div className="flex items-center gap-4">

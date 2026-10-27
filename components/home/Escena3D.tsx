@@ -12,7 +12,7 @@ import { EffectComposer, N8AO, SMAA, Vignette } from "@react-three/postprocessin
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { Mat } from "./Equipos3D";
 import { NaveInterior, type NaveEscena } from "./NaveInterior";
-import { PALETA, type Paleta } from "./paleta";
+import { PALETA, PALETA_OSCURA, type Paleta } from "./paleta";
 
 const SEP_X = 13;
 const SEP_Z = 12;
@@ -162,10 +162,10 @@ function Proyector({ naves, refs, m, seleccion }: { naves: NaveEscena[]; refs: R
   return null;
 }
 
-export default function Escena3D({ naves, seleccion, onSelect, onTaller, quieto }: {
-  naves: NaveEscena[]; seleccion: string | null; onSelect: (id: string | null) => void; onTaller: (id: string) => void; quieto: boolean;
+export default function Escena3D({ naves, seleccion, onSelect, onTaller, quieto, oscuro = false }: {
+  naves: NaveEscena[]; seleccion: string | null; onSelect: (id: string | null) => void; onTaller: (id: string) => void; quieto: boolean; oscuro?: boolean;
 }) {
-  const p: Paleta = { ...PALETA, quieto };
+  const p: Paleta = { ...(oscuro ? PALETA_OSCURA : PALETA), quieto, oscuro };
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const [alta, setAlta] = useState(true);
   const m = useMemo(() => malla(naves.length), [naves.length]);
@@ -186,10 +186,10 @@ export default function Escena3D({ naves, seleccion, onSelect, onTaller, quieto 
         <OrthographicCamera makeDefault position={OFFSET_CAMARA} zoom={10} near={-300} far={600} />
         <OrbitControls makeDefault enablePan={false} enableZoom minZoom={3} maxZoom={48} minPolarAngle={Math.PI / 5} maxPolarAngle={Math.PI / 3} target={[0, 0, 0]} />
         <ambientLight intensity={p.ambiente} />
-        <hemisphereLight args={["#fff6e8", "#c9d3e2", 0.35]} />
+        <hemisphereLight args={oscuro ? ["#bfefe2", "#0a0e1c", 0.35] : ["#fff6e8", "#c9d3e2", 0.35]} />
         <directionalLight position={[16, 32, 22]} intensity={p.luz} castShadow shadow-mapSize={[2048, 2048]} shadow-bias={-0.0003} shadow-normalBias={0.02}
           shadow-camera-left={-sombra} shadow-camera-right={sombra} shadow-camera-top={sombra} shadow-camera-bottom={-sombra} shadow-camera-far={200} />
-        <directionalLight position={[-18, 14, -20]} intensity={0.35} color="#cfe0ff" />
+        <directionalLight position={[-18, 14, -20]} intensity={oscuro ? 0.5 : 0.35} color={oscuro ? "#3dd6ac" : "#cfe0ff"} />
         <Environment resolution={128} environmentIntensity={p.env}>
           <Lightformer intensity={2.5} position={[0, 12, 0]} rotation-x={Math.PI / 2} scale={[30, 30, 1]} />
           <Lightformer intensity={1.2} position={[-20, 4, 10]} rotation-y={Math.PI / 2} scale={[20, 6, 1]} />
@@ -212,7 +212,7 @@ export default function Escena3D({ naves, seleccion, onSelect, onTaller, quieto 
         {alta && (
           <EffectComposer multisampling={0} enableNormalPass={false}>
             <N8AO aoRadius={1.6} intensity={p.ao} distanceFalloff={0.6} quality="medium" halfRes />
-            <Vignette offset={0.35} darkness={0.18} />
+            <Vignette offset={0.35} darkness={oscuro ? 0.5 : 0.18} />
             <SMAA />
           </EffectComposer>
         )}
@@ -220,8 +220,8 @@ export default function Escena3D({ naves, seleccion, onSelect, onTaller, quieto 
       <div className="pointer-events-none absolute inset-0 z-[1] overflow-hidden">
         {naves.map((n, i) => (
           <button key={n.id} ref={(el) => { refs.current[i] = el; }} type="button" onClick={() => onSelect(n.id)}
-            className={`pointer-events-auto absolute left-0 top-0 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border bg-white/85 py-0.5 pl-0.5 pr-2.5 font-medium text-tinta shadow-[0_4px_16px_rgb(0_0_0/0.08)] backdrop-blur-md hover:z-10 hover:border-azul ${n.paro > 0 ? "text-[12px]" : "text-[11px] text-suave"} ${seleccion === n.id ? "z-10 border-azul" : i === peor && n.paro > 0 ? "border-paro/60" : "border-black/5"}`}>
-            <span className={`rounded-full ring-inset ring-white/85 ${n.paro > 0 ? "h-5 w-5 bg-paro ring-[5px]" : "h-4 w-4 bg-ok ring-[4px]"}`} aria-hidden="true" />
+            className={`pointer-events-auto absolute left-0 top-0 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border bg-vidrio-fuerte py-0.5 pl-0.5 pr-2.5 font-medium text-tinta shadow-[0_4px_16px_rgb(0_0_0/0.08)] backdrop-blur-md hover:z-10 hover:border-azul ${n.paro > 0 ? "text-[12px]" : "text-[11px] text-suave"} ${seleccion === n.id ? "z-10 border-azul" : i === peor && n.paro > 0 ? "border-paro/60" : "border-borde/50"}`}>
+            <span className={`rounded-full ring-inset ring-panel ${n.paro > 0 ? "h-5 w-5 bg-paro ring-[5px]" : "h-4 w-4 bg-ok ring-[4px]"}`} aria-hidden="true" />
             <span>
               {i === peor && n.paro > 0 && <small className="block text-[10px] font-semibold leading-none text-paro-texto">Más equipos en taller</small>}
               {n.nombre}{n.paro > 0 ? ` · ${n.paro} en taller` : ""}

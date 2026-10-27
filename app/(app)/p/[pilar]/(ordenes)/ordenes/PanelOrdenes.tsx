@@ -59,28 +59,28 @@ export function PanelOrdenes(props: Props) {
                 onClick={() => setSel(o.id_orden)}
                 aria-pressed={activo}
                 className={`block w-full cursor-pointer rounded-caja p-5 text-left transition-colors duration-150 ${
-                  activo ? "bg-tinta text-white" : "bg-panel hover:bg-panel-2"
+                  activo ? "bg-tinta text-sobre-tinta" : "bg-panel hover:bg-panel-2"
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <span className="folio">{o.folio_ticket}</span>
-                  <span className={`text-sm font-semibold tabular-nums ${activo ? "text-white" : tonoHoras(h)}`}>{horas(h)}</span>
+                  <span className={`text-sm font-semibold tabular-nums ${activo ? "text-sobre-tinta" : tonoHoras(h)}`}>{horas(h)}</span>
                 </div>
                 <p className="mt-2 text-lg font-semibold leading-snug">
                   {pilar === "dorsales" ? (o.nombre_linea ?? "Sin línea") : (o.nombre_equipo ?? "Sin equipo")}
                 </p>
-                <p className={`text-sm ${activo ? "text-white/75" : "text-suave"}`}>
+                <p className={`text-sm ${activo ? "text-sobre-tinta/75" : "text-suave"}`}>
                   {[pilar === "dorsales" ? o.nombre_equipo : o.nombre_almacen, o.solicitante_nombre].filter(Boolean).join(" · ")}
                 </p>
-                <p className={`mt-3 line-clamp-2 text-[15px] ${activo ? "text-white/90" : ""}`}>{o.descripcion_falla}</p>
+                <p className={`mt-3 line-clamp-2 text-[15px] ${activo ? "text-sobre-tinta/90" : ""}`}>{o.descripcion_falla}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {activo ? (
-                    <span className="chip bg-white/15 text-white">{o.estatus_orden === "en_proceso" ? "En proceso" : o.estatus_orden === "asignada" ? "Asignada" : "Pendiente"}</span>
+                    <span className="chip bg-sobre-tinta/15 text-sobre-tinta">{o.estatus_orden === "en_proceso" ? "En proceso" : o.estatus_orden === "asignada" ? "Asignada" : "Pendiente"}</span>
                   ) : (
                     <ChipEstado e={o.estatus_orden} />
                   )}
                   {!activo && <ChipPrioridad p={o.prioridad} />}
-                  {o.nombre_asignado && <span className={`chip ${activo ? "bg-white/15 text-white" : "bg-papel text-suave"}`}>{o.nombre_asignado}</span>}
+                  {o.nombre_asignado && <span className={`chip ${activo ? "bg-sobre-tinta/15 text-sobre-tinta" : "bg-papel text-suave"}`}>{o.nombre_asignado}</span>}
                 </div>
               </button>
             </li>
@@ -136,12 +136,12 @@ function Detalle({ o, pilar, rol, miId, tz, tecnicos, origenes, modos, almacenes
 
   return (
     <div className="caja-panel overflow-hidden">
-      <div className="bg-tinta px-6 py-5 text-white">
+      <div className="bg-tinta px-6 py-5 text-sobre-tinta">
         <div className="flex items-center justify-between gap-3">
           <p className="folio text-xl">{o.folio_ticket}</p>
-          <span className="chip bg-white/15 text-white">{o.estatus_orden === "en_proceso" ? "En proceso" : o.estatus_orden === "asignada" ? "Asignada" : "Pendiente"}</span>
+          <span className="chip bg-sobre-tinta/15 text-sobre-tinta">{o.estatus_orden === "en_proceso" ? "En proceso" : o.estatus_orden === "asignada" ? "Asignada" : "Pendiente"}</span>
         </div>
-        <p className="mt-1 text-sm text-white/75">Prioridad {o.prioridad}</p>
+        <p className="mt-1 text-sm text-sobre-tinta/75">Prioridad {o.prioridad}</p>
       </div>
       <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2.5 px-6 py-5 text-[15px]">
         {filas.map(([k, v]) => (
@@ -213,7 +213,7 @@ function FormAsignar({ o, tecnicos, pend, res, onEnviar, onCancelar }: {
         <legend className="etiqueta">Prioridad</legend>
         <div className="flex gap-2">
           {PRIORIDADES.map((x) => (
-            <label key={x.valor} className={`btn min-h-10 flex-1 text-[15px] ${p === x.valor ? "bg-tinta text-white" : "bg-papel hover:bg-panel-2"}`}>
+            <label key={x.valor} className={`btn min-h-10 flex-1 text-[15px] ${p === x.valor ? "bg-tinta text-sobre-tinta" : "bg-papel hover:bg-panel-2"}`}>
               <input type="radio" name="prioridad" value={x.valor} checked={p === x.valor} onChange={() => setP(x.valor)} className="sr-only" />
               {x.etiqueta}
             </label>

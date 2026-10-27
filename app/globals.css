@@ -37,9 +37,69 @@
   --color-ok-suave: #e7f5ec;
   --color-info-texto: #1d4fa8;
   --color-info-suave: #e8eefb;
+
+  /* Roles agregados para el modo oscuro (en claro valen lo mismo que los colores fijos de antes) */
+  --color-campo: #ffffff;              /* fondo de campos y listas */
+  --color-vidrio: rgb(255 255 255 / 0.8);        /* paneles que flotan sobre la planta 3D */
+  --color-vidrio-fuerte: rgb(255 255 255 / 0.9);
+  --color-sobre-tinta: #ffffff;        /* texto sobre una superficie bg-tinta (botón activo) */
+  --color-sobre-azul: #ffffff;         /* texto sobre el color de acción */
+  --color-azul-hover: #0077ed;
+  --color-tinta-hover: #3a3a3c;
+  --color-sec-hover: #e1e1e6;
+  --color-paro-hover: #fbdcdc;
+  --color-placeholder: #86868b;
+  --color-borde-hover: #a1a1a6;
+  --color-renta: #5e5ce6;
+  --color-reja: #f0f0f2;               /* rejilla de gráficas */
+}
+
+/*
+ * Modo oscuro (el que se definió en el prototipo): carbón neutro, un tono más claro por capa,
+ * acento menta solo en lo interactivo y los mismos estados (detenido, alerta, operando) más suaves.
+ * Se activa con <html data-tema="oscuro"> (cookie "tema", interruptor en el menú de cuenta).
+ */
+:root[data-tema="oscuro"] {
+  color-scheme: dark;
+  --color-papel: #0b0c0d;
+  --color-panel: #15181a;
+  --color-panel-2: #1f2326;
+  --color-borde: #2e3439;
+  --color-tinta: #f2f4f3;
+  --color-suave: #a3aba8;              /* 7.6:1 sobre #15181a */
+  --color-azul: #3dd6ac;
+  --color-enlace: #3dd6ac;
+  --color-nuevo: #ff8a8e;
+  --color-paro: #ff5a5f;
+  --color-paro-texto: #ff8a8e;
+  --color-paro-suave: #3a1c1f;
+  --color-alerta: #fbbf24;
+  --color-alerta-texto: #fcd34d;
+  --color-alerta-suave: #3a2e12;
+  --color-ok: #3dd6ac;
+  --color-ok-texto: #6ee7c3;
+  --color-ok-suave: #12302a;
+  --color-info-texto: #9db8ff;
+  --color-info-suave: #1c2440;
+  --color-campo: #111416;
+  --color-vidrio: rgb(24 27 29 / 0.62);
+  --color-vidrio-fuerte: rgb(24 27 29 / 0.86);
+  --color-sobre-tinta: #0b0c0d;
+  --color-sobre-azul: #06140f;
+  --color-azul-hover: #5be0bb;
+  --color-tinta-hover: #d9dedc;
+  --color-sec-hover: #2a2f33;
+  --color-paro-hover: #4a2226;
+  --color-placeholder: #6f7774;
+  --color-borde-hover: #3e464b;
+  --color-renta: #a78bfa;
+  --color-reja: #23282b;
 }
 
 html { color-scheme: light; accent-color: var(--color-azul); }
+:root[data-tema="oscuro"] select.campo, :root[data-tema="oscuro"] select.selector {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23f2f4f3' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
 body {
   background: var(--color-papel);
   color: var(--color-tinta);
@@ -49,7 +109,7 @@ body {
   -webkit-font-smoothing: antialiased;
   scrollbar-color: var(--color-borde) transparent;
 }
-::selection { background: rgb(0 113 227 / 0.2); color: var(--color-tinta); }
+::selection { background: color-mix(in srgb, var(--color-azul) 25%, transparent); color: var(--color-tinta); }
 input, textarea { caret-color: var(--color-tinta); }
 table, .tabular-nums { font-variant-numeric: tabular-nums; }
 a { text-underline-offset: 3px; }
@@ -78,8 +138,8 @@ form[data-cargando] ~ * { opacity: 0.5; pointer-events: none; }
 }
 @utility etiqueta { @apply mb-1.5 block text-sm font-medium text-suave; }
 @utility campo {
-  @apply min-h-12 w-full rounded-[var(--radius-control)] border border-borde bg-white px-4 py-2.5 text-[17px] text-tinta outline-none
-    transition-[border-color,box-shadow] duration-150 placeholder:text-[#86868b] hover:border-[#a1a1a6]
+  @apply min-h-12 w-full rounded-[var(--radius-control)] border border-borde bg-campo px-4 py-2.5 text-[17px] text-tinta outline-none
+    transition-[border-color,box-shadow] duration-150 placeholder:text-placeholder hover:border-borde-hover
     focus:border-azul focus:ring-4 focus:ring-azul/20 disabled:cursor-not-allowed disabled:bg-papel disabled:text-suave
     aria-invalid:border-paro aria-invalid:focus:ring-paro/20;
 }
@@ -92,17 +152,17 @@ select.campo, select.selector {
 select.campo:disabled { background-image: none; }
 select.campo option { color: var(--color-tinta); }
 @utility selector {
-  @apply min-h-10 rounded-full border border-borde bg-white pl-4 text-[15px] font-medium text-tinta outline-none transition-[border-color,box-shadow] duration-150
-    hover:border-[#a1a1a6] focus:border-azul focus:ring-4 focus:ring-azul/20;
+  @apply min-h-10 rounded-full border border-borde bg-campo pl-4 text-[15px] font-medium text-tinta outline-none transition-[border-color,box-shadow] duration-150
+    hover:border-borde-hover focus:border-azul focus:ring-4 focus:ring-azul/20;
 }
 @utility btn {
   @apply inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full px-5 text-[17px] font-normal whitespace-nowrap
     transition-[background-color,color,transform] duration-150 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
 }
-@utility btn-primario { @apply btn bg-azul text-white hover:bg-[#0077ed]; }
-@utility btn-motivo { @apply btn bg-tinta text-white hover:bg-[#3a3a3c]; }
-@utility btn-sec { @apply btn bg-panel-2 text-tinta hover:bg-[#e1e1e6]; }
-@utility btn-peligro { @apply btn bg-paro-suave text-paro-texto hover:bg-[#fbdcdc]; }
+@utility btn-primario { @apply btn bg-azul text-sobre-azul hover:bg-azul-hover; }
+@utility btn-motivo { @apply btn bg-tinta text-sobre-tinta hover:bg-tinta-hover; }
+@utility btn-sec { @apply btn bg-panel-2 text-tinta hover:bg-sec-hover; }
+@utility btn-peligro { @apply btn bg-paro-suave text-paro-texto hover:bg-paro-hover; }
 @utility enlace { @apply inline-flex items-center gap-1 text-enlace hover:underline; }
 @utility folio { @apply font-mono text-[15px] font-semibold tracking-tight; }
 @utility chip { @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[13px] font-semibold whitespace-nowrap; }

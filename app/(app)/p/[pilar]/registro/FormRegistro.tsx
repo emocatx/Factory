@@ -173,7 +173,7 @@ export function FormRegistro({ pilar, operaciones, usuario, almacenes, lineas, e
             <legend className="etiqueta">Prioridad</legend>
             <div className="flex max-w-md gap-2">
               {PRIORIDADES.map((x) => (
-                <label key={x.valor} className={`btn min-h-11 flex-1 text-[15px] ${d.prioridad === x.valor ? "bg-tinta text-white" : "bg-papel hover:bg-panel-2"}`}>
+                <label key={x.valor} className={`btn min-h-11 flex-1 text-[15px] ${d.prioridad === x.valor ? "bg-tinta text-sobre-tinta" : "bg-papel hover:bg-panel-2"}`}>
                   <input type="radio" name="prioridad" className="sr-only" checked={d.prioridad === x.valor} onChange={() => set("prioridad", x.valor)} />
                   {x.etiqueta}
                 </label>
