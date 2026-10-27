@@ -6,6 +6,7 @@ import { EnVivo } from "@/components/EnVivo";
 import { cerrarSesion } from "@/app/login/actions";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { Tour } from "@/components/Tour";
+import { Ancho, FueraDePilar } from "@/components/Ancho";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { perfil, tenant, tourVisto } = await obtenerSesion();
@@ -18,7 +19,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl backdrop-saturate-150">
-        <div className="mx-auto flex max-w-[1240px] items-center justify-between gap-x-6 gap-y-2 px-4 py-2 md:px-8">
+        <Ancho pilar="flex items-center justify-between gap-x-6 gap-y-2 px-4 py-2 md:px-5"
+          normal="mx-auto flex max-w-[1240px] items-center justify-between gap-x-6 gap-y-2 px-4 py-2 md:px-8">
           <div className="flex items-center gap-4">
             <Link href="/" aria-label="Inicio: elegir pilar"><Marca /></Link>
             <span className="hidden max-w-[220px] truncate text-sm text-suave md:inline" title={tenant.nombre_empresa}>
@@ -26,6 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <FueraDePilar>
             <nav aria-label="General" className="hidden items-center gap-1 text-[14px] lg:flex">
               {enlaces.map((e) => (
                 <Link key={e.href} href={e.href} className="rounded-full px-3 py-2 text-tinta/80 hover:text-tinta">
@@ -33,6 +36,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 </Link>
               ))}
             </nav>
+            </FueraDePilar>
             <EnVivo tenantId={tenant.id} />
             <details className="relative">
               <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-full bg-papel py-1 pl-1 pr-3 text-sm hover:bg-panel-2">
@@ -60,9 +64,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </div>
             </details>
           </div>
-        </div>
+        </Ancho>
       </header>
-      <main className="mx-auto max-w-[1240px] px-4 pb-24 pt-8 md:px-8 md:pt-12">{children}</main>
+      <Ancho como="main" pilar="px-3 pb-6 pt-3 md:px-4" normal="mx-auto max-w-[1240px] px-4 pb-24 pt-8 md:px-8 md:pt-12">{children}</Ancho>
       <Tour rol={perfil.rol} empresa={tenant.nombre_empresa} nombre={perfil.nombre} visto={tourVisto} />
     </div>
   );

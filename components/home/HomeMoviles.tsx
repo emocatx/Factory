@@ -13,6 +13,8 @@ const Escena3D = dynamic(() => import("./Escena3D"), { ssr: false, loading: () =
 const num = (n: number) => n.toLocaleString("es-MX");
 const pct = (n: number | null) => (n === null ? "—" : `${n.toFixed(1)}%`);
 const horas = (h: number | null) => (h === null ? "—" : h < 48 ? `${h.toFixed(1)} h` : `${num(Math.round(h))} h`);
+/** Superficie de vidrio para lo que flota sobre la escena (en 2D es una tarjeta blanca normal). */
+const VIDRIO = "rounded-[22px] bg-white/80 backdrop-blur-xl lg:shadow-[0_8px_24px_rgb(0_0_0/0.06)]";
 
 function Cargando() {
   return <div className="flex h-full items-center justify-center text-[14px] text-suave">Cargando la planta…</div>;
@@ -41,7 +43,7 @@ function Medidor({ etiqueta, texto, meta, frac, tono, href }: { etiqueta: string
   const f = frac === null ? 0 : Math.max(0, Math.min(1, frac));
   const trazo = { ok: "stroke-ok", alerta: "stroke-alerta", paro: "stroke-paro", neutro: "stroke-suave" }[tono];
   return (
-    <Link href={href} className="flex items-center gap-3 rounded-[20px] bg-white/80 p-2.5 pr-4 backdrop-blur-xl transition-colors hover:bg-white lg:shadow-[0_8px_24px_rgb(0_0_0/0.06)]">
+    <Link href={href} className={`flex items-center gap-3 p-2.5 pr-4 transition-colors hover:bg-white ${VIDRIO}`}>
       <svg viewBox="0 0 64 64" className="h-14 w-14 shrink-0" aria-hidden="true">
         <circle cx="32" cy="32" r={r} fill="none" strokeWidth="5" strokeLinecap="round" className="stroke-panel-2" strokeDasharray={`${arco} ${c}`} transform="rotate(135 32 32)" />
         <circle cx="32" cy="32" r={r} fill="none" strokeWidth="5" strokeLinecap="round" className={`${trazo} transition-[stroke-dasharray] duration-500`} strokeDasharray={`${arco * f} ${c}`} transform="rotate(135 32 32)" />
@@ -49,9 +51,20 @@ function Medidor({ etiqueta, texto, meta, frac, tono, href }: { etiqueta: string
       <span className="min-w-0 flex-1">
         <span className="block text-[12px] text-suave">{etiqueta}</span>
         <span className="block text-[22px] font-semibold leading-tight tracking-tight tabular-nums">{texto}</span>
-        <span className="block text-[11px] text-suave">{meta}</span>
+        <span className="block truncate text-[11px] text-suave">{meta}</span>
       </span>
       <span className="text-suave" aria-hidden="true">›</span>
+    </Link>
+  );
+}
+
+/** Tarjeta de acceso con dato: lleva a la herramienta que ya existe. */
+function Acceso({ href, titulo, valor, pie, chico }: { href: string; titulo: string; valor: string; pie: React.ReactNode; chico?: boolean }) {
+  return (
+    <Link href={href} className={`block p-4 transition-colors hover:bg-white ${VIDRIO}`}>
+      <span className="flex items-center justify-between text-[14px] font-semibold">{titulo} <span className="text-suave" aria-hidden="true">›</span></span>
+      <span className={`mt-2 block font-semibold leading-tight tabular-nums ${chico ? "line-clamp-2 text-[17px]" : "text-[28px] leading-none"}`}>{valor}</span>
+      <span className="mt-1.5 block text-[12px] text-suave">{pie}</span>
     </Link>
   );
 }
@@ -79,7 +92,7 @@ function PanelTaller({ abierto, onCerrar, titulo, lista, total, base, almacen }:
             <h2 id="taller-tit" className="text-[20px] font-semibold">{titulo}</h2>
             <p className="text-[13px] text-suave">{total} equipo{total === 1 ? "" : "s"} · del más antiguo al más reciente</p>
           </div>
-          <button type="button" onClick={onCerrar} className="flex h-10 w-10 items-center justify-center rounded-full bg-papel text-[18px] hover:bg-panel-2" aria-label="Cerrar lista de equipos en taller">×</button>
+          <button type="button" onClick={onCerrar} className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-papel text-[18px] hover:bg-panel-2" aria-label="Cerrar lista de equipos en taller">×</button>
         </div>
         <ul className="flex-1 overflow-y-auto px-2">
           {visibles.length === 0 && <li className="px-3 py-8 text-center text-suave">Ningún equipo en taller.</li>}
@@ -120,8 +133,11 @@ export function HomeMoviles({ datos, base, almacenInicial }: { datos: DatosHome;
   const pTaller = v.total ? (100 * v.paro) / v.total : 0;
   const pExt = v.total ? (100 * v.externos) / v.total : 0;
   const naves = useMemo(() => almacenes.slice(0, NAVES_EN_ESCENA).map(({ id, nombre, total, paro, detenidos, operando }) => ({ id, nombre, total, paro, detenidos, operando })), [almacenes]);
+  // Para la escena: solo se enfoca si el almacén elegido está dibujado.
+  const seleccionEscena = naves.some((n) => n.id === seleccion) ? seleccion : null;
   const masAntiguo = [...v.taller].sort((a, b) => b.dias - a.dias)[0];
   const delta = v.fallas - v.fallasPrevias;
+  const ordenados = useMemo(() => [...almacenes].sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { numeric: true })), [almacenes]);
 
   const elegir = useCallback((id: string | null) => {
     setSeleccion(id);
@@ -146,14 +162,49 @@ export function HomeMoviles({ datos, base, almacenInicial }: { datos: DatosHome;
     ? `${alm.nombre}: ${alm.paro} de ${alm.total} equipos en taller${masAntiguo ? `; el más antiguo lleva ${masAntiguo.dias} días` : ""}`
     : datos.hallazgo;
   const enlaceInd = `${base}/indicadores${alm ? `?almacen=${alm.id}` : ""}`;
+  const periodoAnalisis = periodo.v === "hoy" ? "7d" : periodo.v;
+
+  // ── Piezas (las mismas en 3D y en 2D; cambia dónde van) ──────────────────────────────────
+  const titulo = (
+    <div className="min-w-0">
+      <h1 className="text-[28px] font-semibold leading-[1.05] tracking-tight lg:text-[34px]">Resumen<br className="hidden lg:block" /><span className="lg:hidden"> · </span>Móviles</h1>
+      <p className="mt-2 max-w-[340px] text-[15px] font-semibold text-paro-texto" data-tour="hallazgo">{hallazgo}</p>
+      <p className="mt-0.5 text-[12px] text-suave">Actualizado {new Date(datos.actualizado).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })} · se actualiza al registrar o liberar</p>
+    </div>
+  );
+
+  const filtros = (
+    <div className="flex flex-wrap items-center gap-2">
+      <label className="sr-only" htmlFor="home-almacen">Almacén</label>
+      <select id="home-almacen" value={seleccion ?? ""} onChange={(e) => elegir(e.target.value || null)} className="selector min-h-10 w-auto rounded-full bg-white/90 text-[14px]">
+        <option value="">Todos los almacenes</option>
+        {ordenados.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+      </select>
+      <nav aria-label="Periodo" className="inline-flex rounded-full bg-white/80 p-1 backdrop-blur-xl">
+        {[["hoy", "Hoy"], ["7d", "7 días"], ["30d", "30 días"]].map(([p, t]) => (
+          <Link key={p} href={qPeriodo(p)} scroll={false} aria-current={periodo.v === p ? "true" : undefined}
+            className={`flex min-h-8 items-center rounded-full px-3 text-[13px] ${periodo.v === p ? "bg-tinta font-semibold text-white" : "text-suave hover:text-tinta"}`}>{t}</Link>
+        ))}
+      </nav>
+    </div>
+  );
+
+  const acciones = (
+    <div className="flex flex-wrap items-center gap-2">
+      {datos.puedeRegistrar && datos.accion?.href !== `${base}/registro` && (
+        <Link href={`${base}/registro`} className="btn-sec min-h-10 w-full sm:w-auto">Registrar falla</Link>
+      )}
+      {datos.accion && <Link href={datos.accion.href} className="btn-primario min-h-10 w-full sm:w-auto" data-tour="accion">{datos.accion.texto}</Link>}
+    </div>
+  );
 
   const panelFlota = (
-    <div className="rounded-[24px] bg-white/80 p-5 backdrop-blur-xl lg:shadow-[0_8px_24px_rgb(0_0_0/0.06)]" aria-live="polite" data-tour="flota">
+    <div className={`p-5 ${VIDRIO}`} aria-live="polite" data-tour="flota">
       <div className="flex items-center gap-2">
         <h2 className="flex-1 text-[15px] font-semibold">{alm ? `Equipos en ${alm.nombre}` : "Equipos en flota"}</h2>
-        {alm && <button type="button" onClick={() => elegir(null)} className="chip bg-papel text-tinta hover:bg-panel-2" aria-label="Quitar filtro de almacén">{alm.nombre} ×</button>}
+        {alm && <button type="button" onClick={() => elegir(null)} className="chip cursor-pointer bg-papel text-tinta hover:bg-panel-2" aria-label="Quitar filtro de almacén">{alm.nombre} ×</button>}
       </div>
-      <p className="mt-1 text-[40px] font-semibold leading-none tracking-tight tabular-nums">{num(v.total)}</p>
+      <p className="mt-1 text-[38px] font-semibold leading-none tracking-tight tabular-nums">{num(v.total)}</p>
       <div className="mt-4 flex h-1.5 gap-[3px] overflow-hidden rounded-full bg-panel-2" role="img" aria-label={`${pct(pOp)} operando, ${pct(pTaller)} en taller`}>
         <span className="rounded-full bg-ok" style={{ width: `${pOp}%` }} />
         <span className="rounded-full bg-paro" style={{ width: `${pTaller}%` }} />
@@ -170,118 +221,89 @@ export function HomeMoviles({ datos, base, almacenInicial }: { datos: DatosHome;
     </div>
   );
 
-  const medidores = (
-    <div className="grid gap-2.5" data-tour="indicadores">
-      <Medidor etiqueta="Disponibilidad" texto={pct(ind?.disp ?? null)} meta={metas.disponibilidad ? `meta ${metas.disponibilidad}%` : "sin meta"} href={enlaceInd}
-        frac={ind?.disp != null ? ind.disp / 100 : null} tono={ind?.disp == null || metas.disponibilidad == null ? "neutro" : ind.disp >= metas.disponibilidad ? "ok" : "alerta"} />
-      <Medidor etiqueta="MTTR · reparación" texto={horas(ind?.mttr ?? null)} meta={ind && ind.mttr === null ? `sin cierres en ${periodo.nombre}` : metas.mttr ? `meta ${metas.mttr} h` : "sin meta"} href={enlaceInd}
-        frac={ind?.mttr && metas.mttr ? metas.mttr / ind.mttr : null} tono={ind?.mttr == null || metas.mttr == null ? "neutro" : ind.mttr <= metas.mttr ? "ok" : "paro"} />
-      <Medidor etiqueta="MTBF · entre fallas" texto={horas(ind?.mtbf ?? null)} meta={ind && ind.mtbf === null ? `sin fallas en ${periodo.nombre}` : metas.mtbf ? `meta ${metas.mtbf} h` : "sin meta definida"} href={enlaceInd}
-        frac={ind?.mtbf != null ? (metas.mtbf ? ind.mtbf / metas.mtbf : 1) : null} tono={ind?.mtbf == null || metas.mtbf == null ? "neutro" : ind.mtbf >= metas.mtbf ? "ok" : "alerta"} />
-    </div>
+  const ordenes = (
+    <Acceso href={`${base}/ordenes${alm ? `?q=${encodeURIComponent(alm.nombre)}` : ""}`} titulo="Órdenes abiertas" valor={num(v.taller.length)}
+      pie={masAntiguo ? `La más antigua lleva ${masAntiguo.dias} días` : "Ninguna abierta"} />
   );
+  const fallas = (
+    <Acceso href={`${base}/analisis?periodo=${periodoAnalisis}`} titulo="Fallas registradas" valor={num(v.fallas)} pie={
+      <>
+        {v.fallas === 0 && v.fallasPrevias === 0 ? `Sin fallas en ${periodo.nombre} ni antes`
+          : <><b className={`font-semibold ${delta > 0 ? "text-paro-texto" : delta < 0 ? "text-ok-texto" : ""}`}>{delta > 0 ? "+" : ""}{delta}</b> contra el periodo anterior ({v.fallasPrevias})</>}
+        {v.origen && v.fallas > 0 && <span className="mt-0.5 block">Origen principal: <b className="font-semibold text-tinta">{v.origen[0]}</b> ({Math.round((100 * v.origen[1]) / v.fallas)}%)</span>}
+      </>
+    } />
+  );
+  const peor = (
+    <Acceso href={`${base}/analisis?periodo=30d`} titulo="Equipo con más fallas" valor={v.peor ? v.peor[0] : "—"} chico
+      pie={v.peor ? `${v.peor[1]} falla${v.peor[1] === 1 ? "" : "s"} en 90 días` : "Sin fallas en 90 días"} />
+  );
+  const medidores = [
+    <Medidor key="d" etiqueta="Disponibilidad" texto={pct(ind?.disp ?? null)} meta={metas.disponibilidad ? `meta ${metas.disponibilidad}%` : "sin meta"} href={enlaceInd}
+      frac={ind?.disp != null ? ind.disp / 100 : null} tono={ind?.disp == null || metas.disponibilidad == null ? "neutro" : ind.disp >= metas.disponibilidad ? "ok" : "alerta"} />,
+    <Medidor key="r" etiqueta="MTTR · reparación" texto={horas(ind?.mttr ?? null)} meta={ind && ind.mttr === null ? `sin cierres en ${periodo.nombre}` : metas.mttr ? `meta ${metas.mttr} h` : "sin meta"} href={enlaceInd}
+      frac={ind?.mttr && metas.mttr ? metas.mttr / ind.mttr : null} tono={ind?.mttr == null || metas.mttr == null ? "neutro" : ind.mttr <= metas.mttr ? "ok" : "paro"} />,
+    <Medidor key="b" etiqueta="MTBF · entre fallas" texto={horas(ind?.mtbf ?? null)} meta={ind && ind.mtbf === null ? `sin fallas en ${periodo.nombre}` : metas.mtbf ? `meta ${metas.mtbf} h` : "sin meta definida"} href={enlaceInd}
+      frac={ind?.mtbf != null ? (metas.mtbf ? ind.mtbf / metas.mtbf : 1) : null} tono={ind?.mtbf == null || metas.mtbf == null ? "neutro" : ind.mtbf >= metas.mtbf ? "ok" : "alerta"} />,
+  ];
+  const panel = <PanelTaller abierto={taller} onCerrar={cerrarTaller} titulo={`En taller${alm ? ` · ${alm.nombre}` : ""}`} lista={v.taller} total={v.paro} base={base} almacen={alm?.nombre ?? null} />;
 
-  return (
-    <>
-      {/* Encabezado: el hallazgo de la pantalla, el periodo y la acción principal de este rol */}
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-[19px] font-semibold text-paro-texto" data-tour="hallazgo">{hallazgo}</p>
-          <p className="mt-1 text-[13px] text-suave">Actualizado {new Date(datos.actualizado).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })} · se actualiza al registrar o liberar</p>
-        </div>
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-          <nav aria-label="Periodo" className="inline-flex rounded-full bg-panel-2 p-1">
-            {[["hoy", "Hoy"], ["7d", "7 días"], ["30d", "30 días"]].map(([p, t]) => (
-              <Link key={p} href={qPeriodo(p)} scroll={false} aria-current={periodo.v === p ? "true" : undefined}
-                className={`flex min-h-9 items-center rounded-full px-3.5 text-[14px] ${periodo.v === p ? "bg-panel font-semibold shadow-sm" : "text-suave hover:text-tinta"}`}>{t}</Link>
-            ))}
-          </nav>
-          <label className="sr-only" htmlFor="home-almacen">Almacén</label>
-          <select id="home-almacen" value={seleccion ?? ""} onChange={(e) => elegir(e.target.value || null)} className="selector min-h-11 w-auto rounded-full">
-            <option value="">Todos los almacenes</option>
-            {almacenes.map((a) => <option key={a.id} value={a.id}>{a.nombre}{a.paro ? ` · ${a.paro} en taller` : ""}</option>)}
-          </select>
-          {datos.accion && (
-            <Link href={datos.accion.href} className="btn-primario min-h-11 w-full sm:w-auto" data-tour="accion">{datos.accion.texto}</Link>
-          )}
-          {datos.puedeRegistrar && datos.accion?.href !== `${base}/registro` && (
-            <Link href={`${base}/registro`} className="btn-sec min-h-11 w-full sm:w-auto">Registrar falla</Link>
-          )}
-        </div>
-      </div>
+  if (modo === null) return <div className="esqueleto h-[calc(100dvh-96px)] min-h-[560px]" aria-hidden="true" />;
 
-      {modo === null ? (
-        <div className="esqueleto h-[420px] lg:h-[620px]" aria-hidden="true" />
-      ) : modo === "3d" ? (
-        /* Escritorio: la planta en 3D con los paneles flotando encima */
-        <section className="relative h-[min(760px,calc(100vh-180px))] min-h-[620px] overflow-hidden rounded-caja bg-papel" aria-label="Planta de Móviles">
-          <Escena3D naves={naves} seleccion={seleccion} onSelect={elegir} onTaller={abrirTaller} quieto={quieto} />
-          <div className="absolute left-4 top-4 z-[2] w-[300px]">{panelFlota}</div>
-          {!taller && <div className="absolute right-4 top-4 z-[2] w-[236px]">{medidores}</div>}
-          <nav aria-label="Almacén en la planta" className="absolute bottom-4 left-1/2 z-[2] flex -translate-x-1/2 gap-0.5 rounded-full bg-white/80 p-1 shadow-[0_8px_24px_rgb(0_0_0/0.08)] backdrop-blur-xl">
-            <button type="button" onClick={() => elegir(null)} aria-pressed={!seleccion} className={`min-h-9 cursor-pointer rounded-full px-3.5 text-[13px] ${!seleccion ? "bg-tinta font-medium text-white" : "text-suave hover:text-tinta"}`}>Todos</button>
-            {naves.map((n) => (
-              <button key={n.id} type="button" onClick={() => elegir(n.id)} aria-pressed={seleccion === n.id} title={n.nombre}
-                className={`inline-flex min-h-9 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-[13px] ${seleccion === n.id ? "bg-tinta font-medium text-white" : "text-suave hover:text-tinta"}`}>
-                {n.paro > 0 && <span className="h-1.5 w-1.5 rounded-full bg-paro" aria-hidden="true" />}{n.nombre}
-              </button>
-            ))}
-          </nav>
-          <PanelTaller abierto={taller} onCerrar={cerrarTaller} titulo={`En taller${alm ? ` · ${alm.nombre}` : ""}`} lista={v.taller} total={v.paro} base={base} almacen={alm?.nombre ?? null} />
-        </section>
-      ) : (
-        /* Celular, tablet o sin WebGL: lo mismo en 2D, sin la escena */
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="grid gap-4">
-            {panelFlota}
-            <section className="rounded-[24px] bg-white p-5" aria-labelledby="alm-tit">
-              <h2 id="alm-tit" className="text-[15px] font-semibold">Almacenes con equipos en taller</h2>
-              <ul className="mt-3 space-y-1">
-                {almacenes.filter((a) => a.paro > 0).slice(0, 12).map((a) => (
-                  <li key={a.id}>
-                    <button type="button" onClick={() => abrirTaller(a.id)} className={`w-full cursor-pointer rounded-2xl p-3 text-left hover:bg-papel ${seleccion === a.id ? "bg-papel" : ""}`}>
-                      <span className="flex items-baseline justify-between gap-3 text-[15px]">
-                        <span className="font-medium">{a.nombre}</span>
-                        <span className="tabular-nums text-paro-texto">{a.paro} <span className="text-suave">de {a.total}</span></span>
-                      </span>
-                      <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-panel-2"><span className="block h-full rounded-full bg-paro" style={{ width: `${(100 * a.paro) / a.total}%` }} /></span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
+  if (modo === "3d") {
+    // Escritorio: la planta ocupa todo; título, filtros, paneles y medidores flotan encima.
+    return (
+      <section className="relative h-[calc(100dvh-96px)] min-h-[680px] overflow-hidden rounded-caja bg-papel" aria-label="Resumen de Móviles: planta">
+        <Escena3D naves={naves} seleccion={seleccionEscena} onSelect={elegir} onTaller={abrirTaller} quieto={quieto} />
+        <div className="pointer-events-none absolute inset-x-5 top-5 z-[2] flex items-start gap-4">
+          <div className="pointer-events-auto w-[320px] shrink-0">{titulo}</div>
+          <div className="pointer-events-auto mx-auto pt-1">{filtros}</div>
+          <div className="pointer-events-auto shrink-0 pt-1">{acciones}</div>
+        </div>
+        <div className="absolute left-5 top-[168px] z-[2] grid w-[300px] gap-3">
+          {panelFlota}
+          {ordenes}
+          {fallas}
+        </div>
+        {!taller && (
+          <div className="absolute bottom-5 left-[340px] right-5 z-[2] grid grid-cols-4 gap-3" data-tour="indicadores">
+            {medidores}
+            {peor}
           </div>
-          {medidores}
-          <PanelTaller abierto={taller} onCerrar={cerrarTaller} titulo={`En taller${alm ? ` · ${alm.nombre}` : ""}`} lista={v.taller} total={v.paro} base={base} almacen={alm?.nombre ?? null} />
-        </div>
-      )}
+        )}
+        {panel}
+      </section>
+    );
+  }
 
-      {/* Accesos con dato: cada tarjeta lleva a la herramienta que ya existe */}
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-tour="accesos">
-        <Link href={`${base}/ordenes${alm ? `?q=${encodeURIComponent(alm.nombre)}` : ""}`} className="tarjeta-enlace p-5">
-          <span className="flex items-center justify-between text-[15px] font-semibold">Órdenes abiertas <span className="text-suave" aria-hidden="true">›</span></span>
-          <span className="mt-3 block text-[30px] font-semibold leading-none tabular-nums">{num(v.taller.length)}</span>
-          <span className="mt-1.5 block text-[13px] text-suave">{masAntiguo ? `La más antigua lleva ${masAntiguo.dias} días` : "Ninguna abierta"}</span>
-        </Link>
-        <Link href={`${base}/analisis?periodo=${periodo.v === "hoy" ? "7d" : periodo.v}`} className="tarjeta-enlace p-5">
-          <span className="flex items-center justify-between text-[15px] font-semibold">Fallas registradas <span className="text-suave" aria-hidden="true">›</span></span>
-          <span className="mt-3 block text-[30px] font-semibold leading-none tabular-nums">{num(v.fallas)}</span>
-          <span className="mt-1.5 block text-[13px] text-suave">
-            {v.fallas === 0 && v.fallasPrevias === 0 ? `Sin fallas en ${periodo.nombre} ni antes`
-              : <><b className={`font-semibold ${delta > 0 ? "text-paro-texto" : delta < 0 ? "text-ok-texto" : ""}`}>{delta > 0 ? "+" : ""}{delta}</b> contra el periodo anterior ({v.fallasPrevias})</>}
-          </span>
-        </Link>
-        <Link href={`${base}/analisis?periodo=${periodo.v === "hoy" ? "7d" : periodo.v}`} className="tarjeta-enlace p-5">
-          <span className="flex items-center justify-between text-[15px] font-semibold">Origen principal <span className="text-suave" aria-hidden="true">›</span></span>
-          <span className="mt-3 block text-[20px] font-semibold leading-tight">{v.origen ? v.origen[0] : "—"}</span>
-          <span className="mt-1.5 block text-[13px] text-suave">{v.origen && v.fallas ? `${v.origen[1]} de ${v.fallas} fallas (${Math.round((100 * v.origen[1]) / v.fallas)}%)` : "Sin fallas en el periodo"}</span>
-        </Link>
-        <Link href={`${base}/analisis?periodo=30d`} className="tarjeta-enlace p-5">
-          <span className="flex items-center justify-between text-[15px] font-semibold">Equipo con más fallas <span className="text-suave" aria-hidden="true">›</span></span>
-          <span className="mt-3 block truncate text-[20px] font-semibold leading-tight">{v.peor ? v.peor[0] : "—"}</span>
-          <span className="mt-1.5 block text-[13px] text-suave">{v.peor ? `${v.peor[1]} falla${v.peor[1] === 1 ? "" : "s"} en 90 días` : "Sin fallas en 90 días"}</span>
-        </Link>
+  // Celular, tablet o sin WebGL: lo mismo en 2D, sin la escena.
+  return (
+    <div className="grid gap-4">
+      {titulo}
+      {acciones}
+      {filtros}
+      <div className="grid gap-4 md:grid-cols-2">
+        {panelFlota}
+        <section className={`p-5 ${VIDRIO}`} aria-labelledby="alm-tit">
+          <h2 id="alm-tit" className="text-[15px] font-semibold">Almacenes con equipos en taller</h2>
+          <ul className="mt-3 space-y-1">
+            {almacenes.filter((a) => a.paro > 0).slice(0, 12).map((a) => (
+              <li key={a.id}>
+                <button type="button" onClick={() => abrirTaller(a.id)} className={`w-full cursor-pointer rounded-2xl p-3 text-left hover:bg-papel ${seleccion === a.id ? "bg-papel" : ""}`}>
+                  <span className="flex items-baseline justify-between gap-3 text-[15px]">
+                    <span className="font-medium">{a.nombre}</span>
+                    <span className="tabular-nums text-paro-texto">{a.paro} <span className="text-suave">de {a.total}</span></span>
+                  </span>
+                  <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-panel-2"><span className="block h-full rounded-full bg-paro" style={{ width: `${(100 * a.paro) / a.total}%` }} /></span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       </div>
-    </>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" data-tour="indicadores">{medidores}</div>
+      <div className="grid gap-3 sm:grid-cols-3">{ordenes}{fallas}{peor}</div>
+      {panel}
+    </div>
   );
 }

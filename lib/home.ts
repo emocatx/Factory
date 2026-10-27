@@ -129,6 +129,15 @@ export async function datosHome({ pilar, periodo: pv, rol, idUsuario, metas }: {
   for (const [alm, lista] of enTaller) obtener(alm).taller = lista;
 
   const g = { origenes: new Map<string, number>(), peores: new Map<string, number>(), fallas: 0, previas: 0 };
+  const nombreEquipo = new Map<string, string>();
+  /** [nombre del equipo (y su almacén si se pide), fallas] del equipo con más fallas. */
+  const peorEquipo = (m: Map<string, number>, conAlmacen: boolean): [string, number] | null => {
+    const t = top(m);
+    if (!t) return null;
+    const alm = almacenDeEquipo.get(t[0]);
+    const nombre = nombreEquipo.get(t[0]) ?? "Sin nombre";
+    return [conAlmacen && alm ? `${nombre} · ${nombreAlmacen.get(alm) ?? ""}` : nombre, t[1]];
+  };
   for (const o of recientes) {
     const t = new Date(o.fecha_ingreso).getTime();
     const alm = (o.id_equipo && almacenDeEquipo.get(o.id_equipo)) || o.id_almacen;
@@ -140,7 +149,11 @@ export async function datosHome({ pilar, periodo: pv, rol, idUsuario, metas }: {
       g.previas++;
       if (r) r.fallasPrevias++;
     }
-    if (t >= desde90) { suma(g.peores, o.nombre_equipo); if (r) suma(r.peores, o.nombre_equipo); }
+    // por id de equipo (dos equipos pueden llamarse igual); el nombre se pone al final
+    if (t >= desde90 && o.id_equipo) {
+      suma(g.peores, o.id_equipo); if (r) suma(r.peores, o.id_equipo);
+      if (!nombreEquipo.has(o.id_equipo)) nombreEquipo.set(o.id_equipo, o.nombre_equipo ?? "Sin nombre");
+    }
   }
 
   const almacenes: Almacen[] = [...porAlm.entries()]
@@ -150,7 +163,7 @@ export async function datosHome({ pilar, periodo: pv, rol, idUsuario, metas }: {
       if (r.renta !== null) muestra.push([r.renta, true]);
       return {
         id, nombre: nombreAlmacen.get(id)!, total: r.total, paro: r.taller.length, externos: r.externos,
-        fallas: r.fallas, fallasPrevias: r.fallasPrevias, origen: top(r.origenes), peor: top(r.peores),
+        fallas: r.fallas, fallasPrevias: r.fallasPrevias, origen: top(r.origenes), peor: peorEquipo(r.peores, false),
         taller: r.taller, detenidos: r.taller.map((x) => x.modelo ?? ""), operando: muestra.slice(0, Math.min(4, r.total - r.taller.length)), ind: null,
       };
     })
@@ -165,7 +178,7 @@ export async function datosHome({ pilar, periodo: pv, rol, idUsuario, metas }: {
     total: cat.equipos.length,
     paro: equiposEnTaller.size,
     externos: cat.equipos.filter((e) => e.propiedad !== "propio").length,
-    fallas: g.fallas, fallasPrevias: g.previas, origen: top(g.origenes), peor: top(g.peores),
+    fallas: g.fallas, fallasPrevias: g.previas, origen: top(g.origenes), peor: peorEquipo(g.peores, true),
     taller: abiertas.map((o) => ({
       idOrden: o.id_orden, folio: o.folio_ticket, equipo: o.nombre_equipo ?? "Sin equipo",
       modelo: o.id_equipo ? modelo.get(o.id_equipo) ?? null : null,

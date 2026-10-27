@@ -79,7 +79,7 @@ function Alerta({ p, i }: { p: Paleta; i: number }) {
 }
 
 /** Zoom que deja ver las naves completas en el ancho disponible. */
-const zoomBase = (ancho: number) => Math.max(8, Math.min(20, ancho / 64));
+const zoomBase = (ancho: number) => Math.max(8, Math.min(26, ancho / 56));
 
 // Al cambiar la selección (o el ancho) lleva la cámara a la nave elegida o al conjunto, y se detiene:
 // después el usuario puede girar y acercar a mano sin que la cámara regrese sola.
@@ -94,8 +94,8 @@ function Enfoque({ naves, seleccion }: { naves: NaveEscena[]; seleccion: string 
     const i = naves.findIndex((n) => n.id === seleccion);
     if (i >= 0) {
       const [x, , z] = posicion(i);
-      meta.set(x - 3, 0, z + 3);
-    } else meta.set(-4, 0, 6);
+      meta.set(x - 4, 0, z + 4);
+    } else meta.set(-7, 0, 9);
     const zoom = i >= 0 ? zoomBase(ancho) * 1.6 : zoomBase(ancho);
     const cam = controls.object as unknown as { zoom: number; position: Vector3; updateProjectionMatrix: () => void };
     cam.zoom += (zoom - cam.zoom) * 0.1;
@@ -142,8 +142,8 @@ export default function Escena3D({ naves, seleccion, onSelect, onTaller, quieto 
         <color attach="background" args={[p.fondo]} />
         <fog attach="fog" args={[p.fondo, 80, 170]} />
         {alta && <SoftShadows size={18} samples={10} focus={0.6} />}
-        <OrthographicCamera makeDefault position={[30, 30, 40]} zoom={14} near={-100} far={300} />
-        <OrbitControls makeDefault enablePan={false} enableZoom minZoom={8} maxZoom={40} minPolarAngle={Math.PI / 5} maxPolarAngle={Math.PI / 3} target={[-4, 0, 6]} />
+        <OrthographicCamera makeDefault position={[27, 30, 43]} zoom={14} near={-100} far={300} />
+        <OrbitControls makeDefault enablePan={false} enableZoom minZoom={8} maxZoom={40} minPolarAngle={Math.PI / 5} maxPolarAngle={Math.PI / 3} target={[-7, 0, 9]} />
         <ambientLight intensity={p.ambiente} />
         <hemisphereLight args={["#fff6e8", "#c9d3e2", 0.35]} />
         <directionalLight position={[16, 32, 22]} intensity={p.luz} castShadow shadow-mapSize={[2048, 2048]} shadow-bias={-0.0003} shadow-normalBias={0.02}
