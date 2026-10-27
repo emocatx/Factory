@@ -7,16 +7,16 @@ import { crearConContrasena, invitarUsuario } from "./actions";
 import { Desplegable } from "@/components/Desplegable";
 import { IcoPersona } from "@/components/Iconos";
 
-type Props = { roles: { valor: Rol; etiqueta: string }[]; disponibles: Pilar[]; rolInicial: Rol; esCoordinador: boolean; sitio: string };
+type Props = { roles: { valor: Rol; etiqueta: string }[]; disponibles: Pilar[]; rolInicial: Rol; alcance: string; sitio: string };
 
-export function FormAlta({ roles, disponibles, rolInicial, esCoordinador, sitio }: Props) {
+export function FormAlta({ roles, disponibles, rolInicial, alcance, sitio }: Props) {
   const [modo, setModo] = useState<"clave" | "correo">("clave");
   const [estado, accion, pend] = useActionState(crearConContrasena, undefined);
   const [copiado, setCopiado] = useState(false);
 
   async function copiar() {
-    if (!estado?.clave) return;
-    const texto = `Factory · ${sitio}\nUsuario: ${estado.correo}\nContraseña temporal: ${estado.clave}`;
+    if (!estado?.cuentas?.length) return;
+    const texto = [`Factory · ${sitio}`, ...estado.cuentas.map((c) => `Usuario: ${c.correo}\nContraseña temporal: ${c.clave}`)].join("\n\n");
     try { await navigator.clipboard.writeText(texto); setCopiado(true); } catch { setCopiado(false); }
   }
 
@@ -27,7 +27,7 @@ export function FormAlta({ roles, disponibles, rolInicial, esCoordinador, sitio 
           <h2 className="text-xl font-semibold">Agregar persona</h2>
           <p className="mt-1 max-w-xl text-[15px] text-suave">
             {modo === "clave" ? "Creas su cuenta con una contraseña temporal que tú le compartes. No necesita correo." : "Recibirá un correo para crear su contraseña (requiere SMTP propio en Supabase)."}
-            {esCoordinador && " Puedes dar de alta supervisores, técnicos, operaciones y lectores de tus pilares."}
+            {" "}{alcance} Para varias personas, escribe sus correos separados por coma.
           </p>
         </div>
         <div role="radiogroup" aria-label="Forma de alta" className="inline-flex rounded-full bg-papel p-1 text-[14px]">
@@ -39,8 +39,8 @@ export function FormAlta({ roles, disponibles, rolInicial, esCoordinador, sitio 
       </div>
 
       <form action={modo === "clave" ? accion : invitarUsuario} className="mt-5 grid gap-4 md:grid-cols-[1fr_1fr_200px]">
-        <label><span className="etiqueta">Nombre</span><input name="nombre" className="campo" placeholder="Nombre y apellido" /></label>
-        <label><span className="etiqueta">Correo</span><input name="correo" type="email" className="campo" placeholder="nombre@empresa.com" required /></label>
+        <label><span className="etiqueta">Nombre (si es una sola persona)</span><input name="nombre" className="campo" placeholder="Nombre y apellido" /></label>
+        <label><span className="etiqueta">Correo, o varios separados por coma</span><input name="correo" type="text" inputMode="email" autoComplete="off" className="campo" placeholder="nombre@empresa.com, otro@empresa.com" required /></label>
         <div><label htmlFor="alta-rol" className="etiqueta">Rol</label>
           <Desplegable id="alta-rol" name="rol" defaultValue={rolInicial} icono={<IcoPersona />}
             opciones={roles.map((r) => ({ valor: r.valor, etiqueta: r.etiqueta }))} /></div>
@@ -62,15 +62,19 @@ export function FormAlta({ roles, disponibles, rolInicial, esCoordinador, sitio 
       </form>
 
       {modo === "clave" && estado?.error && <p role="alert" className="mt-4 rounded-xl bg-paro-suave px-4 py-3 text-[15px] text-paro-texto">{estado.error}</p>}
-      {modo === "clave" && estado?.ok && estado.clave && (
+      {modo === "clave" && estado?.ok && !!estado.cuentas?.length && (
         <div role="status" className="mt-4 rounded-[18px] bg-ok-suave p-5">
           <p className="text-[15px] text-ok-texto">{estado.ok}</p>
-          <dl className="mt-3 grid gap-1 text-[15px] sm:grid-cols-[auto_1fr] sm:gap-x-4">
-            <dt className="text-suave">Usuario</dt><dd className="font-medium">{estado.correo}</dd>
-            <dt className="text-suave">Contraseña temporal</dt><dd className="select-all font-mono text-[17px] font-semibold tracking-wide">{estado.clave}</dd>
-          </dl>
-          <button type="button" onClick={copiar} className="btn-sec mt-4 min-h-10 text-[15px]">{copiado ? "Copiado" : "Copiar datos de acceso"}</button>
-          <p className="mt-3 text-[13px] text-suave">Esta contraseña no se vuelve a mostrar. Si se pierde, crea una nueva desde aquí.</p>
+          {estado.cuentas.map((c) => (
+            <dl key={c.correo} className="mt-3 grid gap-1 text-[15px] sm:grid-cols-[auto_1fr] sm:gap-x-4">
+              <dt className="text-suave">Usuario</dt><dd className="font-medium">{c.correo}</dd>
+              <dt className="text-suave">Contraseña temporal</dt><dd className="select-all font-mono text-[17px] font-semibold tracking-wide">{c.clave}</dd>
+            </dl>
+          ))}
+          <button type="button" onClick={copiar} className="btn-sec mt-4 min-h-10 text-[15px]">
+            {copiado ? "Copiado" : estado.cuentas.length > 1 ? "Copiar todos los datos de acceso" : "Copiar datos de acceso"}
+          </button>
+          <p className="mt-3 text-[13px] text-suave">Estas contraseñas no se vuelven a mostrar. Si se pierde una, crea una nueva desde aquí.</p>
         </div>
       )}
     </section>

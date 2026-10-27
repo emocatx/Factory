@@ -29,6 +29,8 @@ export interface Sesion {
   tenant: Tenant;
   /** Pilares que este usuario puede abrir (admin: todos los activos del tenant) */
   pilares: Pilar[];
+  /** Ya vio el recorrido de bienvenida (se guarda en user_metadata de Supabase Auth). */
+  tourVisto: boolean;
 }
 
 export interface Almacen { id_almacen: string; nombre_almacen: string; activo: boolean }

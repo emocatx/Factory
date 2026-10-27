@@ -47,11 +47,20 @@ export const veTodosLosPilares = (r: Rol) => r === "admin" || r === "gerente";
 export const esAdmin = (r: Rol) => r === "admin";
 /** Asignar, reasignar y cancelar órdenes. */
 export const puedeAsignar = (r: Rol) => r === "admin" || r === "supervisor" || r === "coordinador";
-/** Ver y administrar usuarios (el coordinador solo a su equipo). */
-export const puedeGestionarUsuarios = (r: Rol) => r === "admin" || r === "coordinador";
-/** Roles que cada quien puede otorgar. */
+/**
+ * Altas en cascada: cada nivel da de alta a los niveles de abajo (y solo con sus propios pilares).
+ * Debe coincidir con private.roles_que_otorgo() en la base, que aplica lo mismo en el RLS.
+ */
 export const rolesQueOtorga = (r: Rol): Rol[] =>
-  r === "admin" ? ROLES.map((x) => x.valor) : r === "coordinador" ? ["supervisor", "tecnico", "operaciones", "lector"] : [];
+  r === "admin" ? ROLES.map((x) => x.valor)
+  : r === "gerente" ? ["coordinador", "supervisor", "tecnico", "operaciones", "lector"]
+  : r === "coordinador" ? ["supervisor", "tecnico", "operaciones", "lector"]
+  : r === "supervisor" ? ["tecnico", "operaciones"]
+  : [];
+/** Quienes pueden dar de alta a alguien. */
+export const ROLES_GESTORES: Rol[] = ["admin", "gerente", "coordinador", "supervisor"];
+/** Ver y administrar usuarios: solo a quienes podría dar de alta. */
+export const puedeGestionarUsuarios = (r: Rol) => rolesQueOtorga(r).length > 0;
 
 /** Pestañas de un pilar según el rol (Operaciones ve su propio espacio, como en la app de Power Apps). */
 export function pestanasPilar(pilar: Pilar, rol: Rol) {

@@ -31,7 +31,7 @@ export const obtenerSesion = cache(async (): Promise<Sesion> => {
 
   const activos = (tenant?.pilares_activos ?? []) as Pilar[];
   const propios = perfil.rol === "admin" || perfil.rol === "gerente" ? activos : (perfil.pilares as Pilar[]).filter((p) => activos.includes(p));
-  return { perfil, tenant, pilares: propios } as Sesion;
+  return { perfil, tenant, pilares: propios, tourVisto: !!claims.user_metadata?.tour_visto } as Sesion;
 });
 
 export async function exigirRol(roles: Rol[]) {

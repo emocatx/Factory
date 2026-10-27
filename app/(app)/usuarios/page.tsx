@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { exigirRol } from "@/lib/sesion";
 import { Aviso, Encabezado } from "@/components/ui";
-import { etiquetaPilar, etiquetaRol, PILARES, ROLES, rolesQueOtorga } from "@/lib/catalogos";
+import { etiquetaPilar, etiquetaRol, PILARES, ROLES, ROLES_GESTORES, rolesQueOtorga, veTodosLosPilares } from "@/lib/catalogos";
 import { actualizarUsuario } from "./actions";
 import { FormAlta } from "./FormAlta";
 import type { Perfil, Pilar } from "@/lib/tipos";
@@ -24,9 +24,11 @@ function Pilares({ marcados, prefijo, disponibles }: { marcados: Pilar[]; prefij
 }
 
 export default async function Usuarios({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
-  const { perfil: yo, tenant, pilares: misPilares } = await exigirRol(["admin", "coordinador"]);
+  const { perfil: yo, tenant, pilares: misPilares } = await exigirRol(ROLES_GESTORES);
   const otorga = ROLES.filter((r) => rolesQueOtorga(yo.rol).includes(r.valor));
-  const disponibles = yo.rol === "admin" ? tenant.pilares_activos : misPilares;
+  const disponibles = veTodosLosPilares(yo.rol) ? tenant.pilares_activos : misPilares;
+  const alcance = yo.rol === "admin" ? "Puedes dar de alta cualquier rol."
+    : `Como ${etiquetaRol(yo.rol).toLowerCase()} puedes dar de alta: ${otorga.map((r) => r.etiqueta.toLowerCase()).join(", ")}${veTodosLosPilares(yo.rol) ? "" : ", de tus pilares"}.`;
   const editable = (u: Perfil) => u.id !== yo.id && (yo.rol === "admin" || rolesQueOtorga(yo.rol).includes(u.rol));
   const sp = await searchParams;
   const { data } = await (await createClient())
@@ -41,7 +43,7 @@ export default async function Usuarios({ searchParams }: { searchParams: Promise
       {sp.ok && <div className="mb-6"><Aviso tono="ok">{sp.ok}</Aviso></div>}
       {sp.error && <div className="mb-6" role="alert"><Aviso tono="paro">{sp.error}</Aviso></div>}
 
-      <FormAlta roles={otorga} disponibles={disponibles} rolInicial={yo.rol === "coordinador" ? "supervisor" : "tecnico"} esCoordinador={yo.rol === "coordinador"} sitio={process.env.NEXT_PUBLIC_SITE_URL ?? ""} />
+      <FormAlta roles={otorga} disponibles={disponibles} rolInicial={otorga.some((r) => r.valor === "tecnico") ? "tecnico" : otorga[0].valor} alcance={alcance} sitio={process.env.NEXT_PUBLIC_SITE_URL ?? ""} />
 
       <section className="caja-panel mb-6 p-6">
         <h2 className="text-xl font-semibold">Qué hace cada rol</h2>

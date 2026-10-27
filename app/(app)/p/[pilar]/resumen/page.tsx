@@ -1,5 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { datosHome } from "@/lib/home";
+import { esUuid } from "@/lib/filtros";
+import { HomeMoviles } from "@/components/home/HomeMoviles";
 import { sesionDePilar } from "@/lib/sesion";
 import { todasLasPaginas } from "@/lib/datos";
 import { infoPilar } from "@/lib/catalogos";
@@ -38,11 +42,22 @@ export default async function Resumen({
   searchParams,
 }: {
   params: Promise<{ pilar: string }>;
-  searchParams: Promise<{ periodo?: string }>;
+  searchParams: Promise<{ periodo?: string; almacen?: string }>;
 }) {
   const { pilar: p } = await params;
-  const { pilar, tenant } = await sesionDePilar(p);
-  const { periodo: pv } = await searchParams;
+  const { pilar, tenant, perfil } = await sesionDePilar(p);
+  // Operaciones no tiene Resumen (su espacio es Seguimiento), ni aunque escriba la dirección a mano.
+  if (perfil.rol === "operaciones") redirect(`/p/${pilar}/ordenes`);
+  const { periodo: pv, almacen } = await searchParams;
+
+  // Móviles: home visual (planta 3D en escritorio, 2D en celular). Los demás pilares siguen con este Resumen.
+  if (pilar === "moviles") {
+    const datos = await datosHome({
+      pilar, periodo: pv, rol: perfil.rol, idUsuario: perfil.id,
+      metas: { disponibilidad: tenant.meta_disponibilidad_pct ?? null, mttr: tenant.meta_mttr_horas ?? null, mtbf: tenant.meta_mtbf_horas ?? null },
+    });
+    return <HomeMoviles datos={datos} base={`/p/${pilar}`} almacenInicial={esUuid(almacen) ? almacen : null} />;
+  }
   const periodo = PERIODOS.find((x) => x.v === pv) ?? PERIODOS[2];
   const ahora = Date.now();
   const desde = periodo.dias ? ahora - periodo.dias * DIA : medianoche(ahora);

@@ -5,9 +5,10 @@ import { Marca } from "@/components/Marca";
 import { EnVivo } from "@/components/EnVivo";
 import { cerrarSesion } from "@/app/login/actions";
 import { BotonEnviar } from "@/components/BotonEnviar";
+import { Tour } from "@/components/Tour";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const { perfil, tenant } = await obtenerSesion();
+  const { perfil, tenant, tourVisto } = await obtenerSesion();
   const enlaces = [
     { href: "/historial", texto: "Historial", ver: perfil.rol !== "operaciones" },
     { href: "/configuracion", texto: "Configuración", ver: puedeAdministrar(perfil.rol) },
@@ -51,6 +52,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                     ))}
                   </nav>
                 )}
+                {/* recarga completa a propósito: el recorrido se abre al leer ?tour=1 */}
+                <a href="?tour=1" className="mt-3 flex min-h-11 items-center rounded-xl px-2 text-[15px] hover:bg-panel">Ver recorrido de bienvenida</a>
                 <form action={cerrarSesion} className="mt-4">
                   <BotonEnviar className="btn-sec w-full min-h-10 text-sm" pendiente="Saliendo…">Cerrar sesión</BotonEnviar>
                 </form>
@@ -60,6 +63,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </header>
       <main className="mx-auto max-w-[1240px] px-4 pb-24 pt-8 md:px-8 md:pt-12">{children}</main>
+      <Tour rol={perfil.rol} empresa={tenant.nombre_empresa} nombre={perfil.nombre} visto={tourVisto} />
     </div>
   );
 }
