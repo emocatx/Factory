@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { sesionDePilar } from "@/lib/sesion";
 import { catalogosPilar } from "@/lib/datos";
-import { esUuid, rangoPeriodo } from "@/lib/filtros";
+import { esUuid, ordenesDelAlmacen, rangoPeriodo } from "@/lib/filtros";
 import { infoPilar } from "@/lib/catalogos";
 import { horas, pct } from "@/lib/formato";
 import { Encabezado, Kpi, Seccion, Vacio, ChipEstado } from "@/components/ui";
@@ -37,7 +37,7 @@ export default async function PaginaIndicadores({
   let detenidos = supabase.from("v_ordenes_detalle").select("*").eq("pilar", pilar)
     .in("estatus_orden", ["pendiente", "asignada", "en_proceso"]).order("fecha_ingreso");
   if (linea) detenidos = detenidos.eq("id_linea", linea);
-  if (almacen) detenidos = detenidos.eq("id_almacen", almacen);
+  if (almacen) detenidos = detenidos.or(ordenesDelAlmacen(almacen, cat.equipos));
   const [{ data: ind }, { data: abiertas }] = await Promise.all([
     supabase.rpc("indicadores", { p_pilar: pilar, p_id_linea: linea, p_id_almacen: almacen, p_desde: desde, p_hasta: null }).single(),
     detenidos,

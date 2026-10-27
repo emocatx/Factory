@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { sesionDePilar } from "@/lib/sesion";
 import { catalogosPilar, tecnicosPilar } from "@/lib/datos";
-import { esUuid } from "@/lib/filtros";
+import { esUuid, ordenesDelAlmacen } from "@/lib/filtros";
 import { ESTADOS, puedeAsignar } from "@/lib/catalogos";
 import { BarraFiltros } from "@/components/BarraFiltros";
 import { PanelOrdenes } from "./PanelOrdenes";
@@ -14,13 +14,15 @@ export default async function OrdenesAbiertas({
   searchParams,
 }: {
   params: Promise<{ pilar: string }>;
-  searchParams: Promise<{ q?: string; linea?: string; estado?: string; orden?: string }>;
+  searchParams: Promise<{ q?: string; linea?: string; estado?: string; orden?: string; almacen?: string; periodo?: string }>;
 }) {
   const { pilar: p } = await params;
   const { perfil, tenant, pilar } = await sesionDePilar(p);
   const f = await searchParams;
 
+  const almacen = esUuid(f.almacen) ? f.almacen : null;
   const supabase = await createClient();
+  const cat = await catalogosPilar(pilar);
   let q = supabase
     .from("v_ordenes_detalle")
     .select("*")
@@ -31,7 +33,11 @@ export default async function OrdenesAbiertas({
     .limit(300);
   if (esUuid(f.linea)) q = q.eq("id_linea", f.linea);
   if (f.estado && f.estado in ESTADOS) q = q.eq("estatus_orden", f.estado as EstatusOrden);
-  const [{ data }, cat, tecnicos] = await Promise.all([q, catalogosPilar(pilar, { equipos: pilar === "dorsales" }), puedeAsignar(perfil.rol) ? tecnicosPilar(pilar) : []]);
+  if (almacen) q = q.or(ordenesDelAlmacen(almacen, cat.equipos));
+  const [{ data }, tecnicos] = await Promise.all([q, puedeAsignar(perfil.rol) ? tecnicosPilar(pilar) : []]);
+  const conEquipos = new Set(cat.equipos.map((e) => e.id_almacen));
+  const almacenes = cat.almacenes.filter((a) => conEquipos.has(a.id_almacen));
+  const nombreAlmacen = almacenes.find((a) => a.id_almacen === almacen)?.nombre_almacen;
 
   let ordenes = (data ?? []) as OrdenDetalle[];
   // prioridad: alta primero (el enum ordena baja<media<alta, así que invertimos aquí)
@@ -47,9 +53,10 @@ export default async function OrdenesAbiertas({
   return (
     <>
       <BarraFiltros
-        resumen={`${ordenes.length} ${ordenes.length === 1 ? "orden abierta" : "órdenes abiertas"}`}
+        resumen={`${ordenes.length} ${ordenes.length === 1 ? "orden abierta" : "órdenes abiertas"}${nombreAlmacen ? ` en ${nombreAlmacen}` : ""}`}
         lineas={pilar === "dorsales" ? cat.lineas : undefined}
-        valores={{ q: f.q, linea: f.linea, estado: f.estado }}
+        almacenes={pilar === "dorsales" ? undefined : almacenes}
+        valores={{ q: f.q, linea: f.linea, estado: f.estado, almacen: f.almacen, periodo: f.periodo }}
         mostrarPeriodo={false}
         mostrarBusqueda
         estados={[{ v: "pendiente", t: "Pendiente" }, { v: "asignada", t: "Asignada" }, { v: "en_proceso", t: "En proceso" }]}

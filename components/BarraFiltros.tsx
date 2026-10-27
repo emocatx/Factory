@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PERIODOS } from "@/lib/filtros";
+import { PERIODO_DEFECTO, PERIODOS } from "@/lib/filtros";
 import { refEquipo } from "@/lib/equipos";
 import { Desplegable } from "./Desplegable";
 import { FormFiltros } from "./FormFiltros";
@@ -19,7 +19,7 @@ export function BarraFiltros({
   mostrarPeriodo = true,
   mostrarBusqueda = false,
   estados,
-  periodoDefecto = "30d",
+  periodoDefecto = PERIODO_DEFECTO,
   enEncabezado = false,
 }: {
   resumen?: string;
@@ -89,6 +89,10 @@ export function BarraFiltros({
               opciones={PERIODOS.map((p) => ({ valor: p.v, etiqueta: p.t }))} />
           </div>
         )}
+        {/* Lo que esta página no muestra (periodo en Órdenes abiertas, equipo que llega del Resumen) viaja oculto. */}
+        {!mostrarPeriodo && valores.periodo && <input type="hidden" name="periodo" value={valores.periodo} />}
+        {!(almacenes && almacenes.length > 0) && valores.almacen && <input type="hidden" name="almacen" value={valores.almacen} />}
+        {!(equipos && equipos.length > 0) && valores.equipo && <input type="hidden" name="equipo" value={valores.equipo} />}
         {/* Las listas se aplican solas; el botón queda oculto para el envío con Enter y sin JavaScript. */}
         <button className="sr-only">Aplicar</button>
         {enEncabezado && hayFiltro && <Link href="?" className="enlace mb-2.5 text-sm">Quitar filtros</Link>}

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { sesionDePilar } from "@/lib/sesion";
 import { catalogosPilar } from "@/lib/datos";
-import { esUuid, rangoPeriodo } from "@/lib/filtros";
+import { esUuid, ordenesDelAlmacen, rangoPeriodo } from "@/lib/filtros";
 
 import { fechaHora, horas } from "@/lib/formato";
 import { ChipEstado, Vacio } from "@/components/ui";
@@ -19,21 +19,27 @@ export default async function Cerradas({
   searchParams,
 }: {
   params: Promise<{ pilar: string }>;
-  searchParams: Promise<{ q?: string; linea?: string; periodo?: string; estado?: string }>;
+  searchParams: Promise<{ q?: string; linea?: string; periodo?: string; estado?: string; almacen?: string }>;
 }) {
   const { pilar: p } = await params;
   const { tenant, pilar } = await sesionDePilar(p);
   const f = await searchParams;
   const { periodo, desde } = rangoPeriodo(f.periodo);
+  const almacen = esUuid(f.almacen) ? f.almacen : null;
   const supabase = await createClient();
+  const cat = await catalogosPilar(pilar);
 
   let q = supabase.from("v_ordenes_detalle").select(COLUMNAS).eq("pilar", pilar)
     .in("estatus_orden", f.estado === "cancelada" ? ["cancelada"] : f.estado === "cerrada" ? ["cerrada"] : ["cerrada", "cancelada"])
     .order("fecha_ingreso", { ascending: false }).limit(300);
   if (desde) q = q.gte("fecha_ingreso", desde);
   if (esUuid(f.linea)) q = q.eq("id_linea", f.linea);
-  // Solo Dorsales filtra por línea; los demás pilares no necesitan catálogos aquí.
-  const [{ data }, lineas] = await Promise.all([q, pilar === "dorsales" ? catalogosPilar(pilar, { equipos: false }).then((c) => c.lineas) : undefined]);
+  if (almacen) q = q.or(ordenesDelAlmacen(almacen, cat.equipos));
+  const { data } = await q;
+  const lineas = pilar === "dorsales" ? cat.lineas : undefined;
+  const conEquipos = new Set(cat.equipos.map((e) => e.id_almacen));
+  const almacenes = cat.almacenes.filter((a) => conEquipos.has(a.id_almacen));
+  const nombreAlmacen = almacenes.find((a) => a.id_almacen === almacen)?.nombre_almacen;
   let ordenes = (data ?? []) as OrdenDetalle[];
   const t = f.q?.trim().toLowerCase();
   if (t) ordenes = ordenes.filter((o) => [o.folio_ticket, o.nombre_linea, o.nombre_equipo, o.sap_id, o.serie, o.solicitante_nombre].some((v) => v?.toLowerCase().includes(t)));
@@ -41,9 +47,10 @@ export default async function Cerradas({
   return (
     <>
       <BarraFiltros
-        resumen={`${ordenes.length} en ${periodo.t.toLowerCase()}`}
+        resumen={`${ordenes.length}${nombreAlmacen ? ` de ${nombreAlmacen}` : ""} en ${periodo.t.toLowerCase()}`}
         lineas={lineas}
-        valores={{ q: f.q, linea: f.linea, periodo: f.periodo, estado: f.estado }}
+        almacenes={pilar === "dorsales" ? undefined : almacenes}
+        valores={{ q: f.q, linea: f.linea, periodo: f.periodo, estado: f.estado, almacen: f.almacen }}
         mostrarBusqueda
         estados={[{ v: "cerrada", t: "Cerrada" }, { v: "cancelada", t: "Cancelada" }]}
       />

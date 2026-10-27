@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { sesionDePilar } from "@/lib/sesion";
 import { catalogosPilar } from "@/lib/datos";
-import { esUuid, rangoPeriodo } from "@/lib/filtros";
+import { esUuid, ordenesDelAlmacen, PERIODO_DEFECTO, rangoPeriodo } from "@/lib/filtros";
 import { infoPilar } from "@/lib/catalogos";
 import { fechaHora, horas } from "@/lib/formato";
 import { Encabezado, Seccion, Vacio } from "@/components/ui";
@@ -21,14 +21,16 @@ const COLOR_CUADRANTE: Record<Cuadrante, { punto: string; chip: string }> = {
   control: { punto: "var(--color-placeholder)", chip: "bg-panel-2 text-suave" },
 };
 
-type Filtros = { linea?: string; periodo?: string; metrica?: string; cruce?: string };
+type Filtros = { linea?: string; periodo?: string; metrica?: string; cruce?: string; almacen?: string; equipo?: string };
 
 export default async function Analisis({ params, searchParams }: { params: Promise<{ pilar: string }>; searchParams: Promise<Filtros> }) {
   const { pilar: p } = await params;
   const { pilar, tenant } = await sesionDePilar(p);
   const f = await searchParams;
-  const { periodo, desde } = rangoPeriodo(f.periodo, "90d");
+  const { periodo, desde } = rangoPeriodo(f.periodo);
   const linea = esUuid(f.linea) ? f.linea : null;
+  const almacen = esUuid(f.almacen) ? f.almacen : null;
+  const equipo = esUuid(f.equipo) ? f.equipo : null;
   const metrica: Metrica = f.metrica === "fallas" ? "fallas" : "horas";
   const cruce = f.cruce === "causa" ? "causa" : "modo";
   const porLinea = pilar === "dorsales" && !linea;
@@ -40,19 +42,28 @@ export default async function Analisis({ params, searchParams }: { params: Promi
   const desdeHist = desde ? new Date(new Date(desde).getTime() - 30 * 86400e3).toISOString() : null;
   let q = supabase
     .from("v_ordenes_detalle")
-    .select("id_orden, id_equipo, nombre_equipo, sap_id, serie, id_linea, nombre_linea, id_origen, nombre_origen, id_modo, nombre_modo, estatus_orden, fecha_ingreso, fecha_cierre, tiempo_paro_horas, horas_transcurridas")
+    .select("id_orden, id_equipo, id_almacen, nombre_equipo, sap_id, serie, id_linea, nombre_linea, id_origen, nombre_origen, id_modo, nombre_modo, estatus_orden, fecha_ingreso, fecha_cierre, tiempo_paro_horas, horas_transcurridas")
     .eq("pilar", pilar)
     .neq("estatus_orden", "cancelada")
     .order("fecha_ingreso", { ascending: true })
     .limit(10000);
   if (desdeHist) q = q.gte("fecha_ingreso", desdeHist);
   if (linea) q = q.eq("id_linea", linea);
-  const [{ data }, cat] = await Promise.all([q, catalogosPilar(pilar)]);
+  if (equipo) q = q.eq("id_equipo", equipo);
+  const cat = await catalogosPilar(pilar);
+  if (almacen) q = q.or(ordenesDelAlmacen(almacen, cat.equipos));
+  const { data } = await q;
+  const conEquipos = new Set(cat.equipos.map((e) => e.id_almacen));
+  const almacenes = cat.almacenes.filter((a) => conEquipos.has(a.id_almacen));
   const historial = (data ?? []) as FilaFalla[];
   const tDesde = desde ? new Date(desde).getTime() : null;
   const filas = tDesde ? historial.filter((x) => new Date(x.fecha_ingreso).getTime() >= tDesde) : historial;
 
-  const alcance = cat.lineas.find((l) => l.id_linea === linea)?.nombre_linea ?? (pilar === "dorsales" ? "Todas las líneas" : info.etiqueta);
+  const alcance = [
+    cat.lineas.find((l) => l.id_linea === linea)?.nombre_linea,
+    almacenes.find((a) => a.id_almacen === almacen)?.nombre_almacen,
+    equipo ? cat.equipos.find((e) => e.id_equipo === equipo)?.nombre_equipo ?? "Un equipo" : null,
+  ].filter(Boolean).join(" · ") || (pilar === "dorsales" ? "Todas las líneas" : info.etiqueta);
   const qs = (extra: Partial<Filtros>) =>
     "?" + new URLSearchParams(Object.entries({ ...f, ...extra }).filter(([, v]) => v) as [string, string][]).toString();
 
@@ -60,7 +71,8 @@ export default async function Analisis({ params, searchParams }: { params: Promi
     return (
       <>
         <Encabezado titulo="Análisis de falla" sub={`${alcance} · ${periodo.t}`}>
-          <BarraFiltros enEncabezado lineas={pilar === "dorsales" ? cat.lineas : undefined} valores={{ linea: f.linea, periodo: f.periodo ?? "90d" }} periodoDefecto="90d" />
+          <BarraFiltros enEncabezado lineas={pilar === "dorsales" ? cat.lineas : undefined} almacenes={pilar === "dorsales" ? undefined : almacenes}
+            valores={{ linea: f.linea, almacen: f.almacen, equipo: f.equipo, periodo: f.periodo ?? PERIODO_DEFECTO }} />
         </Encabezado>
         <Vacio titulo="Todavía no hay fallas en este periodo">
           El análisis aparece en cuanto se registren órdenes. <Link href={`/p/${pilar}/registro`} className="enlace">Registrar una ›</Link>
@@ -86,7 +98,8 @@ export default async function Analisis({ params, searchParams }: { params: Promi
         <BarraFiltros
           enEncabezado
           lineas={pilar === "dorsales" ? cat.lineas : undefined}
-          valores={{ linea: f.linea, periodo: f.periodo ?? "90d" }} periodoDefecto="90d"
+          almacenes={pilar === "dorsales" ? undefined : almacenes}
+          valores={{ linea: f.linea, almacen: f.almacen, equipo: f.equipo, periodo: f.periodo ?? PERIODO_DEFECTO }}
         />
       </Encabezado>
 

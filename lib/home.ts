@@ -23,7 +23,8 @@ export type Resumen = {
   fallas: number;
   fallasPrevias: number;
   origen: [string, number] | null;
-  peor: [string, number] | null;
+  /** [nombre, fallas en 90 días, id del equipo] del equipo con más fallas. */
+  peor: [string, number, string] | null;
   taller: EnTaller[];
 };
 export type Almacen = Resumen & {
@@ -131,13 +132,13 @@ export async function datosHome({ pilar, periodo: pv, rol, idUsuario, metas }: {
 
   const g = { origenes: new Map<string, number>(), peores: new Map<string, number>(), fallas: 0, previas: 0 };
   const nombreEquipo = new Map<string, string>();
-  /** [nombre del equipo (y su almacén si se pide), fallas] del equipo con más fallas. */
-  const peorEquipo = (m: Map<string, number>, conAlmacen: boolean): [string, number] | null => {
+  /** [nombre del equipo (y su almacén si se pide), fallas, id] del equipo con más fallas. */
+  const peorEquipo = (m: Map<string, number>, conAlmacen: boolean): [string, number, string] | null => {
     const t = top(m);
     if (!t) return null;
     const alm = almacenDeEquipo.get(t[0]);
     const nombre = nombreEquipo.get(t[0]) ?? "Sin nombre";
-    return [conAlmacen && alm ? `${nombre} · ${nombreAlmacen.get(alm) ?? ""}` : nombre, t[1]];
+    return [conAlmacen && alm ? `${nombre} · ${nombreAlmacen.get(alm) ?? ""}` : nombre, t[1], t[0]];
   };
   for (const o of recientes) {
     const t = new Date(o.fecha_ingreso).getTime();

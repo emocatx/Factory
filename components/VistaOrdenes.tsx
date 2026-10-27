@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { conContexto } from "@/lib/filtros";
 import { Encabezado } from "./ui";
 import type { Pilar } from "@/lib/tipos";
 
@@ -12,6 +13,7 @@ import type { Pilar } from "@/lib/tipos";
  */
 export function EncabezadoOrdenes({ pilar, operaciones }: { pilar: Pilar; operaciones: boolean }) {
   const ruta = usePathname();
+  const sp = useSearchParams();
   const actual = ruta.endsWith("/cerradas") ? "cerradas" : "abiertas";
   const vistas = [
     { v: "abiertas", t: "Abiertas", href: `/p/${pilar}/ordenes` },
@@ -22,7 +24,7 @@ export function EncabezadoOrdenes({ pilar, operaciones }: { pilar: Pilar; operac
     <Encabezado titulo={operaciones ? "Seguimiento" : "Órdenes"}>
       <nav aria-label="Vista de órdenes" className="inline-flex rounded-full bg-panel-2 p-1">
         {vistas.map((x) => (
-          <Link key={x.v} href={x.href} aria-current={x.v === actual ? "page" : undefined}
+          <Link key={x.v} href={conContexto(x.href, sp)} aria-current={x.v === actual ? "page" : undefined}
             className={`flex min-h-10 items-center rounded-full px-4 text-[15px] ${x.v === actual ? "bg-panel font-semibold shadow-sm" : "text-suave hover:text-tinta"}`}>
             {x.t}
           </Link>

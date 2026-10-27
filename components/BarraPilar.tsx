@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { conContexto } from "@/lib/filtros";
 import { IconoSeccion } from "./IconosSeccion";
 
 type Item = { href: string; texto: string };
@@ -43,14 +44,17 @@ export function BarraPilar({ items, generales, abiertas, pilar, usuario, accion 
   items: Item[]; generales: Item[]; abiertas: number; pilar: string; usuario: string; accion: Item | null;
 }) {
   const ruta = usePathname();
+  const sp = useSearchParams();
   const iniciales = usuario.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
   const datos = items.map((i) => {
     const seg = i.href.split("/").pop() ?? "";
     return {
       ...i,
+      // al cambiar de sección se conservan el almacén y el periodo elegidos
+      href: conContexto(i.href, sp),
       clave: i.texto === "Seguimiento" ? "seguimiento" : seg,
       // Cerradas vive dentro de la sección Órdenes.
-      activo: ruta === i.href || ruta.startsWith(i.href + "/") || (seg === "ordenes" && ruta.endsWith("/cerradas")),
+      activo: ruta === i.href.split("?")[0] || ruta.startsWith(i.href + "/") || (seg === "ordenes" && ruta.endsWith("/cerradas")),
       etiqueta: seg === "ordenes" && abiertas > 0 ? String(abiertas) : undefined,
     };
   });

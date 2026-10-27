@@ -69,8 +69,10 @@ function Acceso({ href, titulo, valor, pie, chico }: { href: string; titulo: str
   );
 }
 
-function PanelTaller({ abierto, onCerrar, titulo, lista, total, base, almacen }: {
+function PanelTaller({ abierto, onCerrar, titulo, lista, total, base, almacen, qs }: {
   abierto: boolean; onCerrar: () => void; titulo: string; lista: Almacen["taller"]; total: number; base: string; almacen: string | null;
+  /** Almacén y periodo actuales, para que Órdenes abra con el mismo filtro. */
+  qs: string;
 }) {
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -98,7 +100,7 @@ function PanelTaller({ abierto, onCerrar, titulo, lista, total, base, almacen }:
           {visibles.length === 0 && <li className="px-3 py-8 text-center text-suave">Ningún equipo en Mantto.</li>}
           {visibles.map((o) => (
             <li key={o.idOrden}>
-              <Link href={`${base}/ordenes?q=${encodeURIComponent(o.folio)}`} className="flex items-start gap-3 rounded-2xl p-3 hover:bg-papel">
+              <Link href={`${base}/ordenes?${qs}${qs ? "&" : ""}orden=${o.idOrden}`} className="flex items-start gap-3 rounded-2xl p-3 hover:bg-papel">
                 <span className="min-w-0 flex-1">
                   <span className="block text-[15px] font-medium">{o.equipo}</span>
                   <span className="block text-[12px] text-suave tabular-nums">{[o.modelo, o.folio].filter(Boolean).join(" · ")}</span>
@@ -109,7 +111,7 @@ function PanelTaller({ abierto, onCerrar, titulo, lista, total, base, almacen }:
             </li>
           ))}
         </ul>
-        <Link href={`${base}/ordenes${almacen ? `?q=${encodeURIComponent(almacen)}` : ""}`} className="btn-motivo m-3 justify-between">
+        <Link href={`${base}/ordenes${qs ? `?${qs}` : ""}`} className="btn-motivo m-3 justify-between">
           Ver {almacen ? `las ${total} órdenes de ${almacen}` : `las ${total} órdenes abiertas`} en Órdenes <span aria-hidden="true">›</span>
         </Link>
       </aside>
@@ -177,8 +179,9 @@ export function HomeMoviles({ datos, base, almacenInicial }: { datos: DatosHome;
   const hallazgo = alm
     ? `${alm.nombre}: ${alm.paro} de ${alm.total} equipos en Mantto${masAntiguo ? `; el más antiguo lleva ${masAntiguo.dias} días` : ""}`
     : datos.hallazgo;
-  const enlaceInd = `${base}/indicadores${alm ? `?almacen=${alm.id}` : ""}`;
-  const periodoAnalisis = periodo.v === "hoy" ? "7d" : periodo.v;
+  // Contexto que viaja a las demás páginas: el mismo almacén y el mismo periodo que se ven aquí.
+  const qs = new URLSearchParams({ periodo: periodo.v, ...(alm ? { almacen: alm.id } : {}) }).toString();
+  const enlaceInd = `${base}/indicadores?${qs}`;
 
   // ── Piezas (las mismas en 3D y en 2D; cambia dónde van) ──────────────────────────────────
   const titulo = (
@@ -237,11 +240,11 @@ export function HomeMoviles({ datos, base, almacenInicial }: { datos: DatosHome;
   );
 
   const ordenes = (
-    <Acceso href={`${base}/ordenes${alm ? `?q=${encodeURIComponent(alm.nombre)}` : ""}`} titulo="Órdenes abiertas" valor={num(v.taller.length)}
+    <Acceso href={`${base}/ordenes?${qs}`} titulo="Órdenes abiertas" valor={num(v.taller.length)}
       pie={masAntiguo ? `La más antigua lleva ${masAntiguo.dias} días` : "Ninguna abierta"} />
   );
   const fallas = (
-    <Acceso href={`${base}/analisis?periodo=${periodoAnalisis}`} titulo="Fallas registradas" valor={num(v.fallas)} pie={
+    <Acceso href={`${base}/analisis?${qs}`} titulo="Fallas registradas" valor={num(v.fallas)} pie={
       <>
         {v.fallas === 0 && v.fallasPrevias === 0 ? `Sin fallas en ${periodo.nombre} ni antes`
           : <><b className={`font-semibold ${delta > 0 ? "text-paro-texto" : delta < 0 ? "text-ok-texto" : ""}`}>{delta > 0 ? "+" : ""}{delta}</b> contra el periodo anterior ({v.fallasPrevias})</>}
@@ -250,7 +253,7 @@ export function HomeMoviles({ datos, base, almacenInicial }: { datos: DatosHome;
     } />
   );
   const peor = (
-    <Acceso href={`${base}/analisis?periodo=30d`} titulo="Equipo con más fallas" valor={v.peor ? v.peor[0] : "—"} chico
+    <Acceso href={v.peor ? `${base}/analisis?periodo=90d&equipo=${v.peor[2]}${alm ? `&almacen=${alm.id}` : ""}` : `${base}/analisis?${qs}`} titulo="Equipo con más fallas" valor={v.peor ? v.peor[0] : "—"} chico
       pie={v.peor ? `${v.peor[1]} falla${v.peor[1] === 1 ? "" : "s"} en 90 días` : "Sin fallas en 90 días"} />
   );
   const medidores = [
@@ -261,7 +264,7 @@ export function HomeMoviles({ datos, base, almacenInicial }: { datos: DatosHome;
     <Medidor key="b" etiqueta="MTBF · entre fallas" texto={horas(ind?.mtbf ?? null)} meta={ind && ind.mtbf === null ? `sin fallas en ${periodo.nombre}` : metas.mtbf ? `meta ${metas.mtbf} h` : "sin meta definida"} href={enlaceInd}
       frac={ind?.mtbf != null ? (metas.mtbf ? ind.mtbf / metas.mtbf : 1) : null} tono={ind?.mtbf == null || metas.mtbf == null ? "neutro" : ind.mtbf >= metas.mtbf ? "ok" : "alerta"} />,
   ];
-  const panel = <PanelTaller abierto={taller} onCerrar={cerrarTaller} titulo={`En Mantto${alm ? ` · ${alm.nombre}` : ""}`} lista={v.taller} total={v.paro} base={base} almacen={alm?.nombre ?? null} />;
+  const panel = <PanelTaller abierto={taller} onCerrar={cerrarTaller} titulo={`En Mantto${alm ? ` · ${alm.nombre}` : ""}`} lista={v.taller} total={v.paro} base={base} almacen={alm?.nombre ?? null} qs={qs} />;
 
   if (modo === null) return <div className="esqueleto h-[calc(100dvh-96px)] min-h-[560px]" aria-hidden="true" />;
 
