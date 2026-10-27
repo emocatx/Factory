@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { obtenerSesion } from "@/lib/sesion";
-import { etiquetaRol, puedeAdministrar, puedeGestionarUsuarios } from "@/lib/catalogos";
+import { puedeAdministrar, puedeGestionarUsuarios } from "@/lib/catalogos";
 import { Marca } from "@/components/Marca";
 import { EnVivo } from "@/components/EnVivo";
-import { cerrarSesion } from "@/app/login/actions";
-import { BotonEnviar } from "@/components/BotonEnviar";
+import { MenuUsuario } from "@/components/MenuUsuario";
 import { Tour } from "@/components/Tour";
 import { Ancho, FueraDePilar } from "@/components/Ancho";
 
@@ -38,31 +37,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </nav>
             </FueraDePilar>
             <EnVivo tenantId={tenant.id} />
-            <details className="relative">
-              <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-full bg-papel py-1 pl-1 pr-3 text-sm hover:bg-panel-2">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-tinta text-[13px] font-semibold text-white" aria-hidden="true">
-                  {perfil.nombre.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()}
-                </span>
-                <span className="hidden font-medium sm:inline">{perfil.nombre.split(" ")[0]}</span>
-              </summary>
-              <div className="absolute right-0 z-40 mt-2 w-64 rounded-[18px] bg-panel p-4 shadow-[0_12px_32px_rgb(17_18_20/0.16)]">
-                <p className="font-semibold">{perfil.nombre}</p>
-                <p className="text-sm text-suave">{perfil.correo}</p>
-                <p className="mt-2 text-sm text-suave">{etiquetaRol(perfil.rol)}</p>
-                {enlaces.length > 0 && (
-                  <nav aria-label="General (móvil)" className="mt-3 flex flex-col border-t border-panel pt-2 lg:hidden">
-                    {enlaces.map((e) => (
-                      <Link key={e.href} href={e.href} className="flex min-h-11 items-center rounded-xl px-2 text-[15px] hover:bg-panel">{e.texto}</Link>
-                    ))}
-                  </nav>
-                )}
-                {/* recarga completa a propósito: el recorrido se abre al leer ?tour=1 */}
-                <a href="?tour=1" className="mt-3 flex min-h-11 items-center rounded-xl px-2 text-[15px] hover:bg-panel">Ver recorrido de bienvenida</a>
-                <form action={cerrarSesion} className="mt-4">
-                  <BotonEnviar className="btn-sec w-full min-h-10 text-sm" pendiente="Saliendo…">Cerrar sesión</BotonEnviar>
-                </form>
-              </div>
-            </details>
+            <MenuUsuario nombre={perfil.nombre} correo={perfil.correo} rol={perfil.rol} empresa={tenant.nombre_empresa} enlaces={enlaces} />
           </div>
         </Ancho>
       </header>
