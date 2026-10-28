@@ -10,7 +10,7 @@ import { ImportarPlan } from "@/components/importar/ImportarPlan";
 import { ImportarPlanAnual } from "@/components/importar/ImportarPlanAnual";
 import { PanelPlanes } from "./PanelPlanes";
 import { BotonHecho, SelectorAlmacen } from "./Controles";
-import { importarPlan } from "./acciones";
+import { importarPlan, cargarProgramaAnual } from "./acciones";
 import type { PlanEquipo, PlanMantenimiento } from "@/lib/tipos";
 
 export const metadata = { title: "Planes de mantenimiento" };
@@ -228,8 +228,8 @@ export default async function Planes({
         extra={<a href={`/p/${pilar}/planes/excel`} className="btn-sec" download>Descargar Excel</a>}>
         {editar ? (
           <>
-            {/* Programa anual (formato CABLOMTO-F01): por ahora solo vista previa, para el administrador */}
-            {perfil.rol === "admin" && <ImportarPlanAnual almacenes={cat.almacenes.map((a) => ({ id: a.id_almacen, nombre: a.nombre_almacen }))} />}
+            {/* Programa anual (formato CABLOMTO-F01): vista previa y carga, solo el administrador */}
+            {perfil.rol === "admin" && <ImportarPlanAnual pilar={pilar} almacenes={cat.almacenes.map((a) => ({ id: a.id_almacen, nombre: a.nombre_almacen }))} cargar={cargarProgramaAnual} />}
             <ImportarPlan pilar={pilar} planes={planes.map((x) => x.nombre)} importar={importarPlan} />
             <PanelPlanes
               key={f.nuevo ?? ""}

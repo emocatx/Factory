@@ -71,7 +71,7 @@ La regla de los dos: **nadie da más de lo que tiene**.
 | Programa anual en el formato CABLOMTO-F01 | El lector convierte el formato a activos, categorías, planes y fichas (salida genérica); otros clientes usarían una plantilla |
 | Textos y folios pensados para CAB | Configuración por empresa |
 
-### Programa anual de mantenimiento (importador en Planes, solo vista previa)
+### Programa anual de mantenimiento (importador en Planes, solo admin)
 
 `lib/planAnual.ts` lee el Excel del programa anual (una fila por activo: almacén, número SAP, denominación,
 plan por frecuencia 1M…12M, lanzamientos y horas por servicio) y lo convierte en:
@@ -86,7 +86,19 @@ plan por frecuencia 1M…12M, lanzamientos y horas por servicio) y lo convierte 
 
 Primer archivo (Infraestructura, 2026): 2,679 activos en 15 almacenes; 999 con consecutivo interno en vez de
 SAP (CDN 1, 2, 3 y 5); faltan pasillos en 10 almacenes. El archivo de Críticos usa el mismo formato.
-La carga a la base se habilita cuando existan categorías de equipo y fichas de almacén en el modelo de datos.
+
+**Carga** (`cargar_programa_anual`, migración `20261028000003`): todo en una transacción, con los permisos del
+admin que la hace, y repetible sin duplicar.
+
+- Equipos: se reconocen por SAP, por su consecutivo interno (clave `INF-123`, `CRI-…` según el pilar) o por
+  nombre dentro del almacén; se guarda `equipos.categoria`. Un SAP que ya usa otro pilar se carga sin SAP.
+- Planes: uno por categoría y frecuencia (los que ya existen no se tocan); las tareas guardan los códigos SAP.
+- Asignaciones: la fecha de asignación se calcula para que el **próximo servicio caiga en la fecha del
+  programa**; si ya pasaron todas las fechas del año, la última se toma como hecha. Sin fechas, desde hoy.
+  Las asignaciones que ya existían conservan su avance.
+- Fichas: `almacenes.ficha` (andenes, pasillos, zonas, techo, fuente y fecha), mezclada con lo que ya tuviera.
+- Bitácora: un solo registro con el resumen ("Carga del programa anual"), no uno por equipo.
+- Medido: 2,700 activos en menos de 1 s.
 
 ## 7. Visualización 3D
 
@@ -154,3 +166,5 @@ Medición del prototipo (modo desarrollo, 1440 × 860): CDN 5 (288 × 122 m, 57 
 | 2026-10-28 | Ubicaciones técnicas de SAP como modelo de ubicaciones del producto (sitio → centro → zona → ubicación) |
 | 2026-10-28 | El programa anual (CABLOMTO-F01) es la fuente de activos, planes y fichas de Infraestructura y Críticos; primero vista previa |
 | 2026-10-28 | "AGRO" del programa anual = AGRO INSUMOS; las cuadrillas (célula A/B/C/E) ya no se validan |
+| 2026-10-28 | Categoría de equipo y ficha de almacén en la base; carga del programa anual en una transacción, solo admin |
+| 2026-10-28 | Las fechas pasadas del programa anual se consideran hechas; el próximo servicio sigue el calendario del archivo |

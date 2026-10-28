@@ -36,7 +36,7 @@ function rangoMes(s: string): [string, string] | null {
 
 const ACCIONES: Record<string, string> = {
   alta: "Alta", edicion: "Edición", asignacion: "Asignación", inicio: "Inicio de atención", cierre: "Cierre", reapertura: "Reapertura", cancelacion: "Cancelación",
-  baja: "Baja", paro: "Entró en paro", liberacion: "Liberado",
+  baja: "Baja", paro: "Entró en paro", liberacion: "Liberado", importacion: "Carga del programa anual",
 };
 
 export default async function Historial({ searchParams }: { searchParams: Promise<Filtros> }) {
@@ -174,7 +174,9 @@ export default async function Historial({ searchParams }: { searchParams: Promis
                 <span className="w-40 shrink-0 tabular-nums text-xs text-suave">{fechaHora(ev.fecha, tenant.zona_horaria)}</span>
                 <span className="chip bg-papel">{ACCIONES[ev.accion] ?? ev.accion}</span>
                 <span className="font-medium">
-                  {ev.tabla === "ordenes_mantenimiento" ? <>Orden <span className="folio">{d.folio_ticket}</span></> : <>Equipo {d.nombre_equipo}</>}
+                  {ev.tabla === "ordenes_mantenimiento" ? <>Orden <span className="folio">{d.folio_ticket}</span></>
+                    : ev.accion === "importacion" ? <>{d.equipos_nuevos} equipos nuevos, {d.equipos_actualizados} actualizados, {d.asignaciones_nuevas} asignaciones a planes</>
+                    : <>Equipo {d.nombre_equipo}</>}
                 </span>
                 <span className="text-xs text-suave">{ev.usuario_id ? nombreDe.get(ev.usuario_id) ?? "Usuario" : "Sistema"}</span>
               </li>

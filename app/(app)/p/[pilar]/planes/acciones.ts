@@ -8,6 +8,7 @@ import { todasLasPaginas } from "@/lib/datos";
 import { leerFecha } from "@/lib/historial";
 import { hoyMx, TIPOS_PLAN } from "@/lib/planes";
 import type { TipoPlan } from "@/lib/tipos";
+import type { Carga } from "@/lib/planAnual";
 
 type Resultado = { ok: boolean; mensaje: string; detalle?: string[] };
 const EDITORES = ["admin", "supervisor", "coordinador"] as const;
@@ -155,4 +156,29 @@ export async function importarPlan(pilar: string, filas: Record<string, string>[
   revalidatePath(`/p/${pilar}/planes`);
   const partes = [`${conFecha.length + sinFecha.length} asignación(es) cargadas`, nuevos.size && `${nuevos.size} plan(es) nuevos`, cambios.size && `${cambios.size} plan(es) actualizados`].filter(Boolean);
   return { ok: true, mensaje: `${partes.join(", ")}${detalle.length ? `; ${detalle.length} fila(s) omitidas` : ""}.`, detalle };
+}
+
+export type ResumenCarga = {
+  equipos_nuevos: number; equipos_actualizados: number; sap_en_otro_pilar: number;
+  planes_nuevos: number; asignaciones_nuevas: number; fichas: number;
+};
+
+/**
+ * Carga el programa anual ya revisado en la vista previa (ver lib/planAnual.ts → armarCarga): equipos con su
+ * categoría, planes, asignaciones desde la fecha del programa y fichas de almacén, todo en una transacción.
+ * Volver a cargar el mismo archivo no duplica nada. Solo el administrador.
+ */
+export async function cargarProgramaAnual(pilar: string, carga: Carga): Promise<Resultado & { resumen?: ResumenCarga }> {
+  await exigirRol(["admin"]);
+  if (!esPilar(pilar)) return { ok: false, mensaje: "Pilar inválido." };
+  if (!Array.isArray(carga?.activos) || !carga.activos.length) return { ok: false, mensaje: "La carga no trae activos." };
+  const { data, error } = await (await createClient()).rpc("cargar_programa_anual", { p_pilar: pilar, p_datos: carga });
+  if (error) return { ok: false, mensaje: traducir(error.message) };
+  revalidatePath(`/p/${pilar}/planes`);
+  revalidatePath(`/p/${pilar}/equipos`);
+  const r = data as ResumenCarga;
+  return {
+    ok: true, resumen: r,
+    mensaje: `Programa cargado: ${r.equipos_nuevos} equipos nuevos, ${r.equipos_actualizados} actualizados, ${r.planes_nuevos} planes nuevos y ${r.asignaciones_nuevas} asignaciones.`,
+  };
 }

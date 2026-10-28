@@ -1,13 +1,16 @@
 "use client";
 
-// Vista previa del programa anual de mantenimiento (formato CABLOMTO-F01): lee el Excel en el navegador y
-// muestra activos, categorías, planes propuestos, fichas de almacén y problemas. Todavía no guarda nada.
-import { useMemo, useState } from "react";
-import { CATEGORIAS, leerPlanAnual, sugerirAlmacen, type Categoria, type Lectura } from "@/lib/planAnual";
+// Programa anual de mantenimiento (formato CABLOMTO-F01): lee el Excel en el navegador, muestra activos,
+// categorías, planes propuestos, fichas de almacén y problemas, y al confirmar lo carga en una transacción.
+import { useMemo, useState, useTransition } from "react";
+import { armarCarga, CATEGORIAS, leerPlanAnual, proximaProgramada, sugerirAlmacen, type Carga, type Categoria, type Lectura } from "@/lib/planAnual";
 
 type Almacen = { id: string; nombre: string };
+type Respuesta = { ok: boolean; mensaje: string };
 const HOJA_PREFERIDA = "CABLOMTO-F01-I41";
 const n = (v: number) => v.toLocaleString("es-MX");
+const hoyMx = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+const fechaCorta = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
 
 async function leer(archivo: File): Promise<Lectura | null> {
   const { readSheet } = await import("read-excel-file/browser");
@@ -23,18 +26,28 @@ async function leer(archivo: File): Promise<Lectura | null> {
   return null;
 }
 
-export function ImportarPlanAnual({ almacenes }: { almacenes: Almacen[] }) {
+export function ImportarPlanAnual({ pilar, almacenes, cargar }: {
+  pilar: string;
+  almacenes: Almacen[];
+  cargar: (pilar: string, carga: Carga) => Promise<Respuesta>;
+}) {
   const [lectura, setLectura] = useState<Lectura | null>(null);
+  const [archivoNombre, setArchivoNombre] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
   const [empates, setEmpates] = useState<Record<string, string>>({});
   const [filtroAlm, setFiltroAlm] = useState("");
   const [filtroCat, setFiltroCat] = useState<Categoria | "">("");
   const [todosPlanes, setTodosPlanes] = useState(false);
+  const [confirmar, setConfirmar] = useState(false);
+  const [resultado, setResultado] = useState<Respuesta | null>(null);
+  const [guardando, iniciar] = useTransition();
+  const hoy = useMemo(hoyMx, []);
 
   async function alElegir(archivo: File | undefined) {
-    setLectura(null); setError(null); setEmpates({});
+    setLectura(null); setError(null); setEmpates({}); setConfirmar(false); setResultado(null);
     if (!archivo) return;
+    setArchivoNombre(archivo.name);
     if (!/\.xlsx$/i.test(archivo.name)) { setError("Sube el archivo .xlsx del programa anual."); return; }
     setCargando(true);
     try {
@@ -57,13 +70,26 @@ export function ImportarPlanAnual({ almacenes }: { almacenes: Almacen[] }) {
   }, [lectura]);
   const filtrados = useMemo(() => (lectura?.activos ?? []).filter((a) => (!filtroAlm || a.almacen === filtroAlm) && (!filtroCat || a.categoria === filtroCat)), [lectura, filtroAlm, filtroCat]);
   const nombreAlm = (id: string) => almacenes.find((a) => a.id === id)?.nombre;
+  // lo que se mandaría a la base con los almacenes elegidos
+  const preparado = useMemo(() => (lectura && !sinEmpatar ? armarCarga(lectura, empates, hoy, archivoNombre) : null), [lectura, empates, sinEmpatar, hoy, archivoNombre]);
+  const conFecha = preparado ? preparado.carga.asignaciones.filter((x) => x.f).length : 0;
+
+  function cargarAhora() {
+    if (!preparado) return;
+    setResultado(null);
+    iniciar(async () => {
+      const r = await cargar(pilar, preparado.carga);
+      setResultado(r);
+      if (r.ok) setConfirmar(false);
+    });
+  }
 
   return (
     <details className="caja-panel group mb-6 overflow-hidden">
       <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-6 py-4">
         <span>
-          <span className="block text-lg font-semibold">Programa anual de mantenimiento (vista previa)</span>
-          <span className="block text-[14px] text-suave">Sube el Excel del programa anual (formato CABLOMTO-F01) para revisar activos, planes y almacenes antes de cargarlos.</span>
+          <span className="block text-lg font-semibold">Programa anual de mantenimiento</span>
+          <span className="block text-[14px] text-suave">Sube el Excel del programa anual (formato CABLOMTO-F01): revisa activos, planes y almacenes y después cárgalos.</span>
         </span>
         <span aria-hidden="true" className="text-suave transition-transform group-open:rotate-180">⌄</span>
       </summary>
@@ -82,8 +108,8 @@ export function ImportarPlanAnual({ almacenes }: { almacenes: Almacen[] }) {
         {lectura && (
           <>
             <p className="rounded-[18px] bg-alerta-suave px-5 py-4 text-[15px] text-alerta-texto">
-              <strong className="font-semibold">Vista previa: todavía no se guarda nada.</strong> Revisa que cada almacén del archivo
-              corresponda al de Factory, las categorías y los problemas detectados.
+              <strong className="font-semibold">Vista previa: nada se guarda hasta que confirmes la carga.</strong> Revisa que cada almacén
+              del archivo corresponda al de Factory, las categorías y los problemas detectados.
             </p>
 
             <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -194,7 +220,7 @@ export function ImportarPlanAnual({ almacenes }: { almacenes: Almacen[] }) {
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[760px] text-[14px]">
                   <thead className="text-left text-[13px] text-suave">
-                    <tr>{["Fila", "Almacén", "SAP", "Denominación", "Categoría", "Frecuencia", "Horas por servicio"].map((h) => <th key={h} className="px-3 pb-2 font-medium">{h}</th>)}</tr>
+                    <tr>{["Fila", "Almacén", "SAP", "Denominación", "Categoría", "Frecuencia", "Próximo programado", "Horas por servicio"].map((h) => <th key={h} className="px-3 pb-2 font-medium">{h}</th>)}</tr>
                   </thead>
                   <tbody>
                     {filtrados.slice(0, 60).map((a) => (
@@ -205,6 +231,7 @@ export function ImportarPlanAnual({ almacenes }: { almacenes: Almacen[] }) {
                         <td className="px-3 py-1.5">{a.denominacion}</td>
                         <td className="px-3 py-1.5">{CATEGORIAS[a.categoria]}</td>
                         <td className="px-3 py-1.5">{a.frecuencias.join(" · ") || <span className="text-paro-texto">sin plan</span>}</td>
+                        <td className="px-3 py-1.5 tabular-nums">{(() => { const p = proximaProgramada(a, hoy); return p ? fechaCorta(p) : <span className="text-suave">—</span>; })()}</td>
                         <td className="px-3 py-1.5 tabular-nums">{a.horas ?? "—"}</td>
                       </tr>
                     ))}
@@ -214,9 +241,37 @@ export function ImportarPlanAnual({ almacenes }: { almacenes: Almacen[] }) {
               <p className="mt-2 text-[13px] text-suave">{filtrados.length > 60 ? `Mostrando 60 de ${n(filtrados.length)}.` : `${n(filtrados.length)} activos.`}</p>
             </section>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-papel pt-4">
-              <p className="text-[14px] text-suave">La carga se habilita cuando aprobemos esta vista previa (categorías de activos y fichas de almacén en la base de datos).</p>
-              <button type="button" disabled className="btn-primario min-h-11 cursor-not-allowed opacity-50">Cargar a Factory</button>
+            <div className="space-y-3 border-t border-papel pt-4" aria-live="polite">
+              {resultado && (
+                <p role={resultado.ok ? "status" : "alert"}
+                  className={`rounded-[14px] px-4 py-3 text-[15px] ${resultado.ok ? "bg-ok-suave text-ok-texto" : "bg-paro-suave text-paro-texto"}`}>{resultado.mensaje}</p>
+              )}
+              {confirmar && preparado ? (
+                <div className="rounded-[18px] bg-papel p-4 text-[15px]">
+                  <p className="font-semibold">¿Cargar el programa a Factory?</p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-[14px]">
+                    <li>{n(preparado.carga.activos.length)} activos de {lectura.fichas.length} almacenes, con su categoría
+                      {preparado.sapQuitados === 1 ? " (1 con SAP repetido se carga sin SAP)" : preparado.sapQuitados ? ` (${preparado.sapQuitados} con SAP repetido se cargan sin SAP)` : ""}.</li>
+                    <li>{n(preparado.carga.planes.length)} planes y {n(preparado.carga.asignaciones.length)} asignaciones;
+                      {" "}{n(conFecha)} arrancan en la fecha del programa y el resto a partir de hoy.</li>
+                    <li>{n(preparado.carga.fichas.length)} fichas de almacén (andenes, pasillos y zonas).</li>
+                    <li>Si este archivo ya se cargó antes, se actualizan los mismos activos: no se duplica nada.</li>
+                  </ul>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button type="button" onClick={cargarAhora} disabled={guardando} className="btn-primario min-h-11">{guardando ? "Cargando…" : "Sí, cargar"}</button>
+                    <button type="button" onClick={() => setConfirmar(false)} disabled={guardando} className="btn-sec min-h-11">Cancelar</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-[14px] text-suave">
+                    {sinEmpatar ? `Elige el almacén de Factory para ${sinEmpatar === 1 ? "el almacén marcado en rojo" : `los ${sinEmpatar} almacenes marcados en rojo`} antes de cargar.`
+                      : "Revisa la vista previa; al cargar se guarda todo junto o nada."}
+                  </p>
+                  <button type="button" onClick={() => setConfirmar(true)} disabled={!preparado || guardando}
+                    className="btn-primario min-h-11 disabled:cursor-not-allowed disabled:opacity-50">Cargar a Factory</button>
+                </div>
+              )}
             </div>
           </>
         )}

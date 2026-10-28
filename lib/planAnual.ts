@@ -56,6 +56,8 @@ export type Activo = {
   lanzamientos: number | null;
   /** Horas por servicio ("tiempo por frecuencia"), sumando las frecuencias que tenga. */
   horas: number | null;
+  /** Fechas programadas en el calendario semanal del archivo ("04 FEB 26 4M"), en orden. */
+  programadas: { fecha: string; frecuencia: Frecuencia | null }[];
 };
 
 export type FichaArchivo = { almacen: string; activos: number; andenes: number; pasillos: number; zonas: Categoria[]; techo: { louvers: number; extractores: number; inyectores: number } };
@@ -93,7 +95,23 @@ function columnas(tabla: Celda[][]) {
   // almacén: la columna marcada "ALMACEN" en las filas de arriba, a la izquierda del número
   let alm = -1;
   for (let r = 0; r <= fEnc && alm < 0; r++) alm = tabla[r].findIndex((c, i) => normalizar(c) === "almacen" && i < Math.max(num, den));
-  return { fEnc, den, num, alm, plan: frec(gPlan, gLanz), lanz: frec(gLanz, gTiempo), tiempo: frec(gTiempo, gTiempo + 6) };
+  // calendario: las columnas a la derecha de "NÚMERO DE SEMANA"
+  let semanas = -1;
+  for (let r = 0; r <= fEnc && semanas < 0; r++) semanas = tabla[r].findIndex((c) => /^numero de semana/.test(normalizar(c)));
+  return { fEnc, den, num, alm, semanas, plan: frec(gPlan, gLanz), lanz: frec(gLanz, gTiempo), tiempo: frec(gTiempo, gTiempo + 6) };
+}
+
+const MESES: Record<string, number> = { ENE: 1, FEB: 2, MAR: 3, ABR: 4, MAY: 5, JUN: 6, JUL: 7, AGO: 8, SEP: 9, SET: 9, OCT: 10, NOV: 11, DIC: 12 };
+const p2 = (n: number) => String(n).padStart(2, "0");
+
+/** "04 FEB 26 4M" → { fecha: "2026-02-04", frecuencia: "4M" }; también acepta fechas de Excel. */
+function fechaProgramada(c: Celda): { fecha: string; frecuencia: Frecuencia | null } | null {
+  if (c instanceof Date) return { fecha: `${c.getUTCFullYear()}-${p2(c.getUTCMonth() + 1)}-${p2(c.getUTCDate())}`, frecuencia: null };
+  const m = String(c ?? "").trim().toUpperCase().match(/^(\d{1,2})\s+([A-Z]{3})\.?\s+(\d{2}|\d{4})(?:\s+(\d{1,2}M))?$/);
+  if (!m || !MESES[m[2]]) return null;
+  const anio = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
+  const f = (m[4] ?? "") as Frecuencia;
+  return { fecha: `${anio}-${p2(MESES[m[2]])}-${p2(Number(m[1]))}`, frecuencia: FRECUENCIAS.includes(f) ? f : null };
 }
 
 export function leerPlanAnual(tabla: Celda[][], hoja = ""): Lectura | null {
@@ -116,9 +134,12 @@ export function leerPlanAnual(tabla: Celda[][], hoja = ""): Lectura | null {
       const vals = FRECUENCIAS.map((f) => (g[f] === undefined ? NaN : Number(r[g[f]!]))).filter((n) => Number.isFinite(n));
       return vals.length ? vals.reduce((a, b) => a + b, 0) : null;
     };
+    const programadas: Activo["programadas"] = [];
+    if (c.semanas >= 0) for (let k = c.semanas + 1; k < r.length; k++) { const p = fechaProgramada(r[k]); if (p) programadas.push(p); }
+    programadas.sort((a, b) => a.fecha.localeCompare(b.fecha));
     activos.push({
       fila: i + 1, almacen, sap, sinSap: !/^\d{4,}$/.test(sap), denominacion, categoria: categoriaDe(denominacion),
-      frecuencias: FRECUENCIAS.filter((f) => planes[f]), planes, lanzamientos: suma(c.lanz), horas: suma(c.tiempo),
+      frecuencias: FRECUENCIAS.filter((f) => planes[f]), planes, lanzamientos: suma(c.lanz), horas: suma(c.tiempo), programadas,
     });
   }
   if (!activos.length) return null;
@@ -139,7 +160,7 @@ export function leerPlanAnual(tabla: Celda[][], hoja = ""): Lectura | null {
   const mapa = new Map<string, PlanPropuesto>();
   for (const a of activos) for (const f of a.frecuencias) {
     const k = `${a.categoria}|${f}`;
-    const p = mapa.get(k) ?? { nombre: `${CATEGORIAS[a.categoria]} · ${NOMBRE_FRECUENCIA[f]}`, categoria: a.categoria, frecuencia: f, cada_dias: DIAS_FRECUENCIA[f], activos: 0, codigos: [] };
+    const p = mapa.get(k) ?? { nombre: nombrePlan(a.categoria, f), categoria: a.categoria, frecuencia: f, cada_dias: DIAS_FRECUENCIA[f], activos: 0, codigos: [] };
     p.activos++;
     const cod = a.planes[f]!;
     if (!p.codigos.includes(cod)) p.codigos.push(cod);
@@ -182,4 +203,72 @@ export function sugerirAlmacen(codigo: string, almacenes: { id: string; nombre: 
   const parcial = almacenes.filter((a) => { const n = compacto(a.nombre); return n.includes(c) || n.includes(expandido) || (c.length >= 4 && c.includes(n)); });
   if (parcial.length === 1) return { id: parcial[0].id, opciones: [] };
   return { id: null, opciones: parcial.map((a) => a.id) };
+}
+
+// ── Carga a Factory ───────────────────────────────────────────────────────────────────────────────
+
+/** Nombre del plan para una categoría y frecuencia ("Andén · cuatrimestral"). */
+export function nombrePlan(categoria: Categoria, f: Frecuencia) {
+  return `${CATEGORIAS[categoria]} · ${NOMBRE_FRECUENCIA[f]}`;
+}
+
+function restarDias(fecha: string, dias: number) {
+  const d = new Date(`${fecha}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - dias);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Fechas del calendario que corresponden a esa frecuencia (si la fecha no la dice y el activo solo tiene una, es esa). */
+function fechasDe(a: Activo, f: Frecuencia) {
+  return a.programadas.filter((p) => p.frecuencia === f || (p.frecuencia === null && a.frecuencias.length === 1)).map((p) => p.fecha);
+}
+
+/** Próxima fecha programada del activo a partir de hoy (cualquier frecuencia). */
+export function proximaProgramada(a: Activo, hoy: string) {
+  return a.programadas.find((p) => p.fecha >= hoy)?.fecha ?? null;
+}
+
+/**
+ * Fecha de asignación para que el próximo servicio caiga en la fecha del programa:
+ * próximo = asignación + cada. Si ya pasaron todas las fechas del año, se toma la última como hecha.
+ */
+export function inicioDePlan(a: Activo, f: Frecuencia, hoy: string): string | null {
+  const fechas = fechasDe(a, f);
+  if (!fechas.length) return null;
+  const proxima = fechas.find((x) => x >= hoy);
+  return proxima ? restarDias(proxima, DIAS_FRECUENCIA[f]) : fechas[fechas.length - 1];
+}
+
+export type Carga = {
+  archivo: string;
+  activos: { i: number; alm: string; sap: string | null; cons: number | null; nombre: string; cat: Categoria }[];
+  planes: { n: string; d: number; t: string }[];
+  asignaciones: { i: number; n: string; f: string | null }[];
+  fichas: { alm: string; ficha: Record<string, unknown> }[];
+};
+
+/** Arma lo que se manda a la base: solo activos de almacenes empatados; un SAP repetido se conserva en su primera aparición. */
+export function armarCarga(l: Lectura, empates: Record<string, string>, hoy: string, archivo: string): { carga: Carga; sinAlmacen: number; sapQuitados: number } {
+  const vistos = new Set<string>();
+  let sinAlmacen = 0, sapQuitados = 0;
+  const activos: Carga["activos"] = [];
+  const asignaciones: Carga["asignaciones"] = [];
+  l.activos.forEach((a, i) => {
+    const alm = empates[a.almacen];
+    if (!alm) { sinAlmacen++; return; }
+    let sap: string | null = a.sinSap ? null : a.sap;
+    if (sap && vistos.has(sap)) { sap = null; sapQuitados++; }
+    if (sap) vistos.add(sap);
+    activos.push({ i, alm, sap, cons: a.sinSap && /^\d+$/.test(a.sap) ? Number(a.sap) : null, nombre: a.denominacion, cat: a.categoria });
+    for (const f of a.frecuencias) asignaciones.push({ i, n: nombrePlan(a.categoria, f), f: inicioDePlan(a, f, hoy) });
+  });
+  const planes = l.planes.map((p) => ({ n: p.nombre, d: p.cada_dias, t: `Códigos de plan SAP: ${p.codigos.join(", ")}` }));
+  const fichas = l.fichas.filter((f) => empates[f.almacen]).map((f) => ({
+    alm: empates[f.almacen],
+    ficha: {
+      ...(f.andenes ? { andenes: f.andenes } : {}), ...(f.pasillos ? { pasillos: f.pasillos } : {}),
+      zonas: f.zonas, techo: f.techo, fuente: "programa-anual", actualizado: hoy,
+    },
+  }));
+  return { carga: { archivo, activos, planes, asignaciones, fichas }, sinAlmacen, sapQuitados };
 }
