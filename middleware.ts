@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 const PUBLICAS = ["/login", "/auth"];
+/** Páginas de prueba (/prueba-*): abiertas solo en desarrollo; en producción responden 404. */
+const PRUEBAS_ABIERTAS = process.env.NODE_ENV !== "production";
 
 /** Página legible cuando el despliegue no tiene configuradas las variables de Supabase. */
 function faltaConfiguracion(faltan: string[]) {
@@ -59,7 +61,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const ruta = request.nextUrl.pathname;
-  const esPublica = PUBLICAS.some((p) => ruta.startsWith(p));
+  const esPublica = PUBLICAS.some((p) => ruta.startsWith(p)) || (PRUEBAS_ABIERTAS && ruta.startsWith("/prueba-"));
 
   if (!user && !esPublica) {
     const url = request.nextUrl.clone();

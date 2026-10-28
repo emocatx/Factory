@@ -1,7 +1,7 @@
 # Factory: producto y modelo de negocio
 
 Documento vivo. Se actualiza cada vez que una decisión cambia lo que es núcleo, configuración o módulo.
-Última actualización: 2026-10-28.
+Última actualización: 2026-10-28 (plantilla de nave).
 
 ## 1. Qué estamos construyendo
 
@@ -88,6 +88,28 @@ Presupuesto de rendimiento del módulo 3D (equipo de oficina con gráficos integ
 | Memoria de GPU | < 150 MB |
 | Celular | Sin 3D: vista 2D |
 
+### Plantilla de nave (prototipo en `components/planta`, página de desarrollo `/prueba-planta`)
+
+Cada almacén se dibuja desde una **ficha** corta, no desde un plano hecho a mano:
+
+- **Ficha:** andenes (cantidad y si van en uno o dos lados), pasillos de racks y qué zonas existen (taller,
+  carga de baterías, refacciones, soldadura, oficinas, baños, ósmosis, cárcamo, subestación, tarimas).
+  Sale de las ubicaciones técnicas de SAP (contando `AND###`, `PAS###` y viendo qué zonas hay, como
+  `TL5-CL05-ALMELE-PAS012`) o de un formulario en la configuración del almacén.
+- **Estructura** (piso, muros, racks, andenes, zonas): siempre presente, como contexto.
+- **Activos** (montacargas, cargadores, ósmosis, cárcamo, tableros, compresores, minisplits, puertas de
+  andén): salen de los equipos registrados con su **categoría** y su **ubicación**; nada se cuenta a mano.
+- **Vista por pilar:** cada pilar resalta sus activos con color de estado y deja lo demás en gris neutro.
+  A qué pilar va cada categoría es configuración de la empresa (en CAB: ósmosis → Críticos, andenes y
+  racks → Inmuebles). Una empresa sin pilares ve todo en una sola vista.
+- **Marcas en pantalla:** lo importante del pilar y todo lo que está en falla lleva una etiqueta de tamaño
+  fijo, para encontrarlo en naves de 300 m.
+- **Movimiento:** los equipos de pasillo van y vienen por su pasillo; los de embarque circulan en un
+  circuito cerrado en el mismo sentido, así nunca se enciman.
+
+Medición del prototipo (modo desarrollo, 1440 × 860): CDN 5 (288 × 122 m, 57 andenes, 35 pasillos,
+66 montacargas, 53 activos) a 110–138 fps con 196–301 llamadas de dibujo y 25–28 mil triángulos.
+
 ## 8. Planes de suscripción (borrador)
 
 | Plan | Incluye |
@@ -109,3 +131,6 @@ Presupuesto de rendimiento del módulo 3D (equipo de oficina con gráficos integ
 | 2026-10-28 | Metas por empresa; por almacén como módulo opcional |
 | 2026-10-28 | Pilares pasarán a áreas opcionales; ubicaciones y categorías en el núcleo |
 | 2026-10-28 | 3D: genéricos por categoría como módulo; modelos reales como servicio a medida |
+| 2026-10-28 | Plantilla de nave: cada almacén se arma desde su ficha (SAP o formulario), no se dibuja a mano |
+| 2026-10-28 | Vista por pilar: el almacén es el mismo edificio; cada pilar resalta sus activos y lo demás queda neutro |
+| 2026-10-28 | Ubicaciones técnicas de SAP como modelo de ubicaciones del producto (sitio → centro → zona → ubicación) |
