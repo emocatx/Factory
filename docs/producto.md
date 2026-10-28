@@ -182,3 +182,4 @@ Medición del prototipo (modo desarrollo, 1440 × 860): CDN 5 (288 × 122 m, 57 
 | 2026-10-28 | "AGRO" del programa anual = AGRO INSUMOS; las cuadrillas (célula A/B/C/E) ya no se validan |
 | 2026-10-28 | Categoría de equipo y ficha de almacén en la base; carga del programa anual en una transacción, solo admin |
 | 2026-10-28 | Las fechas pasadas del programa anual se consideran hechas; el próximo servicio sigue el calendario del archivo |
+| 2026-10-28 | Críticos: los 26 sitios CPH y MDTEC no se cargan por ahora (no existen como almacenes en Factory) |
