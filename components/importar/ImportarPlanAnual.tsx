@@ -3,7 +3,7 @@
 // Programa anual de mantenimiento (formato CABLOMTO-F01): lee el Excel en el navegador, muestra activos,
 // categorías, planes propuestos, fichas de almacén y problemas, y al confirmar lo carga en una transacción.
 import { useMemo, useState, useTransition } from "react";
-import { armarCarga, CATEGORIAS, leerPlanAnual, proximaProgramada, sugerirAlmacen, type Carga, type Categoria, type Lectura } from "@/lib/planAnual";
+import { armarCarga, CATEGORIAS, leerPlanAnual, OMITIR, proximaProgramada, sugerirAlmacen, type Carga, type Categoria, type Lectura } from "@/lib/planAnual";
 
 type Almacen = { id: string; nombre: string };
 type Respuesta = { ok: boolean; mensaje: string };
@@ -140,6 +140,15 @@ export function ImportarPlanAnual({ pilar, almacenes, cargar }: {
             <section aria-labelledby="pa-almacenes">
               <h3 id="pa-almacenes" className="mb-1 text-[17px] font-semibold">Almacenes y su ficha</h3>
               <p className="mb-3 text-[14px] text-suave">Andenes y pasillos salen de las denominaciones (“Andén CDNQ 12”, “racks pasillo 05”); arman la nave en 3D.</p>
+              {sinEmpatar > 1 && (
+                <p className="mb-3 flex flex-wrap items-center gap-3 rounded-[14px] bg-papel px-4 py-3 text-[14px]">
+                  <span>{sinEmpatar} almacenes del archivo no existen en Factory (o tienen varias opciones).</span>
+                  <button type="button" className="btn-sec min-h-9 px-4 text-[14px]"
+                    onClick={() => setEmpates((x) => Object.fromEntries(Object.entries(x).map(([k, v]) => [k, v || OMITIR])))}>
+                    No cargar los {sinEmpatar} sin elegir
+                  </button>
+                </p>
+              )}
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[860px] text-[14px]">
                   <thead className="text-left text-[13px] text-suave">
@@ -154,8 +163,9 @@ export function ImportarPlanAnual({ pilar, almacenes, cargar }: {
                           <td className="px-3 py-2">
                             <label className="sr-only" htmlFor={`pa-alm-${f.almacen}`}>Almacén de Factory para {f.almacen}</label>
                             <select id={`pa-alm-${f.almacen}`} value={empates[f.almacen] ?? ""} onChange={(e) => setEmpates((x) => ({ ...x, [f.almacen]: e.target.value }))}
-                              className={`selector min-h-9 w-full rounded-full py-0 pl-3.5 text-[14px] ${empates[f.almacen] ? "bg-papel" : "bg-paro-suave text-paro-texto"}`}>
+                              className={`selector min-h-9 w-full rounded-full py-0 pl-3.5 text-[14px] ${!empates[f.almacen] ? "bg-paro-suave text-paro-texto" : empates[f.almacen] === OMITIR ? "bg-panel-2 text-suave" : "bg-papel"}`}>
                               <option value="">{sug.opciones.length ? "Elige…" : "Sin empatar"}</option>
+                              <option value={OMITIR}>No cargar este almacén</option>
                               {[...sug.opciones.map((id) => almacenes.find((a) => a.id === id)!).filter(Boolean),
                                 ...almacenes.filter((a) => !sug.opciones.includes(a.id))].map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
                             </select>
@@ -214,7 +224,7 @@ export function ImportarPlanAnual({ pilar, almacenes, cargar }: {
                 <span className="text-suave">Almacén</span>
                 <select value={filtroAlm} onChange={(e) => setFiltroAlm(e.target.value)} className="selector min-h-9 w-auto rounded-full bg-papel py-0 pl-3.5 text-[14px]">
                   <option value="">Todos</option>
-                  {lectura.fichas.map((f) => <option key={f.almacen} value={f.almacen}>{f.almacen}{empates[f.almacen] ? ` · ${nombreAlm(empates[f.almacen])}` : ""}</option>)}
+                  {lectura.fichas.map((f) => <option key={f.almacen} value={f.almacen}>{f.almacen}{empates[f.almacen] && empates[f.almacen] !== OMITIR ? ` · ${nombreAlm(empates[f.almacen])}` : ""}</option>)}
                 </select>
               </label>
               <div className="overflow-x-auto">
@@ -250,11 +260,14 @@ export function ImportarPlanAnual({ pilar, almacenes, cargar }: {
                 <div className="rounded-[18px] bg-papel p-4 text-[15px]">
                   <p className="font-semibold">¿Cargar el programa a Factory?</p>
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-[14px]">
-                    <li>{n(preparado.carga.activos.length)} activos de {lectura.fichas.length} almacenes, con su categoría
+                    <li>{n(preparado.carga.activos.length)} activos de {new Set(preparado.carga.activos.map((a) => a.alm)).size} almacenes, con su categoría
                       {preparado.sapQuitados === 1 ? " (1 con SAP repetido se carga sin SAP)" : preparado.sapQuitados ? ` (${preparado.sapQuitados} con SAP repetido se cargan sin SAP)` : ""}.</li>
                     <li>{n(preparado.carga.planes.length)} planes y {n(preparado.carga.asignaciones.length)} asignaciones;
                       {" "}{n(conFecha)} arrancan en la fecha del programa y el resto a partir de hoy.</li>
-                    <li>{n(preparado.carga.fichas.length)} fichas de almacén (andenes, pasillos y zonas).</li>
+                    {preparado.sinAlmacen > 0 && <li>{n(preparado.sinAlmacen)} activos de almacenes marcados “No cargar” se quedan fuera.</li>}
+                    <li>{preparado.carga.fichas.length
+                      ? `${n(preparado.carga.fichas.length)} fichas de almacén (andenes, pasillos y zonas).`
+                      : "Este archivo no trae andenes ni pasillos: las fichas de almacén no se tocan."}</li>
                     <li>Si este archivo ya se cargó antes, se actualizan los mismos activos: no se duplica nada.</li>
                   </ul>
                   <div className="mt-3 flex flex-wrap gap-2">

@@ -11,7 +11,7 @@ export const NOMBRE_FRECUENCIA: Record<Frecuencia, string> = {
 };
 
 export const CATEGORIAS = {
-  louver: "Louver", extractor: "Extractor", inyector: "Inyector", racks: "Racks", anden: "Andén", cortina: "Cortina o portón",
+  climatizacion: "Climatización", refrigeracion: "Refrigeración", compresor: "Compresor", osmosis: "Ósmosis", carcamo: "Cárcamo", louver: "Louver", extractor: "Extractor", inyector: "Inyector", racks: "Racks", anden: "Andén", cortina: "Cortina o portón",
   puerta: "Puertas y salidas", taller: "Taller", vestidor: "Vestidores", bano: "Baños", comedor: "Comedor", oficina: "Oficinas",
   area: "Áreas operativas", estructura: "Muros y pisos", balizamiento: "Balizamiento", electrico: "Instalación eléctrica",
   hidraulico: "Instalación hidráulica", exterior: "Exterior y cubierta", jardineria: "Jardinería",
@@ -21,13 +21,17 @@ export type Categoria = keyof typeof CATEGORIAS;
 
 // El orden importa: primero el tipo de activo y después el tipo de trabajo ("Pintura andén" es un andén).
 const REGLAS: [Categoria, RegExp][] = [
+  ["osmosis", /osmosis|cloracion/], ["carcamo", /carcamo/],
+  ["climatizacion", /mini ?splits?|cass?ett?e|casette|\buma\b|hvac|condensador|aire acondicionado|chiller|fan ?coil|paquete de aire|unidad paquete|adiabatico/],
+  ["refrigeracion", /congela|refrigera|camara fria|cuarto frio|enfriador|antecamara|precamara|multipack/],
+  ["compresor", /compresor/],
   ["louver", /louver/], ["extractor", /extractor/], ["inyector", /inyector/], ["racks", /\brack|proteccion/], ["anden", /\banden/],
   ["cortina", /cortina|porton/], ["puerta", /puerta|salida/], ["taller", /taller/], ["vestidor", /vestidor|lock/],
   ["bano", /\bbano|sanitari|mingitorio/], ["comedor", /comedor|cocineta/],
   ["oficina", /oficina|lobby|looby|sala de|archivo|recepcion|\bsite\b|sistemas|mobiliario/],
   ["area", /area tecnica|area de|seguridad patrimonial|modulo|mesa de control|sala friso|segregacion|volteador|dorsal|mezzanine|cargadores|caseta|almacen de/],
   ["estructura", /muro|junta|grieta|losa|loza|\bpiso/],
-  ["balizamiento", /baliza|senal/], ["electrico", /electric|lum+inaria|tierras|centro de carga|regulador|planta de emergencia/],
+  ["balizamiento", /baliza|senal/], ["electrico", /electric|lum+inaria|tierras|centro de carga|regulador|planta de emergencia|tabl\w*ro|tra[ns]{1,3}formador|\bups\b|subestacion|pl\w*ta (de )?emergencia|planta electrica|qdlogic|alumbrado|iluminacion|capacitores/],
   ["hidraulico", /agua|pozo|cisterna|hidroneumatico|bomba|tinaco|drenaje|fosa|septica/],
   ["exterior", /exterior|cubierta|techumbre|azotea|impermeab|bajante|canalon|malla|estacionamiento|bacheo|calafateo/],
   ["jardineria", /jardin|areas? verdes?|riego|poda/], ["limpieza", /limpieza|trampa/], ["pintura", /pintura|resane/],
@@ -181,7 +185,9 @@ export function leerPlanAnual(tabla: Celda[][], hoja = ""): Lectura | null {
   if (rep.length) problemas.push({ tipo: "sap-repetido", texto: `${rep.length} número${rep.length === 1 ? "" : "s"} SAP repetido${rep.length === 1 ? "" : "s"}: ${rep.slice(0, 8).map(([s, n]) => `${s} (×${n})`).join(", ")}.` });
   const sinFrec = activos.filter((a) => !a.frecuencias.length);
   if (sinFrec.length) problemas.push({ tipo: "sin-frecuencia", texto: `${sinFrec.length} activos sin frecuencia de plan (quedarían sin plan).` });
-  const incompletas = fichas.filter((f) => !f.pasillos || !f.andenes);
+  // solo si el archivo describe naves (trae andenes o pasillos); el de Críticos, por ejemplo, no
+  const describeNaves = fichas.some((f) => f.andenes || f.pasillos);
+  const incompletas = describeNaves ? fichas.filter((f) => !f.pasillos || !f.andenes) : [];
   if (incompletas.length) problemas.push({
     tipo: "ficha-incompleta",
     texto: `Fichas incompletas: ${incompletas.map((f) => `${f.almacen} (${[!f.andenes && "sin andenes", !f.pasillos && "sin pasillos"].filter(Boolean).join(", ")})`).join("; ")}.`,
@@ -191,7 +197,7 @@ export function leerPlanAnual(tabla: Celda[][], hoja = ""): Lectura | null {
 
 // ── Empatar los almacenes del archivo con los de Factory ──────────────────────────────────────────
 // Abreviaturas comunes de ciudades y sedes; lo que no empate o tenga varias opciones lo elige la persona.
-const ABREVIATURAS: Record<string, string> = { MTY: "MONTERREY", HMO: "HERMOSILLO", HUE: "HUEHUETOCA", VSA: "VILLAHERMOSA", TJN: "TIJUANA", TIJ: "TIJUANA" };
+const ABREVIATURAS: Record<string, string> = { MTY: "MONTERREY", MYT: "MONTERREY", HMO: "HERMOSILLO", HUE: "HUEHUETOCA", VSA: "VILLAHERMOSA", TJN: "TIJUANA", TIJ: "TIJUANA" };
 const compacto = (s: string) => normalizar(s).replace(/[^a-z0-9]/g, "").toUpperCase();
 
 export function sugerirAlmacen(codigo: string, almacenes: { id: string; nombre: string }[]): { id: string | null; opciones: string[] } {
@@ -239,6 +245,9 @@ export function inicioDePlan(a: Activo, f: Frecuencia, hoy: string): string | nu
   return proxima ? restarDias(proxima, DIAS_FRECUENCIA[f]) : fechas[fechas.length - 1];
 }
 
+/** Valor del selector de almacén para no cargar ese almacén (sitios que no existen en Factory). */
+export const OMITIR = "__omitir";
+
 export type Carga = {
   archivo: string;
   activos: { i: number; alm: string; sap: string | null; cons: number | null; nombre: string; cat: Categoria }[];
@@ -255,19 +264,25 @@ export function armarCarga(l: Lectura, empates: Record<string, string>, hoy: str
   const asignaciones: Carga["asignaciones"] = [];
   l.activos.forEach((a, i) => {
     const alm = empates[a.almacen];
-    if (!alm) { sinAlmacen++; return; }
+    if (!alm || alm === OMITIR) { sinAlmacen++; return; }
     let sap: string | null = a.sinSap ? null : a.sap;
     if (sap && vistos.has(sap)) { sap = null; sapQuitados++; }
     if (sap) vistos.add(sap);
     activos.push({ i, alm, sap, cons: a.sinSap && /^\d+$/.test(a.sap) ? Number(a.sap) : null, nombre: a.denominacion, cat: a.categoria });
     for (const f of a.frecuencias) asignaciones.push({ i, n: nombrePlan(a.categoria, f), f: inicioDePlan(a, f, hoy) });
   });
-  const planes = l.planes.map((p) => ({ n: p.nombre, d: p.cada_dias, t: `Códigos de plan SAP: ${p.codigos.join(", ")}` }));
-  const fichas = l.fichas.filter((f) => empates[f.almacen]).map((f) => ({
+  // solo los planes que usa algún activo que sí se carga
+  const usados = new Set(asignaciones.map((x) => x.n));
+  const planes = l.planes.filter((p) => usados.has(p.nombre)).map((p) => ({ n: p.nombre, d: p.cada_dias, t: `Códigos de plan SAP: ${p.codigos.join(", ")}` }));
+  // La ficha solo se actualiza desde archivos que describen la nave (andenes o pasillos): así un programa
+  // de otro pilar no borra lo que dejó el de Infraestructura.
+  const fichas = l.fichas.filter((f) => empates[f.almacen] && empates[f.almacen] !== OMITIR && (f.andenes || f.pasillos)).map((f) => ({
     alm: empates[f.almacen],
     ficha: {
       ...(f.andenes ? { andenes: f.andenes } : {}), ...(f.pasillos ? { pasillos: f.pasillos } : {}),
-      zonas: f.zonas, techo: f.techo, fuente: "programa-anual", actualizado: hoy,
+      ...(f.zonas.length ? { zonas: f.zonas } : {}),
+      ...(f.techo.louvers + f.techo.extractores + f.techo.inyectores ? { techo: f.techo } : {}),
+      fuente: "programa-anual", actualizado: hoy,
     },
   }));
   return { carga: { archivo, activos, planes, asignaciones, fichas }, sinAlmacen, sapQuitados };

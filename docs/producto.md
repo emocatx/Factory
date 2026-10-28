@@ -85,7 +85,21 @@ plan por frecuencia 1M…12M, lanzamientos y horas por servicio) y lo convierte 
   frecuencia y fichas incompletas.
 
 Primer archivo (Infraestructura, 2026): 2,679 activos en 15 almacenes; 999 con consecutivo interno en vez de
-SAP (CDN 1, 2, 3 y 5); faltan pasillos en 10 almacenes. El archivo de Críticos usa el mismo formato.
+SAP (CDN 1, 2, 3 y 5); faltan pasillos en 10 almacenes.
+
+Segundo archivo (Servicios Críticos, 2026): mismo formato con variaciones que el lector ya tolera (todo corrido una
+columna y una columna extra "MERCADO"). 948 activos en 49 sitios; 26 sitios (CPH y MDTEC) no existen en Factory y
+se marcan "No cargar" (o se crean antes como almacenes). Categorías propias: climatización, refrigeración,
+compresor, ósmosis, cárcamo e instalación eléctrica. No trae andenes ni pasillos, así que no toca las fichas.
+
+**Estándar mínimo del programa anual** (lo que el lector necesita; el orden de columnas puede variar):
+
+| Obligatorio | Opcional |
+|---|---|
+| Una fila de encabezados con **N°** y **DENOMINACIÓN** | Hoja llamada `CABLOMTO-F01-I41` (si no, se toma la primera que se reconozca) |
+| Columna **ALMACEN** a la izquierda (en esa fila o arriba) | **LANZAMIENTOS** y **TIEMPO POR FRECUENCIA (H)** |
+| Bloque **PLAN DE MANTENIMIENTO** con la fila de frecuencias **1M · 2M · 3M · 4M · 6M · 12M** | Calendario a la derecha de **NÚMERO DE SEMANA** con celdas `DD MMM AA 4M` |
+| Una fila por activo | Columnas extra (célula, mercado…): se ignoran |
 
 **Carga** (`cargar_programa_anual`, migración `20261028000003`): todo en una transacción, con los permisos del
 admin que la hace, y repetible sin duplicar.
