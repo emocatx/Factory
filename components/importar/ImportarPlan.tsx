@@ -6,6 +6,20 @@ import { leerFecha } from "@/lib/historial";
 
 const clave = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
 
+/** El programa anual (CABLOMTO-F01) tiene su propio cargador: si suben ese Excel aquí, se avisa. */
+async function esProgramaAnual(archivo: File) {
+  if (!/\.xlsx$/i.test(archivo.name)) return null;
+  if (/cablomto/i.test(archivo.name)) return AVISO_PROGRAMA;
+  try {
+    const { readSheet } = await import("read-excel-file/browser");
+    await readSheet(archivo, "CABLOMTO-F01-I41");
+    return AVISO_PROGRAMA;
+  } catch {
+    return null;
+  }
+}
+const AVISO_PROGRAMA = "Este Excel es el programa anual (CABLOMTO-F01). Súbelo en el recuadro de arriba, “Programa anual de mantenimiento”; aquí no se lee bien.";
+
 export function ImportarPlan({ pilar, planes, importar }: {
   pilar: string;
   /** Nombres de los planes que ya existen (no necesitan "Cada (días)"). */
@@ -41,6 +55,7 @@ export function ImportarPlan({ pilar, planes, importar }: {
         { clave: "tareas", etiqueta: "Tareas", alias: ["actividades", "checklist"], ejemplo: "Revisar batería; frenos; lubricar cadenas" },
       ]}
       validar={validar}
+      revisarArchivo={esProgramaAnual}
       importar={(filas) => importar(pilar, filas)}
     />
   );
