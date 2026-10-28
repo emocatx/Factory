@@ -68,7 +68,25 @@ La regla de los dos: **nadie da más de lo que tiene**.
 | Almacenes de un nivel | **Ubicaciones en niveles** (empresa → sitio → almacén/zona) |
 | Tipo de equipo deducido del modelo (montacargas) | **Categorías de equipo** configurables (montacargas, compresor, minisplit, rack, andén…) |
 | Importación con el formato de Power Apps de CAB | Plantilla genérica de importación |
+| Programa anual en el formato CABLOMTO-F01 | El lector convierte el formato a activos, categorías, planes y fichas (salida genérica); otros clientes usarían una plantilla |
 | Textos y folios pensados para CAB | Configuración por empresa |
+
+### Programa anual de mantenimiento (importador en Planes, solo vista previa)
+
+`lib/planAnual.ts` lee el Excel del programa anual (una fila por activo: almacén, número SAP, denominación,
+plan por frecuencia 1M…12M, lanzamientos y horas por servicio) y lo convierte en:
+
+- **Activos con categoría** (andén, louver, extractor, inyector, racks, oficinas, muros y pisos, áreas…),
+  deducida de la denominación y revisable.
+- **Planes propuestos**, uno por categoría y frecuencia, conservando los códigos de plan de SAP.
+- **Fichas de almacén**: andenes ("Andén CDNQ 12"), pasillos ("racks/juntas y grietas pasillo 05") y zonas.
+  Validado con CDN 5: 57 andenes y 35 pasillos, igual que su plano.
+- **Problemas** a limpiar: consecutivos internos en lugar de número SAP, SAP repetidos, activos sin
+  frecuencia y fichas incompletas.
+
+Primer archivo (Infraestructura, 2026): 2,679 activos en 15 almacenes; 999 con consecutivo interno en vez de
+SAP (CDN 1, 2, 3 y 5); faltan pasillos en 10 almacenes. El archivo de Críticos usa el mismo formato.
+La carga a la base se habilita cuando existan categorías de equipo y fichas de almacén en el modelo de datos.
 
 ## 7. Visualización 3D
 
@@ -134,3 +152,5 @@ Medición del prototipo (modo desarrollo, 1440 × 860): CDN 5 (288 × 122 m, 57 
 | 2026-10-28 | Plantilla de nave: cada almacén se arma desde su ficha (SAP o formulario), no se dibuja a mano |
 | 2026-10-28 | Vista por pilar: el almacén es el mismo edificio; cada pilar resalta sus activos y lo demás queda neutro |
 | 2026-10-28 | Ubicaciones técnicas de SAP como modelo de ubicaciones del producto (sitio → centro → zona → ubicación) |
+| 2026-10-28 | El programa anual (CABLOMTO-F01) es la fuente de activos, planes y fichas de Infraestructura y Críticos; primero vista previa |
+| 2026-10-28 | "AGRO" del programa anual = AGRO INSUMOS; las cuadrillas (célula A/B/C/E) ya no se validan |

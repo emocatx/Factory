@@ -7,6 +7,7 @@ import { infoPilar, puedeAsignar } from "@/lib/catalogos";
 import { aDia, etiquetaTipo, familia, frecuencia, hoyMx, nTareas, ocurrencias, sumarDias, temaDominante } from "@/lib/planes";
 import { Encabezado, Seccion } from "@/components/ui";
 import { ImportarPlan } from "@/components/importar/ImportarPlan";
+import { ImportarPlanAnual } from "@/components/importar/ImportarPlanAnual";
 import { PanelPlanes } from "./PanelPlanes";
 import { BotonHecho, SelectorAlmacen } from "./Controles";
 import { importarPlan } from "./acciones";
@@ -227,6 +228,8 @@ export default async function Planes({
         extra={<a href={`/p/${pilar}/planes/excel`} className="btn-sec" download>Descargar Excel</a>}>
         {editar ? (
           <>
+            {/* Programa anual (formato CABLOMTO-F01): por ahora solo vista previa, para el administrador */}
+            {perfil.rol === "admin" && <ImportarPlanAnual almacenes={cat.almacenes.map((a) => ({ id: a.id_almacen, nombre: a.nombre_almacen }))} />}
             <ImportarPlan pilar={pilar} planes={planes.map((x) => x.nombre)} importar={importarPlan} />
             <PanelPlanes
               key={f.nuevo ?? ""}
