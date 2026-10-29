@@ -141,7 +141,10 @@ export function fechaProgramada(c: Celda): { fecha: string; frecuencias: Frecuen
   if (!m || !MESES[m[2]]) return null;
   const anio = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
   const frecuencias = (m[4] ?? "").split(/[\s,/-]+/).filter((f): f is Frecuencia => FRECUENCIAS.includes(f as Frecuencia));
-  return { fecha: `${anio}-${p2(MESES[m[2]])}-${p2(Number(m[1]))}`, frecuencias };
+  // "31 SEP 26" quiere decir fin de mes: el día se ajusta al último del mes
+  const dia = Math.min(Number(m[1]), new Date(Date.UTC(anio, MESES[m[2]], 0)).getUTCDate());
+  if (dia < 1) return null;
+  return { fecha: `${anio}-${p2(MESES[m[2]])}-${p2(dia)}`, frecuencias };
 }
 
 export function leerPlanAnual(tabla: Celda[][], hoja = ""): Lectura | null {
@@ -300,10 +303,16 @@ export type Carga = {
   fichas: { alm: string; ficha: Record<string, unknown> }[];
 };
 
-/** Arma lo que se manda a la base: solo activos de almacenes empatados; un SAP repetido se conserva en su primera aparición. */
-export function armarCarga(l: Lectura, empates: Record<string, string>, hoy: string, archivo: string): { carga: Carga; sinAlmacen: number; sapQuitados: number } {
-  const vistos = new Set<string>();
-  let sinAlmacen = 0, sapQuitados = 0;
+/**
+ * Arma lo que se manda a la base: solo activos de almacenes empatados; un SAP o una clave repetidos se conservan en
+ * su primera aparición. El consecutivo de los activos sin SAP es su clave (INF-784) solo si no se repite en el
+ * archivo: en Móviles cada almacén numera desde 1, y ahí esos activos se reconocen por almacén y nombre.
+ */
+export function armarCarga(l: Lectura, empates: Record<string, string>, hoy: string, archivo: string): { carga: Carga; sinAlmacen: number; sapQuitados: number; clavesQuitadas: number } {
+  const vistos = new Set<string>(), claves = new Set<string>();
+  const consecutivos = l.activos.filter((a) => a.sinSap && /^\d+$/.test(a.sap)).map((a) => Number(a.sap));
+  const consUnico = new Set(consecutivos).size === consecutivos.length;
+  let sinAlmacen = 0, sapQuitados = 0, clavesQuitadas = 0;
   const activos: Carga["activos"] = [];
   const asignaciones: Carga["asignaciones"] = [];
   l.activos.forEach((a, i) => {
@@ -312,7 +321,10 @@ export function armarCarga(l: Lectura, empates: Record<string, string>, hoy: str
     let sap: string | null = a.sinSap ? null : a.sap;
     if (sap && vistos.has(sap)) { sap = null; sapQuitados++; }
     if (sap) vistos.add(sap);
-    activos.push({ i, alm, sap, cons: a.sinSap && /^\d+$/.test(a.sap) ? Number(a.sap) : null, clave: a.clave || null, nombre: a.denominacion, cat: a.categoria });
+    let clave = a.clave || null;
+    if (clave && claves.has(clave)) { clave = null; clavesQuitadas++; }
+    if (clave) claves.add(clave);
+    activos.push({ i, alm, sap, cons: consUnico && a.sinSap && /^\d+$/.test(a.sap) ? Number(a.sap) : null, clave, nombre: a.denominacion, cat: a.categoria });
     for (const f of a.frecuencias) asignaciones.push({ i, n: planDe(a, f), f: inicioDePlan(a, f, hoy) });
   });
   // solo los planes que usa algún activo que sí se carga
@@ -331,5 +343,5 @@ export function armarCarga(l: Lectura, empates: Record<string, string>, hoy: str
       fuente: "programa-anual", actualizado: hoy,
     },
   }));
-  return { carga: { archivo, activos, planes, asignaciones, fichas }, sinAlmacen, sapQuitados };
+  return { carga: { archivo, activos, planes, asignaciones, fichas }, sinAlmacen, sapQuitados, clavesQuitadas };
 }

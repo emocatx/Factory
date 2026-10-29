@@ -3,13 +3,14 @@
 // Importador único del programa de mantenimiento, en tres pasos: subir, revisar y confirmar.
 // Acepta la plantilla Factory, el programa anual CABLOMTO-F01 (se traduce solo) o cualquier tabla propia,
 // cuyas columnas se unen a las de Factory una vez y quedan guardadas para la empresa.
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { leerArchivoTabla } from "@/lib/tabla";
 import { armarCarga, CATEGORIAS, leerPlanAnual, normalizar, OMITIR, proximaProgramada, sugerirAlmacen, type Carga, type Categoria, type Lectura } from "@/lib/planAnual";
 import {
   ALMACENES_ELEGIDOS, CAMPOS, faltantes, filaEncabezados, firmaEncabezados, leerPlantilla, mapeoAutomatico, mapeoParaGuardar, plantillaXlsx,
   type Campo, type Mapeo, type MapeosGuardados,
 } from "@/lib/plantillaFactory";
+import type { Simulacion } from "@/app/(app)/p/[pilar]/planes/acciones";
 
 type Almacen = { id: string; nombre: string };
 type Respuesta = { ok: boolean; mensaje: string };
@@ -38,11 +39,12 @@ async function leer(archivo: File): Promise<Fuente | "sin-encabezados" | null> {
   return fila < 0 ? "sin-encabezados" : { archivo: archivo.name, tipo: "tabla", tabla, fila };
 }
 
-export function ImportarPrograma({ pilar, almacenes, mapeos, cargar, recordar: recordarEnEmpresa }: {
+export function ImportarPrograma({ pilar, almacenes, mapeos, cargar, simular, recordar: recordarEnEmpresa }: {
   pilar: string;
   almacenes: Almacen[];
   mapeos: MapeosGuardados;
   cargar: (pilar: string, carga: Carga) => Promise<Respuesta>;
+  simular: (pilar: string, carga: Carga) => Promise<Respuesta & { simulacion?: Simulacion }>;
   recordar: (firma: string | null, mapeo: Partial<Record<Campo, string>> | null, almacenes: Record<string, string>) => Promise<Respuesta>;
 }) {
   const [paso, setPaso] = useState<1 | 2 | 3>(1);
@@ -56,6 +58,8 @@ export function ImportarPrograma({ pilar, almacenes, mapeos, cargar, recordar: r
   const [filtroCat, setFiltroCat] = useState<Categoria | "">("");
   const [todosPlanes, setTodosPlanes] = useState(false);
   const [resultado, setResultado] = useState<Respuesta | null>(null);
+  const [sim, setSim] = useState<{ carga: Carga; r: Respuesta & { simulacion?: Simulacion } } | null>(null);
+  const [todosCambios, setTodosCambios] = useState(false);
   const [guardando, iniciar] = useTransition();
   const hoy = useMemo(hoyMx, []);
 
@@ -81,11 +85,22 @@ export function ImportarPrograma({ pilar, almacenes, mapeos, cargar, recordar: r
   const filtrados = useMemo(() => (lectura?.activos ?? []).filter((a) => (!filtroAlm || a.almacen === filtroAlm) && (!filtroCat || a.categoria === filtroCat)), [lectura, filtroAlm, filtroCat]);
   const nombreAlm = (id: string) => almacenes.find((a) => a.id === id)?.nombre;
   const preparado = useMemo(() => (lectura && !sinEmpatar ? armarCarga(lectura, empates, hoy, fuente?.archivo ?? "") : null), [lectura, empates, sinEmpatar, hoy, fuente]);
-  const conFecha = preparado ? preparado.carga.asignaciones.filter((x) => x.f).length : 0;
   // Solo el programa de inmueble describe la nave (andenes, pasillos); en los demás no se pide la ficha.
   const conNave = !!lectura?.fichas.some((f) => f.andenes || f.pasillos);
   const conCodigos = !!lectura?.planes.some((p) => p.codigos.length);
   const conHoras = !!lectura?.activos.some((a) => a.horas !== null);
+
+  // Al llegar a Confirmar se simula la carga en la base (se corre y se deshace) para decir exactamente qué va a pasar
+  const carga = paso === 3 ? preparado?.carga : undefined;
+  useEffect(() => {
+    if (!carga || sim?.carga === carga) return;
+    let vigente = true;
+    simular(pilar, carga)
+      .catch(() => ({ ok: false, mensaje: "No se pudo simular la carga. Revisa tu conexión." }))
+      .then((r) => { if (vigente) setSim({ carga, r }); });
+    return () => { vigente = false; };
+  }, [carga, sim, simular, pilar]);
+  const simulacion = sim && sim.carga === carga ? sim.r : null;
 
   function reiniciar() {
     setPaso(1); setFuente(null); setMapeo({}); setElegidos({}); setError(null); setResultado(null); setFiltroAlm(""); setFiltroCat("");
@@ -396,27 +411,95 @@ export function ImportarPrograma({ pilar, almacenes, mapeos, cargar, recordar: r
                 </div>
               </>
             ) : (
-              <div className="rounded-[18px] bg-papel p-4 text-[15px]">
-                <p className="font-semibold">¿Cargar {fuente.archivo} a Factory?</p>
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-[14px]">
-                  <li>{n(preparado.carga.activos.length)} activos de {new Set(preparado.carga.activos.map((a) => a.alm)).size} almacenes, con su categoría
-                    {preparado.sapQuitados === 1 ? " (1 con SAP repetido se carga sin SAP)" : preparado.sapQuitados ? ` (${preparado.sapQuitados} con SAP repetido se cargan sin SAP)` : ""}.
-                    Los que ya existen (mismo SAP o clave) se actualizan: nombre, categoría y almacén.</li>
-                  <li>{n(preparado.carga.planes.length)} planes y {n(preparado.carga.asignaciones.length)} asignaciones;
-                    {" "}{conFecha === preparado.carga.asignaciones.length ? "todas arrancan en la fecha del archivo"
-                      : `${n(conFecha)} arrancan en la fecha del archivo y el resto a partir de hoy`}.</li>
-                  {preparado.sinAlmacen > 0 && <li>{n(preparado.sinAlmacen)} activos de almacenes marcados “No cargar” se quedan fuera.</li>}
-                  <li>{preparado.carga.fichas.length
-                    ? `${n(preparado.carga.fichas.length)} fichas de almacén (andenes, pasillos y zonas).`
-                    : "Este archivo no trae andenes ni pasillos: las fichas de almacén no se tocan."}</li>
-                  <li>Si este archivo ya se cargó antes, no se duplica nada.</li>
-                </ul>
-                <label className="mt-3 flex items-center gap-2 text-[14px]">
+              <div className="space-y-4">
+                <p className="text-[15px]">
+                  <strong className="font-semibold">¿Cargar {fuente.archivo} a Factory?</strong>
+                  <span className="text-suave"> Factory hizo la carga de prueba y la deshizo: esto es lo que va a pasar. Todavía no se guardó nada.</span>
+                </p>
+
+                {!simulacion ? (
+                  <p role="status" aria-busy="true" className="rounded-[14px] bg-papel px-4 py-3 text-[14px] text-suave">Simulando la carga de {n(preparado.carga.activos.length)} activos…</p>
+                ) : !simulacion.ok || !simulacion.simulacion ? (
+                  <p role="alert" className="flex flex-wrap items-center gap-3 rounded-[14px] bg-paro-suave px-4 py-3 text-[14px] text-paro-texto">
+                    <span>{simulacion.mensaje}</span>
+                    <button type="button" onClick={() => setSim(null)} className="btn-sec min-h-9 px-4 text-[14px]">Volver a simular</button>
+                  </p>
+                ) : (() => {
+                  const s = simulacion.simulacion, fuera = s.existentes_antes - s.equipos_actualizados, iguales = s.equipos_actualizados - s.cambios_total;
+                  const cambio = (antes: string | null, ahora: string | null) => antes === ahora
+                    ? <span className="text-suave">{ahora ?? "—"}</span>
+                    : <><span className="text-suave line-through decoration-1">{antes ?? "sin dato"}</span> <span aria-hidden="true">→</span><span className="sr-only">cambia a</span> <span className="font-medium">{ahora ?? "sin dato"}</span></>;
+                  return (
+                    <>
+                      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        {[
+                          ["Equipos nuevos", s.equipos_nuevos],
+                          ["Equipos que cambian", s.cambios_total],
+                          ["Planes nuevos", s.planes_nuevos],
+                          ["Asignaciones nuevas", s.asignaciones_nuevas],
+                        ].map(([t, v]) => (
+                          <div key={t} className="rounded-[18px] bg-papel px-4 py-3">
+                            <dt className="text-[13px] text-suave">{t}</dt>
+                            <dd className="text-[22px] font-semibold tabular-nums">{n(v as number)}</dd>
+                          </div>
+                        ))}
+                      </dl>
+
+                      <ul className="list-disc space-y-1 pl-5 text-[14px]">
+                        {iguales > 0 && <li>{n(iguales)} {iguales === 1 ? "equipo ya está" : "equipos ya están"} en Factory igual que en el archivo: no cambian.</li>}
+                        {fuera > 0 && <li>{n(fuera)} {fuera === 1 ? "equipo que ya está" : "equipos que ya están"} en Factory no {fuera === 1 ? "viene" : "vienen"} en el archivo: se {fuera === 1 ? "queda" : "quedan"} como {fuera === 1 ? "está" : "están"}.</li>}
+                        {s.sap_en_otro_pilar > 0 && <li>{n(s.sap_en_otro_pilar)} {s.sap_en_otro_pilar === 1 ? "activo trae un SAP que ya usa otro pilar: se carga" : "activos traen un SAP que ya usa otro pilar: se cargan"} sin SAP.</li>}
+                        {preparado.sapQuitados > 0 && <li>{preparado.sapQuitados === 1 ? "1 activo con SAP repetido en el archivo se carga" : `${n(preparado.sapQuitados)} activos con SAP repetido en el archivo se cargan`} sin SAP.</li>}
+                        {preparado.clavesQuitadas > 0 && <li>{preparado.clavesQuitadas === 1 ? "1 activo con clave repetida en el archivo se carga" : `${n(preparado.clavesQuitadas)} activos con clave repetida en el archivo se cargan`} sin clave.</li>}
+                        {preparado.sinAlmacen > 0 && <li>{n(preparado.sinAlmacen)} activos de almacenes marcados “No cargar” se quedan fuera.</li>}
+                        <li>{s.fichas ? `${n(s.fichas)} fichas de almacén (andenes, pasillos y zonas) se actualizan.` : "Las fichas de almacén no se tocan."}</li>
+                        <li>
+                          Agenda del pilar después de cargar:{" "}
+                          <span className={s.agenda.vencidos ? "font-medium text-paro-texto" : ""}>{n(s.agenda.vencidos)} servicios vencidos</span>,
+                          {" "}{n(s.agenda.proximos_30)} en los próximos 30 días y {n(s.agenda.despues)} más adelante.
+                        </li>
+                      </ul>
+
+                      {s.cambios_total > 0 && (
+                        <section aria-labelledby="imp-cambios">
+                          <h3 id="imp-cambios" className="mb-1 text-[17px] font-semibold">Equipos que cambian</h3>
+                          <p className="mb-3 text-[14px] text-suave">Ya existen en Factory (mismo SAP o clave) y toman los datos del archivo:
+                            {" "}{n(s.cambios_por.nombre)} cambian de nombre, {n(s.cambios_por.categoria)} de categoría y {n(s.cambios_por.almacen)} de almacén.</p>
+                          <div className="overflow-x-auto">
+                            <table className="w-full min-w-[760px] text-[14px]">
+                              <thead className="text-left text-[13px] text-suave">
+                                <tr>{["SAP", "Nombre", "Categoría", "Almacén"].map((h) => <th key={h} className="px-3 pb-2 font-medium">{h}</th>)}</tr>
+                              </thead>
+                              <tbody>
+                                {(todosCambios ? s.cambios : s.cambios.slice(0, 15)).map((c, i) => (
+                                  <tr key={`${c.sap ?? c.clave}-${i}`} className="border-t border-papel align-top">
+                                    <td className="px-3 py-1.5 tabular-nums">{c.sap ?? c.clave ?? "—"}</td>
+                                    <td className="px-3 py-1.5">{cambio(c.nombre_antes, c.nombre)}</td>
+                                    <td className="px-3 py-1.5">{cambio(c.cat_antes && (CATEGORIAS[c.cat_antes as Categoria] ?? c.cat_antes), c.cat && (CATEGORIAS[c.cat as Categoria] ?? c.cat))}</td>
+                                    <td className="px-3 py-1.5">{cambio(c.alm_antes, c.alm)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          {s.cambios.length > 15 && (
+                            <button type="button" onClick={() => setTodosCambios((v) => !v)} className="enlace mt-2 cursor-pointer text-[14px]">
+                              {todosCambios ? "Ver menos" : `Ver ${s.cambios_total > s.cambios.length ? `los primeros ${n(s.cambios.length)} de ${n(s.cambios_total)}` : `los ${n(s.cambios_total)}`}`}
+                            </button>
+                          )}
+                        </section>
+                      )}
+                    </>
+                  );
+                })()}
+
+                <label className="flex items-center gap-2 text-[14px]">
                   <input type="checkbox" checked={recordar} onChange={(e) => setRecordar(e.target.checked)} className="h-5 w-5" />
                   Recordar {fuente.tipo === "tabla" ? "las columnas y " : ""}los almacenes elegidos para la próxima importación
                 </label>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button type="button" onClick={cargarAhora} disabled={guardando} aria-busy={guardando} className="btn-primario min-h-11">{guardando ? "Cargando…" : "Sí, cargar"}</button>
+                <div className="flex flex-wrap gap-2 border-t border-papel pt-4">
+                  <button type="button" onClick={cargarAhora} disabled={guardando || !simulacion?.ok} aria-busy={guardando}
+                    className="btn-primario min-h-11 disabled:cursor-not-allowed disabled:opacity-50">{guardando ? "Cargando…" : "Sí, cargar"}</button>
                   <button type="button" onClick={() => setPaso(2)} disabled={guardando} className="btn-sec min-h-11">Volver a revisar</button>
                 </div>
               </div>

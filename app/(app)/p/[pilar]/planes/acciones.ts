@@ -20,6 +20,8 @@ function traducir(m: string) {
   if (m.includes("planes_nombre_unq")) return "Ya existe un plan con ese nombre.";
   if (m.includes("row-level security")) return "No tienes permiso para editar planes.";
   if (m.includes("planes_frecuencia")) return "Solo los planes de proveedor pueden ir sin frecuencia.";
+  if (m.includes("equipos_clave_unq")) return "dos activos quedarían con la misma clave interna.";
+  if (m.includes("equipos_sap_unq")) return "dos activos quedarían con el mismo número SAP.";
   return m;
 }
 
@@ -97,6 +99,26 @@ export async function cargarProgramaAnual(pilar: string, carga: Carga): Promise<
     ok: true, resumen: r,
     mensaje: `Programa cargado: ${r.equipos_nuevos} equipos nuevos, ${r.equipos_actualizados} actualizados, ${r.planes_nuevos} planes nuevos y ${r.asignaciones_nuevas} asignaciones.`,
   };
+}
+
+export type CambioEquipo = {
+  sap: string | null; clave: string | null; nombre_antes: string; nombre: string;
+  cat_antes: string | null; cat: string | null; alm_antes: string | null; alm: string | null;
+};
+export type Simulacion = ResumenCarga & {
+  existentes_antes: number; cambios_total: number; cambios: CambioEquipo[];
+  cambios_por: { nombre: number; categoria: number; almacen: number };
+  agenda: { vencidos: number; proximos_30: number; despues: number };
+};
+
+/** Corre la carga completa en la base y la deshace: dice qué va a pasar sin guardar nada. */
+export async function simularProgramaAnual(pilar: string, carga: Carga): Promise<Resultado & { simulacion?: Simulacion }> {
+  await exigirRol(["admin"]);
+  if (!esPilar(pilar)) return { ok: false, mensaje: "Pilar inválido." };
+  if (!Array.isArray(carga?.activos) || !carga.activos.length) return { ok: false, mensaje: "La carga no trae activos." };
+  const { data, error } = await (await createClient()).rpc("simular_programa_anual", { p_pilar: pilar, p_datos: carga });
+  if (error) return { ok: false, mensaje: `La carga fallaría: ${traducir(error.message)}` };
+  return { ok: true, mensaje: "Simulación lista.", simulacion: data as Simulacion };
 }
 
 /**

@@ -98,6 +98,20 @@ También se recuerda **a qué almacén de Factory va cada almacén del archivo**
 empate sugiere por palabra ("CULIACAN Mari" → CDE Culiacan). Con varias opciones (AMSA, AGRO) pregunta solo la
 primera vez.
 
+**Simulación antes de confirmar.** Al llegar a Confirmar, Factory corre la carga completa en la base y la deshace
+(`simular_programa_anual`: subtransacción que mide y revierte). El paso muestra lo que de verdad va a pasar:
+equipos nuevos, equipos existentes que cambian (con antes → después de nombre, categoría y almacén), planes y
+asignaciones nuevas, equipos que no vienen en el archivo y cómo queda la agenda (vencidos, próximos 30 días,
+después). Si la carga fallaría, lo dice ahí y no deja cargar. La primera simulación real (2026-10-29) encontró dos
+errores que habrían tirado la carga completa: consecutivos repetidos (Móviles y Críticos numeran por almacén) y una
+fecha "31 SEP" en Inmueble.
+
+Reglas que salieron de esa simulación:
+- El consecutivo de los activos sin SAP es su clave (INF-784) **solo si no se repite en el archivo**. Si se repite,
+  el archivo numera por almacén y esos activos se reconocen al recargar por almacén y nombre. Una clave repetida
+  se conserva en su primera aparición.
+- Una fecha con día imposible ("31 SEP 26") se toma como fin de mes.
+
 Permisos: crea y actualiza equipos, así que solo el administrador. Los demás editores siguen creando planes y
 asignándolos desde la pantalla. La carga de equipos con ficha técnica (serie, modelo, proveedor) sigue en Equipos, y
 la de almacenes en Configuración.
@@ -224,3 +238,5 @@ Medición del prototipo (modo desarrollo, 1440 × 860): CDN 5 (288 × 122 m, 57 
 | 2026-10-29 | Importador único en 3 pasos: plantilla Factory como estándar; formatos propios por mapeo guardado (tabla) o traductor (matriz) |
 | 2026-10-29 | Se recuerdan por empresa las columnas de cada formato y el almacén elegido para cada almacén del archivo |
 | 2026-10-29 | El importador es solo del admin (crea equipos); el "Cargar plan desde Excel" de editores se retira |
+| 2026-10-29 | Confirmar muestra una simulación real de la carga (se corre y se deshace); si fallaría, no deja cargar |
+| 2026-10-29 | El consecutivo solo es clave si es único en el archivo (Móviles y Críticos numeran por almacén) |
