@@ -73,6 +73,8 @@ export function ImportarPlanAnual({ pilar, almacenes, cargar }: {
   // lo que se mandaría a la base con los almacenes elegidos
   const preparado = useMemo(() => (lectura && !sinEmpatar ? armarCarga(lectura, empates, hoy, archivoNombre) : null), [lectura, empates, sinEmpatar, hoy, archivoNombre]);
   const conFecha = preparado ? preparado.carga.asignaciones.filter((x) => x.f).length : 0;
+  // Solo el programa de inmueble describe la nave (andenes, pasillos); en los demás no se pide la ficha.
+  const conNave = !!lectura?.fichas.some((f) => f.andenes || f.pasillos);
 
   function cargarAhora() {
     if (!preparado) return;
@@ -131,15 +133,17 @@ export function ImportarPlanAnual({ pilar, almacenes, cargar }: {
                 <h3 id="pa-problemas" className="mb-2 text-[17px] font-semibold">Problemas detectados</h3>
                 <ul className="space-y-2">
                   {lectura.problemas.map((p) => (
-                    <li key={p.tipo} className="rounded-[14px] bg-paro-suave px-4 py-3 text-[14px] text-paro-texto">{p.texto}</li>
+                    <li key={p.tipo} className={`rounded-[14px] px-4 py-3 text-[14px] ${p.tipo === "sin-sap" ? "bg-alerta-suave text-alerta-texto" : "bg-paro-suave text-paro-texto"}`}>{p.texto}</li>
                   ))}
                 </ul>
               </section>
             )}
 
             <section aria-labelledby="pa-almacenes">
-              <h3 id="pa-almacenes" className="mb-1 text-[17px] font-semibold">Almacenes y su ficha</h3>
-              <p className="mb-3 text-[14px] text-suave">Andenes y pasillos salen de las denominaciones (“Andén CDNQ 12”, “racks pasillo 05”); arman la nave en 3D.</p>
+              <h3 id="pa-almacenes" className="mb-1 text-[17px] font-semibold">{conNave ? "Almacenes y su ficha" : "Almacenes"}</h3>
+              <p className="mb-3 text-[14px] text-suave">{conNave
+                ? "Andenes y pasillos salen de las denominaciones (“Andén CDNQ 12”, “racks pasillo 05”); arman la nave en 3D."
+                : "Elige a qué almacén de Factory corresponde cada uno del archivo."}</p>
               {sinEmpatar > 1 && (
                 <p className="mb-3 flex flex-wrap items-center gap-3 rounded-[14px] bg-papel px-4 py-3 text-[14px]">
                   <span>{sinEmpatar} almacenes del archivo no existen en Factory (o tienen varias opciones).</span>
@@ -150,9 +154,9 @@ export function ImportarPlanAnual({ pilar, almacenes, cargar }: {
                 </p>
               )}
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[860px] text-[14px]">
+                <table className={`w-full text-[14px] ${conNave ? "min-w-[860px]" : "min-w-[520px]"}`}>
                   <thead className="text-left text-[13px] text-suave">
-                    <tr>{["Archivo", "Almacén en Factory", "Activos", "Andenes", "Pasillos", "Zonas", "Louvers · extractores · inyectores"].map((h) => <th key={h} className="px-3 pb-2 font-medium">{h}</th>)}</tr>
+                    <tr>{["Archivo", "Almacén en Factory", "Activos", ...(conNave ? ["Andenes", "Pasillos", "Zonas", "Louvers · extractores · inyectores"] : [])].map((h) => <th key={h} className="px-3 pb-2 font-medium">{h}</th>)}</tr>
                   </thead>
                   <tbody>
                     {lectura.fichas.map((f) => {
@@ -171,10 +175,12 @@ export function ImportarPlanAnual({ pilar, almacenes, cargar }: {
                             </select>
                           </td>
                           <td className="px-3 py-2 tabular-nums">{n(f.activos)}</td>
-                          <td className={`px-3 py-2 tabular-nums ${f.andenes ? "" : "text-paro-texto"}`}>{f.andenes || "falta"}</td>
-                          <td className={`px-3 py-2 tabular-nums ${f.pasillos ? "" : "text-paro-texto"}`}>{f.pasillos || "falta"}</td>
-                          <td className="px-3 py-2 text-suave">{f.zonas.map((z) => CATEGORIAS[z]).join(", ") || "—"}</td>
-                          <td className="px-3 py-2 tabular-nums text-suave">{f.techo.louvers} · {f.techo.extractores} · {f.techo.inyectores}</td>
+                          {conNave && <>
+                            <td className={`px-3 py-2 tabular-nums ${f.andenes ? "" : "text-paro-texto"}`}>{f.andenes || "falta"}</td>
+                            <td className={`px-3 py-2 tabular-nums ${f.pasillos ? "" : "text-paro-texto"}`}>{f.pasillos || "falta"}</td>
+                            <td className="px-3 py-2 text-suave">{f.zonas.map((z) => CATEGORIAS[z]).join(", ") || "—"}</td>
+                            <td className="px-3 py-2 tabular-nums text-suave">{f.techo.louvers} · {f.techo.extractores} · {f.techo.inyectores}</td>
+                          </>}
                         </tr>
                       );
                     })}

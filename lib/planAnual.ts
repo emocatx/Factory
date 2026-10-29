@@ -177,7 +177,7 @@ export function leerPlanAnual(tabla: Celda[][], hoja = ""): Lectura | null {
   const sinSap = activos.filter((a) => a.sinSap);
   if (sinSap.length) {
     const por = [...new Set(sinSap.map((a) => a.almacen))].map((x) => `${x}: ${sinSap.filter((a) => a.almacen === x).length}`).join(", ");
-    problemas.push({ tipo: "sin-sap", texto: `${sinSap.length} activos con un consecutivo interno en lugar de número SAP (${por}). Se importarían sin SAP.` });
+    problemas.push({ tipo: "sin-sap", texto: `${sinSap.length} activos con un consecutivo interno en lugar de número SAP (${por}). Se cargan con ese consecutivo como clave interna, sin SAP; puedes agregar el SAP después.` });
   }
   const cuenta = new Map<string, number>();
   activos.filter((a) => !a.sinSap).forEach((a) => cuenta.set(a.sap, (cuenta.get(a.sap) ?? 0) + 1));
