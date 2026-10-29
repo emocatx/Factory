@@ -16,7 +16,6 @@ export function ImportarTabla({
   validar,
   importar,
   opcion,
-  revisarArchivo,
 }: {
   columnas: Columna[];
   titulo: string;
@@ -26,8 +25,6 @@ export function ImportarTabla({
   validar: (f: Fila, i: number, todas: Fila[]) => string | null;
   importar: (filas: Fila[], opcion: boolean) => Promise<ResultadoImport>;
   opcion?: { etiqueta: string; porDefecto?: boolean };
-  /** Antes de leer un archivo: devuelve un aviso si ese archivo va en otro cargador (y no se lee). */
-  revisarArchivo?: (archivo: File) => Promise<string | null>;
 }) {
   const [modo, setModo] = useState<"pegar" | "archivo">("pegar");
   const [texto, setTexto] = useState("");
@@ -51,8 +48,6 @@ export function ImportarTabla({
     setRes(null); setErrorArchivo(undefined); setFilas([]);
     if (!archivo) return;
     try {
-      const aviso = await revisarArchivo?.(archivo);
-      if (aviso) { setErrorArchivo(aviso); return; }
       const tabla = await leerArchivoTabla(archivo);
       if (!tabla) setErrorArchivo("Usa un archivo .xlsx o .csv. Si es .xls viejo, guárdalo como .xlsx o copia y pega las celdas.");
       else setFilas(aFilas(tabla, columnas));

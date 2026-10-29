@@ -68,10 +68,41 @@ La regla de los dos: **nadie da más de lo que tiene**.
 | Almacenes de un nivel | **Ubicaciones en niveles** (empresa → sitio → almacén/zona) |
 | Tipo de equipo deducido del modelo (montacargas) | **Categorías de equipo** configurables (montacargas, compresor, minisplit, rack, andén…) |
 | Importación con el formato de Power Apps de CAB | Plantilla genérica de importación |
-| Programa anual en el formato CABLOMTO-F01 | El lector convierte el formato a activos, categorías, planes y fichas (salida genérica); otros clientes usarían una plantilla |
+| Programa anual en el formato CABLOMTO-F01 | Hecho: **importador único** con plantilla Factory, mapeo de columnas guardado por empresa y CABLOMTO como traductor |
 | Textos y folios pensados para CAB | Configuración por empresa |
 
-### Programa anual de mantenimiento (importador en Planes, solo admin)
+### Importador único (en Planes, solo admin)
+
+Un solo recuadro, **Importar programa de mantenimiento**, en tres pasos con indicador: **Subir archivo → Revisar →
+Confirmar**. Reemplaza al cargador del programa anual y al "Cargar plan desde Excel", que se repetían. Todos los
+caminos llegan a la misma vista previa y a la misma carga (`cargar_programa_anual`).
+
+Dos entradas:
+
+1. **Plantilla Factory** (`lib/plantillaFactory.ts`): el estándar que se vende. Excel plano, una fila por activo y
+   frecuencia. Se descarga con los almacenes de la empresa y las frecuencias y categorías en listas desplegables
+   (hojas Programa, Listas e Instrucciones; escritor propio en `lib/xlsx.ts`, sin dependencias).
+
+   | Obligatorias | Opcionales |
+   |---|---|
+   | Almacén, Denominación, Frecuencia (1M…12M, "bimestral", "60 días", "3M-6M") | SAP, Clave, Categoría (si no, se deduce), Próxima fecha o Último servicio, Servicio (nombre del plan), Plan SAP, Tareas |
+
+2. **Formato propio del cliente**:
+   - **Tabla plana con otros títulos** (p. ej. "Sitio", "No. SAP", "Cada cuánto"): Factory une lo que reconoce y la
+     persona completa el resto una vez; el mapeo queda guardado para la empresa (`tenants.mapeos_importacion`,
+     por firma de encabezados) y el mes siguiente ya no se pregunta. Se salta renglones de título arriba.
+   - **Formato de matriz conocido** (CABLOMTO-F01 de CAB): traductor dedicado. Para otro cliente con formato de
+     matriz propio, el traductor se cobra como implementación (capa 4); los mapeos guardados son configuración (capa 2).
+
+También se recuerda **a qué almacén de Factory va cada almacén del archivo** (incluido "No cargar"). Además el
+empate sugiere por palabra ("CULIACAN Mari" → CDE Culiacan). Con varias opciones (AMSA, AGRO) pregunta solo la
+primera vez.
+
+Permisos: crea y actualiza equipos, así que solo el administrador. Los demás editores siguen creando planes y
+asignándolos desde la pantalla. La carga de equipos con ficha técnica (serie, modelo, proveedor) sigue en Equipos, y
+la de almacenes en Configuración.
+
+### Programa anual CABLOMTO-F01 (traductor)
 
 `lib/planAnual.ts` lee el Excel del programa anual (una fila por activo: almacén, número SAP, denominación,
 plan por frecuencia 1M…12M, lanzamientos y horas por servicio) y lo convierte en:
@@ -92,20 +123,27 @@ columna y una columna extra "MERCADO"). 948 activos en 49 sitios; 26 sitios (CPH
 se marcan "No cargar" (o se crean antes como almacenes). Categorías propias: climatización, refrigeración,
 compresor, ósmosis, cárcamo e instalación eléctrica. No trae andenes ni pasillos, así que no toca las fichas.
 
+Tercer archivo (Móviles, 2026): misma plantilla con otras variaciones, ya toleradas: la columna de almacén no
+tiene título, los almacenes traen texto extra ("TORREON Mari") y una fecha puede juntar frecuencias
+("06 MAY 26 3M-6M"). 1,141 activos en 24 almacenes y 21 planes; categorías de móviles: montacargas, transpaleta,
+patineta, batería, cargador, cambiador de baterías, diablo, restregadora y plataforma o apilador. Las demás hojas
+(programa semanal de órdenes) también se pueden subir como tabla plana.
+
 **Estándar mínimo del programa anual** (lo que el lector necesita; el orden de columnas puede variar):
 
 | Obligatorio | Opcional |
 |---|---|
 | Una fila de encabezados con **N°** y **DENOMINACIÓN** | Hoja llamada `CABLOMTO-F01-I41` (si no, se toma la primera que se reconozca) |
-| Columna **ALMACEN** a la izquierda (en esa fila o arriba) | **LANZAMIENTOS** y **TIEMPO POR FRECUENCIA (H)** |
+| Columna **ALMACEN** a la izquierda (en esa fila o arriba; sin título se toma la columna con texto) | **LANZAMIENTOS** y **TIEMPO POR FRECUENCIA (H)** |
 | Bloque **PLAN DE MANTENIMIENTO** con la fila de frecuencias **1M · 2M · 3M · 4M · 6M · 12M** | Calendario a la derecha de **NÚMERO DE SEMANA** con celdas `DD MMM AA 4M` |
 | Una fila por activo | Columnas extra (célula, mercado…): se ignoran |
 
 **Carga** (`cargar_programa_anual`, migración `20261028000003`): todo en una transacción, con los permisos del
 admin que la hace, y repetible sin duplicar.
 
-- Equipos: se reconocen por SAP, por su consecutivo interno (clave `INF-123`, `CRI-…` según el pilar) o por
-  nombre dentro del almacén; se guarda `equipos.categoria`. Un SAP que ya usa otro pilar se carga sin SAP.
+- Equipos: se reconocen por SAP, por su clave (la de la plantilla, p. ej. `MC-04`, o el consecutivo con el prefijo
+  del pilar: `INF-123`, `CRI-…`, `MOV-…`) o por nombre dentro del almacén. Si ya existen se actualizan nombre,
+  categoría y almacén; se guarda `equipos.categoria`. Un SAP que ya usa otro pilar se carga sin SAP.
 - Planes: uno por categoría y frecuencia (los que ya existen no se tocan); las tareas guardan los códigos SAP.
 - Asignaciones: la fecha de asignación se calcula para que el **próximo servicio caiga en la fecha del
   programa**; si ya pasaron todas las fechas del año, la última se toma como hecha. Sin fechas, desde hoy.
@@ -183,3 +221,6 @@ Medición del prototipo (modo desarrollo, 1440 × 860): CDN 5 (288 × 122 m, 57 
 | 2026-10-28 | Categoría de equipo y ficha de almacén en la base; carga del programa anual en una transacción, solo admin |
 | 2026-10-28 | Las fechas pasadas del programa anual se consideran hechas; el próximo servicio sigue el calendario del archivo |
 | 2026-10-28 | Críticos: los 26 sitios CPH y MDTEC no se cargan por ahora (no existen como almacenes en Factory) |
+| 2026-10-29 | Importador único en 3 pasos: plantilla Factory como estándar; formatos propios por mapeo guardado (tabla) o traductor (matriz) |
+| 2026-10-29 | Se recuerdan por empresa las columnas de cada formato y el almacén elegido para cada almacén del archivo |
+| 2026-10-29 | El importador es solo del admin (crea equipos); el "Cargar plan desde Excel" de editores se retira |

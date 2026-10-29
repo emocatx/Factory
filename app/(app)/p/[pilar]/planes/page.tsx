@@ -6,11 +6,11 @@ import { esUuid } from "@/lib/filtros";
 import { infoPilar, puedeAsignar } from "@/lib/catalogos";
 import { aDia, etiquetaTipo, familia, frecuencia, hoyMx, nTareas, ocurrencias, sumarDias, temaDominante } from "@/lib/planes";
 import { Encabezado, Seccion } from "@/components/ui";
-import { ImportarPlan } from "@/components/importar/ImportarPlan";
-import { ImportarPlanAnual } from "@/components/importar/ImportarPlanAnual";
+import { ImportarPrograma } from "@/components/importar/ImportarPrograma";
 import { PanelPlanes } from "./PanelPlanes";
 import { BotonHecho, SelectorAlmacen } from "./Controles";
-import { importarPlan, cargarProgramaAnual } from "./acciones";
+import { cargarProgramaAnual, recordarImportacion } from "./acciones";
+import type { MapeosGuardados } from "@/lib/plantillaFactory";
 import type { PlanEquipo, PlanMantenimiento } from "@/lib/tipos";
 
 export const metadata = { title: "Planes de mantenimiento" };
@@ -41,11 +41,13 @@ export default async function Planes({
   let fallasQ = supabase.from("v_ordenes_detalle").select("descripcion_falla, nombre_modo, nombre_equipo")
     .eq("pilar", pilar).neq("estatus_orden", "cancelada").gte("fecha_ingreso", hace30).limit(2000);
   if (almacen) fallasQ = fallasQ.eq("id_almacen", almacen);
-  const [{ data: planesData }, { data: todas }, cat, { data: fallas }] = await Promise.all([
+  const [{ data: planesData }, { data: todas }, cat, { data: fallas }, { data: empresa }] = await Promise.all([
     supabase.from("planes_mantenimiento").select("id_plan, pilar, nombre, tipo, cada_dias, tareas, activo").eq("pilar", pilar).order("nombre"),
     todasLasPaginas<PlanEquipo>((d, h) => supabase.from("v_plan_equipos").select("*").eq("pilar", pilar).order("proximo").order("id").range(d, h)),
     catalogosPilar(pilar),
     fallasQ,
+    // formatos de Excel que la empresa ya unió a la plantilla Factory (solo los usa el administrador)
+    perfil.rol === "admin" ? supabase.from("tenants").select("mapeos_importacion").maybeSingle() : Promise.resolve({ data: null }),
   ]);
   const planes = (planesData ?? []) as PlanMantenimiento[];
 
@@ -228,9 +230,11 @@ export default async function Planes({
         extra={<a href={`/p/${pilar}/planes/excel`} className="btn-sec" download>Descargar Excel</a>}>
         {editar ? (
           <>
-            {/* Programa anual (formato CABLOMTO-F01): vista previa y carga, solo el administrador */}
-            {perfil.rol === "admin" && <ImportarPlanAnual pilar={pilar} almacenes={cat.almacenes.map((a) => ({ id: a.id_almacen, nombre: a.nombre_almacen }))} cargar={cargarProgramaAnual} />}
-            <ImportarPlan pilar={pilar} planes={planes.map((x) => x.nombre)} importar={importarPlan} />
+            {/* Un solo importador: plantilla Factory, CABLOMTO-F01 o tabla propia; crea equipos, así que solo el administrador */}
+            {perfil.rol === "admin" && (
+              <ImportarPrograma pilar={pilar} almacenes={cat.almacenes.map((a) => ({ id: a.id_almacen, nombre: a.nombre_almacen }))}
+                mapeos={(empresa?.mapeos_importacion ?? {}) as MapeosGuardados} cargar={cargarProgramaAnual} recordar={recordarImportacion} />
+            )}
             <PanelPlanes
               key={f.nuevo ?? ""}
               pilar={pilar}
