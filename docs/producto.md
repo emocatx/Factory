@@ -206,6 +206,18 @@ Cada almacén se dibuja desde una **ficha** corta, no desde un plano hecho a man
 Medición del prototipo (modo desarrollo, 1440 × 860): CDN 5 (288 × 122 m, 57 andenes, 35 pasillos,
 66 montacargas, 53 activos) a 110–138 fps con 196–301 llamadas de dibujo y 25–28 mil triángulos.
 
+### Lenguaje visual común
+
+El Resumen de Móviles y la barra lateral marcan el estilo de toda la app; las demás páginas usan las mismas piezas
+(`components/ui.tsx`), así que un cambio ahí cambia todas:
+- **Título** de 34 px (28 en celular) con subtítulo gris de 15 px; filtros y acciones a la derecha, en la misma fila.
+- **Filtros en píldora** con la etiqueta dentro ("Almacén · Todos"), 40 px de alto.
+- **Selector de vista o periodo** (`Segmentado`): pista blanca y la opción elegida en negro, igual que el periodo del Resumen.
+- **Tarjetas** de radio 22 px (el de la barra lateral) y 20 px de relleno; la cifra principal mide 32 px en todas (`.cifra`).
+- **Indicadores** sin icono en caja: icono gris pequeño junto a la etiqueta.
+- **Un solo color de acción principal**: azul ("Registrar", "Crear plan", "Liberar equipo").
+- El vidrio queda solo para lo que flota sobre la planta 3D; en las páginas planas las tarjetas son blancas y opacas.
+
 ## 8. Planes de suscripción (borrador)
 
 | Plan | Incluye |
@@ -240,3 +252,4 @@ Medición del prototipo (modo desarrollo, 1440 × 860): CDN 5 (288 × 122 m, 57 
 | 2026-10-29 | El importador es solo del admin (crea equipos); el "Cargar plan desde Excel" de editores se retira |
 | 2026-10-29 | Confirmar muestra una simulación real de la carga (se corre y se deshace); si fallaría, no deja cargar |
 | 2026-10-29 | El consecutivo solo es clave si es único en el archivo (Móviles y Críticos numeran por almacén) |
+| 2026-10-29 | Todas las páginas toman el estilo del Resumen y la barra lateral: título 34 px, filtros en píldora, selector negro, cifras de 32 px, acción principal azul |

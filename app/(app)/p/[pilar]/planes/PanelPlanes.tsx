@@ -94,10 +94,10 @@ export function PanelPlanes({ pilar, planes, equipos, almacenes, asignados, alma
           <span className="etiqueta">Tareas (opcional)</span>
           <textarea className="campo" rows={4} value={nuevo.tareas} onChange={(e) => setNuevo({ ...nuevo, tareas: e.target.value })} placeholder={"Revisar batería\nFrenos\nLubricar cadenas"} />
         </label>
-        <button className="btn-motivo w-full" disabled={pend}>{pend ? "Guardando…" : "Crear plan"}</button>
+        <button className="btn-primario w-full" disabled={pend}>{pend ? "Guardando…" : "Crear plan"}</button>
       </form>
 
-      <section className="caja-panel p-6">
+      <section className="caja-panel p-5">
         <p className="text-lg font-semibold">Asignar a equipos</p>
         {res && <div className="mt-3"><Aviso tono={res.ok ? "ok" : "paro"}>{res.mensaje}</Aviso></div>}
         {planes.length === 0 ? (
@@ -147,7 +147,7 @@ export function PanelPlanes({ pilar, planes, equipos, almacenes, asignados, alma
                 <span className="etiqueta">Último servicio (opcional)</span>
                 <input type="date" className="campo min-h-11" value={ultimo} onChange={(e) => setUltimo(e.target.value)} />
               </label>
-              <button type="button" className="btn-motivo" disabled={pend || !sel.size}
+              <button type="button" className="btn-primario" disabled={pend || !sel.size}
                 onClick={() => correr(() => asignarPlan(pilar, plan, [...sel], ultimo), () => setSel(new Set()))}>
                 Asignar a {sel.size}
               </button>

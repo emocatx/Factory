@@ -5,7 +5,7 @@ import { catalogosPilar, todasLasPaginas } from "@/lib/datos";
 import { esUuid } from "@/lib/filtros";
 import { infoPilar, puedeAsignar } from "@/lib/catalogos";
 import { aDia, etiquetaTipo, familia, frecuencia, hoyMx, nTareas, ocurrencias, sumarDias, temaDominante } from "@/lib/planes";
-import { Encabezado, Seccion } from "@/components/ui";
+import { Encabezado, Seccion, Segmentado, Tarjeta } from "@/components/ui";
 import { ImportarPrograma } from "@/components/importar/ImportarPrograma";
 import { PanelPlanes } from "./PanelPlanes";
 import { BotonHecho, SelectorAlmacen } from "./Controles";
@@ -105,12 +105,8 @@ export default async function Planes({
     <>
       <Encabezado titulo="Planes de mantenimiento" sub={`Preventivos e inspecciones de ${infoPilar(pilar).etiqueta}, por almacén.`}>
         <SelectorAlmacen valor={almacen} vista={vista} opciones={opcionesAlmacen} />
-        <nav aria-label="Vista" className="inline-flex rounded-full bg-panel-2 p-1">
-          {([["planes", "Planes"], ["calendario", "Calendario"]] as const).map(([v, t]) => (
-            <Link key={v} href={qs(v === "calendario" ? { vista: v } : {})} scroll={false} aria-current={v === vista ? "page" : undefined}
-              className={`flex min-h-10 items-center rounded-full px-4 text-[15px] ${v === vista ? "bg-panel font-semibold shadow-sm" : "text-suave hover:text-tinta"}`}>{t}</Link>
-          ))}
-        </nav>
+        <Segmentado etiqueta="Vista" actual={vista} scroll={false}
+          opciones={[{ v: "planes", t: "Planes", href: qs({}) }, { v: "calendario", t: "Calendario", href: qs({ vista: "calendario" }) }]} />
       </Encabezado>
 
       {vista === "calendario" ? (
@@ -119,22 +115,22 @@ export default async function Planes({
         <>
           <div className="entrar entrar-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Tarjeta titulo={`Cumplimiento de ${MESES[+hoy.slice(5, 7) - 1]}`}>
-              <p className="text-[40px] font-semibold leading-none tracking-[-0.02em] tabular-nums">{cumplimiento === null ? "—" : `${cumplimiento}%`}</p>
+              <p className="cifra">{cumplimiento === null ? "—" : `${cumplimiento}%`}</p>
               <div className="mt-4 h-1.5 rounded-full bg-papel" role="presentation"><div className="h-full rounded-full bg-azul" style={{ width: `${cumplimiento ?? 0}%` }} /></div>
               <p className="mt-2 text-[13px] text-suave">{programados ? `${realizados} de ${programados} programados realizados` : "Sin servicios programados este mes"}</p>
             </Tarjeta>
             <Tarjeta titulo="Vencidos">
-              <p className={`text-[40px] font-semibold leading-none tracking-[-0.02em] tabular-nums ${vencidos.length ? "text-paro-texto" : ""}`}>{vencidos.length}</p>
+              <p className={`cifra ${vencidos.length ? "text-paro-texto" : ""}`}>{vencidos.length}</p>
               <p className={`mt-3 text-[13px] ${vencidos.length ? "text-paro-texto" : "text-suave"}`}>
                 {vencidos.length ? `${vencidos.filter((a) => a.dias_restantes! < -7).length} con más de 7 días de atraso` : "Todo al día"}
               </p>
             </Tarjeta>
             <Tarjeta titulo="Próximos 7 días">
-              <p className="text-[40px] font-semibold leading-none tracking-[-0.02em] tabular-nums">{proximos.length}</p>
+              <p className="cifra">{proximos.length}</p>
               <p className="mt-3 text-[13px] text-suave">{proximos.length ? desglose(proximos) : "Nada programado"}</p>
             </Tarjeta>
             <Tarjeta titulo="Equipos sin plan">
-              <p className={`text-[40px] font-semibold leading-none tracking-[-0.02em] tabular-nums ${sinPlan ? "text-alerta-texto" : ""}`}>{sinPlan}</p>
+              <p className={`cifra ${sinPlan ? "text-alerta-texto" : ""}`}>{sinPlan}</p>
               <p className="mt-3 text-[13px] text-suave">{sinPlan ? `De ${equipos.length} equipos${editar ? ": asígnales un plan abajo" : ""}` : "Todos tienen plan"}</p>
             </Tarjeta>
           </div>
@@ -193,8 +189,8 @@ export default async function Planes({
               )}
             </section>
 
-            <aside className="caja-panel p-6">
-              <h2 className="text-[19px] font-semibold">Esta semana · {nombreAlcance}</h2>
+            <aside className="caja-panel p-5">
+              <h2 className="text-[17px] font-semibold">Esta semana · {nombreAlcance}</h2>
               <p className="mt-0.5 text-[13px] text-suave">{corta(hoy)} – {corta(finSemana)}</p>
               {entradas.length === 0 ? (
                 <p className="py-8 text-center text-[15px] text-suave">Nada programado esta semana.</p>
@@ -254,15 +250,6 @@ export default async function Planes({
   );
 }
 
-function Tarjeta({ titulo, children }: { titulo: string; children: React.ReactNode }) {
-  return (
-    <div className="caja-panel p-6">
-      <p className="mb-2 text-[13px] text-suave">{titulo}</p>
-      {children}
-    </div>
-  );
-}
-
 /** Mes en cuadrícula (lunes a domingo) con los servicios proyectados de cada día; vencidos en rojo. */
 function Calendario({ asig, mes, hoy, qs, alcance }: {
   asig: PlanEquipo[]; mes: string; hoy: string; qs: (extra: Record<string, string>) => string; alcance: string;
@@ -284,9 +271,9 @@ function Calendario({ asig, mes, hoy, qs, alcance }: {
   const dias = Array.from({ length: +ultimo.slice(8, 10) }, (_, i) => sumarDias(primero, i));
 
   return (
-    <section className="entrar entrar-2 caja-panel p-6">
+    <section className="entrar entrar-2 caja-panel p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-[19px] font-semibold">{MESES[m - 1][0].toUpperCase() + MESES[m - 1].slice(1)} {a} · {alcance}</h2>
+        <h2 className="text-[17px] font-semibold">{MESES[m - 1][0].toUpperCase() + MESES[m - 1].slice(1)} {a} · {alcance}</h2>
         <div className="flex gap-2">
           <Link href={qs({ vista: "calendario", mes: otroMes(-1) })} scroll={false} className="btn-sec min-h-10 px-4" aria-label="Mes anterior">‹</Link>
           <Link href={qs({ vista: "calendario" })} scroll={false} className="btn-sec min-h-10 px-4 text-[15px]">Hoy</Link>

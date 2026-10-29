@@ -3,11 +3,10 @@ import { PERIODO_DEFECTO, PERIODOS } from "@/lib/filtros";
 import { refEquipo } from "@/lib/equipos";
 import { Desplegable } from "./Desplegable";
 import { FormFiltros } from "./FormFiltros";
-import { IcoAlmacen, IcoCalendario, IcoEquipo, IcoFiltro } from "./Iconos";
 import type { Almacen, Equipo, Linea } from "@/lib/tipos";
 
 /**
- * Fila de filtros (Línea · Almacén · Equipo · Periodo) como en la app de Power Apps.
+ * Fila de filtros (Línea · Almacén · Equipo · Periodo) en píldoras, como las del Resumen: la etiqueta va dentro.
  * Deja el filtro en la URL para compartirlo; se aplica sin recargar la página (ver FormFiltros).
  */
 export function BarraFiltros({
@@ -38,56 +37,39 @@ export function BarraFiltros({
   return (
     // relative z-30: la animación .entrar crea un contexto de apilamiento; sin esto las tarjetas
     // de abajo tapan la lista desplegable y no se puede elegir una opción.
-    <FormFiltros className={enEncabezado ? "relative z-30 flex flex-wrap items-end gap-3"
+    <FormFiltros className={enEncabezado ? "relative z-30 flex flex-wrap items-center gap-2"
       // -mt-4: el resumen queda pegado al título, como subtítulo (Órdenes, donde el selector ocupa la fila del título).
-      : "group entrar entrar-2 relative z-30 -mt-4 mb-8 flex flex-wrap items-end justify-between gap-4"}>
+      : "group entrar entrar-2 relative z-30 -mt-3 mb-6 flex flex-wrap items-center justify-between gap-4"}>
       {!enEncabezado && (
         <div className="min-w-0 self-start">
-          <p className="text-[17px] text-suave">{resumen}</p>
+          <p className="text-[15px] text-suave">{resumen}</p>
           {hayFiltro && <Link href="?" className="enlace text-sm">Quitar filtros</Link>}
         </div>
       )}
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-wrap items-center gap-2">
         {mostrarBusqueda && (
-          <label className="w-full sm:w-64">
-            <span className="etiqueta">Buscar</span>
-            <input key={valores.q ?? ""} name="q" defaultValue={valores.q} placeholder="Folio, línea, equipo o solicitante" className="campo min-h-11" />
-          </label>
+          <input key={valores.q ?? ""} name="q" defaultValue={valores.q} aria-label="Buscar" placeholder="Buscar folio, equipo o solicitante"
+            className="campo min-h-10 w-full rounded-full border-borde bg-panel px-4 text-[14px] sm:w-64" />
         )}
         {lineas && lineas.length > 0 && (
-          <div>
-            <label htmlFor="f-linea" className="etiqueta">Línea</label>
-            <Desplegable key={valores.linea ?? ""} id="f-linea" name="linea" compacto autoEnviar defaultValue={valores.linea ?? ""}
-              opciones={[{ valor: "", etiqueta: "Todas las líneas" }, ...lineas.map((l) => ({ valor: l.id_linea, etiqueta: l.nombre_linea }))]} />
-          </div>
+          <Desplegable key={`linea-${valores.linea ?? ""}`} id="f-linea" name="linea" etiqueta="Línea" compacto autoEnviar defaultValue={valores.linea ?? ""}
+            opciones={[{ valor: "", etiqueta: "Todas" }, ...lineas.map((l) => ({ valor: l.id_linea, etiqueta: l.nombre_linea }))]} />
         )}
         {almacenes && almacenes.length > 0 && (
-          <div className="max-w-[300px]">
-            <label htmlFor="f-almacen" className="etiqueta">Almacén</label>
-            <Desplegable key={valores.almacen ?? ""} id="f-almacen" name="almacen" compacto autoEnviar defaultValue={valores.almacen ?? ""} icono={<IcoAlmacen />}
-              opciones={[{ valor: "", etiqueta: "Todos los almacenes" }, ...almacenes.map((a) => ({ valor: a.id_almacen, etiqueta: a.nombre_almacen }))]} />
-          </div>
+          <Desplegable key={`almacen-${valores.almacen ?? ""}`} id="f-almacen" name="almacen" etiqueta="Almacén" compacto autoEnviar defaultValue={valores.almacen ?? ""} className="max-w-[300px]"
+            opciones={[{ valor: "", etiqueta: "Todos" }, ...almacenes.map((a) => ({ valor: a.id_almacen, etiqueta: a.nombre_almacen }))]} />
         )}
         {equipos && equipos.length > 0 && (
-          <div className="max-w-[300px]">
-            <label htmlFor="f-equipo" className="etiqueta">Equipo</label>
-            <Desplegable key={valores.equipo ?? ""} id="f-equipo" name="equipo" compacto autoEnviar defaultValue={valores.equipo ?? ""} icono={<IcoEquipo />}
-              opciones={[{ valor: "", etiqueta: "Todos los equipos" }, ...equipos.map((e) => ({ valor: e.id_equipo, etiqueta: e.nombre_equipo, detalle: refEquipo(e) ?? undefined }))]} />
-          </div>
+          <Desplegable key={`equipo-${valores.equipo ?? ""}`} id="f-equipo" name="equipo" etiqueta="Equipo" compacto autoEnviar defaultValue={valores.equipo ?? ""} className="max-w-[300px]"
+            opciones={[{ valor: "", etiqueta: "Todos" }, ...equipos.map((e) => ({ valor: e.id_equipo, etiqueta: e.nombre_equipo, detalle: refEquipo(e) ?? undefined }))]} />
         )}
         {estados && (
-          <div>
-            <label htmlFor="f-estado" className="etiqueta">Estado</label>
-            <Desplegable key={valores.estado ?? ""} id="f-estado" name="estado" compacto autoEnviar defaultValue={valores.estado ?? ""} icono={<IcoFiltro />}
-              opciones={[{ valor: "", etiqueta: "Todos los estados" }, ...estados.map((e) => ({ valor: e.v, etiqueta: e.t }))]} />
-          </div>
+          <Desplegable key={`estado-${valores.estado ?? ""}`} id="f-estado" name="estado" etiqueta="Estado" compacto autoEnviar defaultValue={valores.estado ?? ""}
+            opciones={[{ valor: "", etiqueta: "Todos" }, ...estados.map((e) => ({ valor: e.v, etiqueta: e.t }))]} />
         )}
         {mostrarPeriodo && (
-          <div>
-            <label htmlFor="f-periodo" className="etiqueta">Periodo</label>
-            <Desplegable key={valores.periodo ?? ""} id="f-periodo" name="periodo" compacto autoEnviar defaultValue={valores.periodo ?? periodoDefecto} icono={<IcoCalendario />}
-              opciones={PERIODOS.map((p) => ({ valor: p.v, etiqueta: p.t }))} />
-          </div>
+          <Desplegable key={`periodo-${valores.periodo ?? ""}`} id="f-periodo" name="periodo" etiqueta="Periodo" compacto autoEnviar defaultValue={valores.periodo ?? periodoDefecto}
+            opciones={PERIODOS.map((p) => ({ valor: p.v, etiqueta: p.t }))} />
         )}
         {/* Lo que esta página no muestra (periodo en Órdenes abiertas, equipo que llega del Resumen) viaja oculto. */}
         {!mostrarPeriodo && valores.periodo && <input type="hidden" name="periodo" value={valores.periodo} />}
@@ -95,7 +77,7 @@ export function BarraFiltros({
         {!(equipos && equipos.length > 0) && valores.equipo && <input type="hidden" name="equipo" value={valores.equipo} />}
         {/* Las listas se aplican solas; el botón queda oculto para el envío con Enter y sin JavaScript. */}
         <button className="sr-only">Aplicar</button>
-        {enEncabezado && hayFiltro && <Link href="?" className="enlace mb-2.5 text-sm">Quitar filtros</Link>}
+        {enEncabezado && hayFiltro && <Link href="?" className="enlace px-2 text-sm">Quitar filtros</Link>}
       </div>
     </FormFiltros>
   );

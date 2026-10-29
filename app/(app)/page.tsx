@@ -53,8 +53,8 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
   return (
     <div className="mx-auto max-w-[1120px] md:pt-6">
       <div className="entrar text-center">
-        <h1 className="text-[36px] font-semibold leading-tight tracking-tight md:text-[48px]">{saludo()}{nombre ? `, ${nombre}` : ""}</h1>
-        <p className="mt-3 text-[19px] text-suave">{ops ? "¿Para qué pilar es tu solicitud?" : "¿En qué pilar vas a trabajar?"}</p>
+        <h1 className="text-[30px] font-semibold leading-tight tracking-tight md:text-[38px]">{saludo()}{nombre ? `, ${nombre}` : ""}</h1>
+        <p className="mt-2 text-[17px] text-suave">{ops ? "¿Para qué pilar es tu solicitud?" : "¿En qué pilar vas a trabajar?"}</p>
         {!!sinAsignar && sinAsignar > 0 && (
           <p className="mt-4 inline-flex rounded-full bg-alerta-suave px-4 py-1.5 text-[14px] font-medium text-alerta-texto">
             {sinAsignar} {sinAsignar === 1 ? "orden pendiente" : "órdenes pendientes"} sin asignar

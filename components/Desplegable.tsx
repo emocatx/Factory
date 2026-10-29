@@ -20,6 +20,8 @@ type Props = {
   describedBy?: string;
   /** Ancho compacto para barras de filtros. */
   compacto?: boolean;
+  /** Filtro en píldora como el del Resumen: la etiqueta va dentro, en gris, antes del valor. */
+  etiqueta?: string;
   /** Muestra un buscador cuando hay muchas opciones. */
   buscar?: boolean;
   /** Envía el formulario al elegir una opción (barras de filtros). */
@@ -35,7 +37,7 @@ const PUNTO = { paro: "bg-paro", ok: "bg-ok", alerta: "bg-alerta" } as const;
  */
 export function Desplegable({
   opciones, name, value, defaultValue, onChange, placeholder = "Selecciona…", id, icono, required, disabled,
-  invalido, describedBy, compacto, buscar, autoEnviar, className = "",
+  invalido, describedBy, compacto, etiqueta, buscar, autoEnviar, className = "",
 }: Props) {
   const propio = useId();
   const idBoton = id ?? `dd-${propio}`;
@@ -134,21 +136,22 @@ export function Desplegable({
         aria-describedby={describedBy}
         aria-activedescendant={abierto && activo >= 0 ? `${idLista}-${activo}` : undefined}
         onClick={() => (abierto ? setAbierto(false) : abrir())}
-        className={`flex w-full cursor-pointer items-center gap-2.5 rounded-[14px] border bg-campo text-left text-tinta outline-none transition-[border-color,box-shadow] duration-150
-          ${compacto ? "min-h-11 min-w-44 px-3.5 text-[15px]" : "min-h-12 px-4 text-[17px]"}
-          ${invalido ? "border-paro" : abierto ? "border-azul ring-4 ring-azul/15" : "border-borde-campo hover:border-borde-hover"}
+        className={`flex w-full cursor-pointer items-center gap-2.5 border text-left text-tinta outline-none transition-[border-color,box-shadow] duration-150
+          ${etiqueta ? "min-h-10 rounded-full bg-panel pl-4 pr-3.5 text-[14px]" : compacto ? "min-h-11 min-w-44 rounded-[14px] bg-campo px-3.5 text-[15px]" : "min-h-12 rounded-[14px] bg-campo px-4 text-[17px]"}
+          ${invalido ? "border-paro" : abierto ? "border-azul ring-4 ring-azul/15" : etiqueta ? "border-borde hover:border-borde-hover" : "border-borde-campo hover:border-borde-hover"}
           focus-visible:border-azul focus-visible:ring-4 focus-visible:ring-azul/20 disabled:cursor-not-allowed disabled:bg-papel disabled:text-suave`}
       >
-        {icono && <span aria-hidden="true" className="shrink-0 text-tinta/80">{icono}</span>}
+        {icono && !etiqueta && <span aria-hidden="true" className="shrink-0 text-tinta/80">{icono}</span>}
+        {etiqueta && <span className="shrink-0 text-[13px] text-suave">{etiqueta}<span className="sr-only">: </span></span>}
         {elegida?.tono && <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${PUNTO[elegida.tono]}`} />}
-        <span className={`min-w-0 flex-1 truncate ${elegida ? "font-medium" : "text-placeholder"}`}>{elegida?.etiqueta ?? placeholder}</span>
+        <span className={`min-w-0 flex-1 truncate ${elegida ? (etiqueta ? "font-semibold" : "font-medium") : "text-placeholder"}`}>{elegida?.etiqueta ?? placeholder}</span>
         <svg aria-hidden="true" width="14" height="9" viewBox="0 0 14 9" className={`shrink-0 transition-transform duration-200 ${abierto ? "rotate-180" : ""}`}>
           <path d="M1.5 1.5l5.5 5.5 5.5-5.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
 
       {abierto && (
-        <div className="absolute left-0 right-0 z-50 mt-2 min-w-full overflow-hidden rounded-[18px] bg-panel shadow-[0_12px_40px_rgb(0_0_0/0.14),0_0_0_1px_rgb(0_0_0/0.04)] motion-safe:animate-[entrar_160ms_ease-out]">
+        <div className={`absolute left-0 z-50 mt-2 min-w-full overflow-hidden rounded-[18px] ${etiqueta ? "w-max max-w-[340px]" : "right-0"} bg-panel shadow-[0_12px_40px_rgb(0_0_0/0.14),0_0_0_1px_rgb(0_0_0/0.04)] motion-safe:animate-[entrar_160ms_ease-out]`}>
           {conBuscador && (
             <div className="border-b border-papel p-2">
               <input autoFocus value={filtro} onChange={(e) => { setFiltro(e.target.value); setActivo(0); }} placeholder="Buscar…"

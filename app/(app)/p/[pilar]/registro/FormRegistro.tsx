@@ -201,7 +201,7 @@ export function FormRegistro({ pilar, operaciones, usuario, almacenes, lineas, e
       </div>
 
       <aside className="lg:sticky lg:top-24 lg:self-start">
-        <div className="caja-panel p-6">
+        <div className="caja-panel p-5">
           <p className="text-lg font-semibold">{dorsal ? "Generar solicitud" : "Registrar ingreso"}</p>
           <ul className="mt-3 space-y-2 text-[15px] text-suave">
             {(dorsal
@@ -211,7 +211,7 @@ export function FormRegistro({ pilar, operaciones, usuario, almacenes, lineas, e
               <li key={t} className="flex gap-2.5"><Diente className="mt-1.5 h-3 w-3 shrink-0" />{t}</li>
             ))}
           </ul>
-          <button className="btn-motivo mt-6 w-full" disabled={pend}>{pend ? "Enviando…" : dorsal || operaciones ? "Enviar solicitud" : "Registrar"}</button>
+          <button className="btn-primario mt-6 w-full" disabled={pend}>{pend ? "Enviando…" : dorsal || operaciones ? "Enviar solicitud" : "Registrar"}</button>
         </div>
       </aside>
     </form>
@@ -220,7 +220,7 @@ export function FormRegistro({ pilar, operaciones, usuario, almacenes, lineas, e
 
 function Bloque({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
-    <fieldset className="caja-panel p-6">
+    <fieldset className="caja-panel p-5">
       <legend className="float-left mb-5 w-full text-xl font-semibold">{titulo}</legend>
       <div className="clear-both grid gap-5 md:grid-cols-2">{children}</div>
     </fieldset>

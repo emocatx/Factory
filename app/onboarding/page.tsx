@@ -35,7 +35,7 @@ export default async function Onboarding({ searchParams }: { searchParams: Promi
           <input id="nombre" name="nombre" required className="campo" />
         </div>
         {error && <p role="alert" className="rounded-xl bg-paro/10 px-4 py-3 text-[15px] text-paro-texto">{error}</p>}
-        <BotonEnviar className="btn-motivo w-full" pendiente="Creando…">Crear organización</BotonEnviar>
+        <BotonEnviar className="btn-primario w-full" pendiente="Creando…">Crear organización</BotonEnviar>
         <p className="text-xs text-suave">
           ¿Te invitaron a una organización existente? Abre el enlace del correo de invitación en lugar de crear una nueva.
         </p>

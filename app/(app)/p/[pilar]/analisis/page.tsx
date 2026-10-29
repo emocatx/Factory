@@ -5,7 +5,7 @@ import { catalogosPilar } from "@/lib/datos";
 import { esUuid, ordenesDelAlmacen, PERIODO_DEFECTO, rangoPeriodo } from "@/lib/filtros";
 import { infoPilar } from "@/lib/catalogos";
 import { fechaHora, horas } from "@/lib/formato";
-import { Encabezado, Seccion, Vacio } from "@/components/ui";
+import { Encabezado, Seccion, Segmentado, Vacio } from "@/components/ui";
 import { BarraFiltros } from "@/components/BarraFiltros";
 import {
   calidad, ETIQUETA_CUADRANTE, malosActores, matriz, pareto, reincidencia,
@@ -129,7 +129,7 @@ export default async function Analisis({ params, searchParams }: { params: Promi
           />
         }
       >
-        <div className="caja-panel p-6 md:p-8">
+        <div className="caja-panel p-5 md:p-6">
           <ol className="space-y-1">
             {visibles.map((x, i) => (
               <li key={x.clave}>
@@ -244,7 +244,7 @@ export default async function Analisis({ params, searchParams }: { params: Promi
             </p>
             <p className="mt-3 text-[14px] text-suave">{rein.repetidas} de {rein.base} fallas clasificadas. Arriba de 15 % sugiere reparaciones que no atacan la causa.</p>
           </div>
-          <div className="caja-panel p-6">
+          <div className="caja-panel p-5">
             {rein.pares.length === 0 ? (
               <p className="text-[15px] text-suave">Sin repeticiones en el periodo.</p>
             ) : (
@@ -261,19 +261,6 @@ export default async function Analisis({ params, searchParams }: { params: Promi
         </div>
       </Seccion>
     </>
-  );
-}
-
-function Segmentado({ etiqueta, opciones, actual }: { etiqueta: string; opciones: { v: string; t: string; href: string }[]; actual: string }) {
-  return (
-    <nav aria-label={etiqueta} className="inline-flex rounded-full bg-panel p-1 text-[14px]">
-      {opciones.map((o) => (
-        <Link key={o.v} href={o.href} aria-current={actual === o.v ? "true" : undefined}
-          className={`inline-flex min-h-9 items-center rounded-full px-4 transition-colors duration-150 ${actual === o.v ? "bg-tinta font-medium text-sobre-tinta" : "text-tinta hover:bg-panel-2"}`}>
-          {o.t}
-        </Link>
-      ))}
-    </nav>
   );
 }
 

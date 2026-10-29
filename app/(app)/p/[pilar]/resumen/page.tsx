@@ -9,6 +9,7 @@ import { todasLasPaginas } from "@/lib/datos";
 import { infoPilar } from "@/lib/catalogos";
 import { horas, pct } from "@/lib/formato";
 import type { OrdenDetalle } from "@/lib/tipos";
+import { Encabezado, Segmentado, Tarjeta } from "@/components/ui";
 
 export const metadata = { title: "Resumen" };
 
@@ -122,24 +123,14 @@ export default async function Resumen({
 
   return (
     <>
-      <header className="entrar flex flex-wrap items-start justify-between gap-4 pb-6">
-        <div>
-          <h1 className="text-[32px] font-semibold leading-[1.1] md:text-[40px]">Resumen de {infoPilar(pilar).etiqueta}</h1>
-          <p className="mt-2 text-[17px] text-suave">{num(nActivos)} equipos activos · se actualiza solo cuando alguien registra o libera</p>
-        </div>
-        <nav aria-label="Periodo" className="inline-flex rounded-full bg-panel-2 p-1">
-          {PERIODOS.map((x) => (
-            <Link key={x.v} href={x.v === "30d" ? "?" : `?periodo=${x.v}`} scroll={false} aria-current={x.v === periodo.v ? "true" : undefined}
-              className={`flex min-h-10 items-center rounded-full px-4 text-[15px] ${x.v === periodo.v ? "bg-panel font-semibold shadow-sm" : "text-suave hover:text-tinta"}`}>
-              {x.t}
-            </Link>
-          ))}
-        </nav>
-      </header>
+      <Encabezado titulo={`Resumen de ${infoPilar(pilar).etiqueta}`} sub={`${num(nActivos)} equipos activos · se actualiza solo cuando alguien registra o libera`}>
+        <Segmentado etiqueta="Periodo" actual={periodo.v} scroll={false}
+          opciones={PERIODOS.map((x) => ({ v: x.v, t: x.t, href: x.v === "30d" ? "?" : `?periodo=${x.v}` }))} />
+      </Encabezado>
 
       <div className="entrar entrar-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Tarjeta titulo="Disponibilidad de flota">
-          <p className="text-[40px] font-semibold leading-none tracking-[-0.02em] tabular-nums">{pct(disponibilidad)}</p>
+          <p className="cifra">{pct(disponibilidad)}</p>
           <div className="relative mt-4 h-1.5 rounded-full bg-papel" role="presentation">
             <div className="h-full rounded-full bg-ok" style={{ width: `${disponibilidad ?? 0}%` }} />
             <div className="absolute -top-1 h-3.5 w-0.5 rounded bg-tinta/40" style={{ left: `${meta}%` }} title={`Meta ${meta}%`} />
@@ -148,14 +139,14 @@ export default async function Resumen({
         </Tarjeta>
 
         <Tarjeta titulo="Detenidos ahora">
-          <p className={`text-[40px] font-semibold leading-none tracking-[-0.02em] tabular-nums ${detenidos.length ? "text-paro-texto" : ""}`}>{detenidos.length}</p>
+          <p className={`cifra ${detenidos.length ? "text-paro-texto" : ""}`}>{detenidos.length}</p>
           {masDe100 > 0 && <p className="mt-3 text-[13px] text-paro-texto">{masDe100 === 1 ? "1 lleva" : `${masDe100} llevan`} más de 100 días detenido{masDe100 === 1 ? "" : "s"}</p>}
           <Link href={`/p/${pilar}/ordenes`} className="enlace mt-1 text-[13px]">Ver detenidos ›</Link>
         </Tarjeta>
 
         <Tarjeta titulo={`Fallas · ${periodo.nombre}`}>
           <div className="flex items-end justify-between gap-3">
-            <p className="text-[40px] font-semibold leading-none tracking-[-0.02em] tabular-nums">{num(delPeriodo.length)}</p>
+            <p className="cifra">{num(delPeriodo.length)}</p>
             <div className="flex h-10 items-end gap-1" aria-hidden="true">
               {tramos.map((n, i) => (
                 <span key={i} className="w-1.5 rounded-sm bg-azul" style={{ height: `${Math.max(8, (100 * n) / maxTramo)}%` }} />
@@ -166,7 +157,7 @@ export default async function Resumen({
         </Tarjeta>
 
         <Tarjeta titulo="Reparación típica (mediana)">
-          <p className="text-[40px] font-semibold leading-none tracking-[-0.02em] tabular-nums">{horas(mediana)}</p>
+          <p className="cifra">{horas(mediana)}</p>
           <p className="mt-3 text-[13px] text-suave">
             {promedio === null ? "Sin reparaciones cerradas en el periodo"
               : `Promedio ${horas(promedio)}${mediana !== null && promedio > 3 * Math.max(mediana, 0.1) ? ": lo inflan pocos paros largos" : ""}`}
@@ -175,9 +166,9 @@ export default async function Resumen({
       </div>
 
       <div className="entrar entrar-3 mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
-        <section className="caja-panel p-6">
+        <section className="caja-panel p-5">
           <div className="mb-4 flex items-baseline justify-between gap-3">
-            <h2 className="text-[19px] font-semibold">Detenidos más antiguos</h2>
+            <h2 className="text-[17px] font-semibold">Detenidos más antiguos</h2>
             {detenidos.length > 0 && <Link href={`/p/${pilar}/ordenes`} className="enlace text-[14px]">Ver los {detenidos.length} ›</Link>}
           </div>
           {detenidos.length === 0 ? (
@@ -216,8 +207,8 @@ export default async function Resumen({
           {masDe100 > 0 && <p className="mt-4 text-[13px] text-suave">Varios vienen del historial importado. Revisa si siguen detenidos o si faltó registrar su salida.</p>}
         </section>
 
-        <section className="caja-panel p-6">
-          <h2 className="text-[19px] font-semibold">Almacenes con más fallas</h2>
+        <section className="caja-panel p-5">
+          <h2 className="text-[17px] font-semibold">Almacenes con más fallas</h2>
           <p className="mt-0.5 text-[13px] text-suave">{periodo.dias ? `Últimos ${periodo.nombre}` : "Hoy"} · fallas y horas de paro</p>
           {topAlmacenes.length === 0 ? (
             <p className="py-8 text-center text-suave">Sin fallas en el periodo.</p>
@@ -240,8 +231,8 @@ export default async function Resumen({
       </div>
 
       <div className="entrar entrar-4 mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
-        <section className="caja-panel p-6">
-          <h2 className="text-[19px] font-semibold">Fallas por semana</h2>
+        <section className="caja-panel p-5">
+          <h2 className="text-[17px] font-semibold">Fallas por semana</h2>
           <p className="mt-0.5 text-[13px] text-suave">{infoPilar(pilar).etiqueta} · últimas {SEMANAS} semanas (la última va en curso)</p>
           <div className="mt-6 flex h-48 items-end gap-2 border-b border-papel sm:gap-3">
             {semanas.map((s, i) => (
@@ -258,8 +249,8 @@ export default async function Resumen({
           </div>
         </section>
 
-        <section className="caja-panel p-6">
-          <h2 className="text-[19px] font-semibold">Actividad reciente</h2>
+        <section className="caja-panel p-5">
+          <h2 className="text-[17px] font-semibold">Actividad reciente</h2>
           {recientes.length === 0 ? (
             <p className="py-8 text-center text-suave">Aún no se ha liberado ningún equipo.</p>
           ) : (
@@ -280,14 +271,5 @@ export default async function Resumen({
         </section>
       </div>
     </>
-  );
-}
-
-function Tarjeta({ titulo, children }: { titulo: string; children: React.ReactNode }) {
-  return (
-    <div className="caja-panel p-6">
-      <p className="mb-2 text-[13px] text-suave">{titulo}</p>
-      {children}
-    </div>
   );
 }

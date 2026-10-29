@@ -162,7 +162,7 @@ export default async function Equipos({
           )}
         </div>
 
-        <aside className="caja-panel p-6 lg:sticky lg:top-24">
+        <aside className="caja-panel p-5 lg:sticky lg:top-24">
           <h2 className="text-xl font-semibold">{editar ? "Modificar equipo" : "Alta de equipo"}</h2>
           <form key={editar?.id_equipo ?? "nuevo"} action={guardarEquipo} className="mt-5 space-y-4">
             <input type="hidden" name="pilar" value={pilar} />

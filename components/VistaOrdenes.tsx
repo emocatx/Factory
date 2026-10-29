@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { conContexto } from "@/lib/filtros";
-import { Encabezado } from "./ui";
+import { Encabezado, Segmentado } from "./ui";
 import type { Pilar } from "@/lib/tipos";
 
 /**
@@ -22,14 +21,7 @@ export function EncabezadoOrdenes({ pilar, operaciones }: { pilar: Pilar; operac
   return (
     // El resumen de cada vista hace de subtítulo en la fila de filtros de la página (BarraFiltros).
     <Encabezado titulo={operaciones ? "Seguimiento" : "Órdenes"}>
-      <nav aria-label="Vista de órdenes" className="inline-flex rounded-full bg-panel-2 p-1">
-        {vistas.map((x) => (
-          <Link key={x.v} href={conContexto(x.href, sp)} aria-current={x.v === actual ? "page" : undefined}
-            className={`flex min-h-10 items-center rounded-full px-4 text-[15px] ${x.v === actual ? "bg-panel font-semibold shadow-sm" : "text-suave hover:text-tinta"}`}>
-            {x.t}
-          </Link>
-        ))}
-      </nav>
+      <Segmentado etiqueta="Vista de órdenes" actual={actual} opciones={vistas.map((x) => ({ v: x.v, t: x.t, href: conContexto(x.href, sp) }))} />
     </Encabezado>
   );
 }

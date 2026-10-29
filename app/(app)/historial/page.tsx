@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { obtenerSesion } from "@/lib/sesion";
-import { Encabezado, ChipEstado, Vacio } from "@/components/ui";
+import { Encabezado, ChipEstado, Segmentado, Vacio } from "@/components/ui";
 import { ESTADOS, etiquetaPilar, PILARES } from "@/lib/catalogos";
 import { fechaHora, horas } from "@/lib/formato";
 import type { EventoBitacora, Linea, OrdenDetalle } from "@/lib/tipos";
@@ -85,10 +85,8 @@ export default async function Historial({ searchParams }: { searchParams: Promis
   return (
     <>
       <Encabezado ruta={[{ href: "/", texto: "Pilares" }]} titulo="Historial general" sub={`Registro de auditoría de ${tenant.nombre_empresa}.`}>
-        <nav aria-label="Vista" className="inline-flex rounded-full bg-papel p-1 text-[15px]">
-          <Link href={qs({ vista: "ordenes", p: "" })} aria-current={vista === "ordenes" ? "page" : undefined} className={`inline-flex min-h-10 items-center rounded-full px-4 font-semibold ${vista === "ordenes" ? "bg-tinta text-sobre-tinta" : "text-suave hover:text-tinta"}`}>Órdenes</Link>
-          <Link href={qs({ vista: "bitacora", p: "" })} aria-current={vista === "bitacora" ? "page" : undefined} className={`inline-flex min-h-10 items-center rounded-full px-4 font-semibold ${vista === "bitacora" ? "bg-tinta text-sobre-tinta" : "text-suave hover:text-tinta"}`}>Movimientos</Link>
-        </nav>
+        <Segmentado etiqueta="Vista" actual={vista}
+          opciones={[{ v: "ordenes", t: "Órdenes", href: qs({ vista: "ordenes", p: "" }) }, { v: "bitacora", t: "Movimientos", href: qs({ vista: "bitacora", p: "" }) }]} />
       </Encabezado>
 
       <form className="caja-panel mb-6 grid gap-4 p-5 sm:grid-cols-3 lg:grid-cols-6" method="get">

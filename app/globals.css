@@ -11,7 +11,7 @@
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", var(--font-geist-sans), "Geist", "Segoe UI", system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", var(--font-geist-mono), "Geist Mono", SFMono-Regular, monospace;
 
-  --radius-caja: 24px;         /* tarjetas */
+  --radius-caja: 22px;         /* tarjetas (el mismo radio de la barra lateral y los paneles del Resumen) */
   --radius-control: 12px;      /* campos y listas desplegables */
 
   --color-papel: #f5f5f7;      /* fondo de página y superficies internas de tarjeta */
@@ -187,4 +187,6 @@ select.campo option { color: var(--color-tinta); }
 @utility enlace { @apply inline-flex items-center gap-1 text-enlace hover:underline; }
 @utility folio { @apply font-mono text-[15px] font-semibold tracking-tight; }
 @utility chip { @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[13px] font-semibold whitespace-nowrap; }
+/* Cifra principal de una tarjeta (disponibilidad, vencidos, MTTR…): un solo tamaño en toda la app. */
+@utility cifra { @apply text-[32px] font-semibold leading-none tracking-[-0.02em] tabular-nums; }
 @utility esqueleto { @apply animate-pulse rounded-caja bg-panel; }

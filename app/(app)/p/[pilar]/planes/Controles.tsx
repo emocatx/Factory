@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import { Desplegable } from "@/components/Desplegable";
 import { FormFiltros } from "@/components/FormFiltros";
-import { IcoAlmacen } from "@/components/Iconos";
 import { marcarHecho } from "./acciones";
 
 /** Almacén de la pantalla Planes; se aplica al elegir (sin recargar), conservando la vista. */
@@ -15,8 +14,7 @@ export function SelectorAlmacen({ valor, vista, opciones }: {
   return (
     <FormFiltros className="relative z-30">
       {vista !== "planes" && <input type="hidden" name="vista" value={vista} />}
-      <label htmlFor="planes-almacen" className="sr-only">Almacén</label>
-      <Desplegable key={valor} id="planes-almacen" name="almacen" compacto autoEnviar defaultValue={valor} icono={<IcoAlmacen />} opciones={opciones} />
+      <Desplegable key={valor} id="planes-almacen" name="almacen" etiqueta="Almacén" compacto autoEnviar defaultValue={valor} opciones={opciones} />
       <button className="sr-only">Aplicar</button>
     </FormFiltros>
   );

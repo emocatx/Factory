@@ -166,7 +166,7 @@ function Detalle({ o, pilar, rol, miId, tz, tecnicos, origenes, modos, almacenes
                 {pend ? "Iniciando…" : "Iniciar atención"}
               </button>
             )}
-            {atiende && <button className="btn-motivo" onClick={() => setModo("cerrar")}>{o.id_equipo ? "Liberar equipo" : "Concluir solicitud"}</button>}
+            {atiende && <button className="btn-primario" onClick={() => setModo("cerrar")}>{o.id_equipo ? "Liberar equipo" : "Concluir solicitud"}</button>}
             {asigna && <button className="btn-sec" onClick={() => setModo("asignar")}>{o.asignado_a ? "Reasignar" : "Asignar"}</button>}
             {puedeCancelar && <button className="btn-peligro" onClick={() => setModo("cancelar")}>Cancelar</button>}
             {!atiende && !asigna && !puedeCancelar && <p className="text-[15px] text-suave">Mantenimiento ya tiene esta solicitud.</p>}
@@ -281,7 +281,7 @@ function FormCerrar({ o, pilar, origenes, modos, almacenes, equipos, pend, res, 
         <textarea rows={3} className="campo" value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Refacciones, ajustes, causa raíz…" />
       </label>
       <div className="flex gap-2">
-        <button className="btn-motivo flex-1" disabled={pend}>{pend ? "Liberando…" : o.id_equipo ? "Liberar equipo y cerrar" : "Concluir solicitud"}</button>
+        <button className="btn-primario flex-1" disabled={pend}>{pend ? "Liberando…" : o.id_equipo ? "Liberar equipo y cerrar" : "Concluir solicitud"}</button>
         <button type="button" className="btn-sec" onClick={onCancelar}>Volver</button>
       </div>
     </form>
