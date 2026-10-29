@@ -84,7 +84,7 @@ export default async function Historial({ searchParams }: { searchParams: Promis
 
   return (
     <>
-      <Encabezado ruta={[{ href: "/", texto: "Pilares" }]} titulo="Historial general" sub={`Registro de auditoría de ${tenant.nombre_empresa}.`}>
+      <Encabezado titulo="Historial general" sub={`Registro de auditoría de ${tenant.nombre_empresa}.`}>
         <Segmentado etiqueta="Vista" actual={vista}
           opciones={[{ v: "ordenes", t: "Órdenes", href: qs({ vista: "ordenes", p: "" }) }, { v: "bitacora", t: "Movimientos", href: qs({ vista: "bitacora", p: "" }) }]} />
       </Encabezado>

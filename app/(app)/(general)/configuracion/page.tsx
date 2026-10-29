@@ -28,7 +28,7 @@ export default async function Configuracion({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <Encabezado ruta={[{ href: "/", texto: "Pilares" }]} titulo="Configuración" sub="Catálogos compartidos por todos los pilares de tu organización." />
+      <Encabezado titulo="Configuración" sub="Catálogos compartidos por todos los pilares de tu organización." />
       {sp.bienvenida && (
         <div className="mb-6"><Aviso tono="alerta">Organización creada. Primeros pasos: almacenes, revisa los orígenes de falla y después da de alta equipos en cada pilar.</Aviso></div>
       )}

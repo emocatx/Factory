@@ -39,7 +39,7 @@ export default async function Usuarios({ searchParams }: { searchParams: Promise
 
   return (
     <>
-      <Encabezado ruta={[{ href: "/", texto: "Pilares" }]} titulo="Usuarios" sub={`Personas de ${tenant.nombre_empresa}. El rol define qué pueden hacer y los pilares, dónde.`} />
+      <Encabezado titulo="Usuarios" sub={`Personas de ${tenant.nombre_empresa}. El rol define qué pueden hacer y los pilares, dónde.`} />
       {sp.ok && <div className="mb-6"><Aviso tono="ok">{sp.ok}</Aviso></div>}
       {sp.error && <div className="mb-6" role="alert"><Aviso tono="paro">{sp.error}</Aviso></div>}
 

@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { conContexto } from "@/lib/filtros";
+import { COOKIE_PILAR } from "@/lib/navegacion";
 import { IconoSeccion } from "./IconosSeccion";
 
 type Item = { href: string; texto: string };
 
 /** Ancho de la barra plegada (el que reserva el layout del pilar). */
 export const ANCHO_BARRA = 56;
+
 
 /**
  * Navegación del pilar. En escritorio es un riel discreto de iconos grises que se despliega con su
@@ -40,11 +43,14 @@ function Elemento({ href, texto, clave, activo, etiqueta }: { href: string; text
   );
 }
 
-export function BarraPilar({ items, generales, abiertas, pilar, usuario, accion }: {
-  items: Item[]; generales: Item[]; abiertas: number; pilar: string; usuario: string; accion: Item | null;
+export function BarraPilar({ items, generales, abiertas, pilar, slug, usuario, accion }: {
+  items: Item[]; generales: Item[]; abiertas: number; pilar: string; slug: string; usuario: string; accion: Item | null;
 }) {
   const ruta = usePathname();
   const sp = useSearchParams();
+  useEffect(() => {
+    if (ruta.startsWith("/p/")) document.cookie = `${COOKIE_PILAR}=${slug}; path=/; max-age=31536000; samesite=lax`;
+  }, [ruta, slug]);
   const iniciales = usuario.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
   const datos = items.map((i) => {
     const seg = i.href.split("/").pop() ?? "";

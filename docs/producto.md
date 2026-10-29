@@ -217,6 +217,8 @@ El Resumen de Móviles y la barra lateral marcan el estilo de toda la app; las d
 - **Indicadores** sin icono en caja: icono gris pequeño junto a la etiqueta.
 - **Un solo color de acción principal**: azul ("Registrar", "Crear plan", "Liberar equipo").
 - El vidrio queda solo para lo que flota sobre la planta 3D; en las páginas planas las tarjetas son blancas y opacas.
+- **La barra lateral está en toda la app de trabajo**: Historial, Configuración y Usuarios muestran la del último pilar
+  abierto (cookie `pilar`; si no hay, el primero que la persona puede ver). Solo "Elige tu pilar" va sin barra.
 
 ## 8. Planes de suscripción (borrador)
 
@@ -253,3 +255,4 @@ El Resumen de Móviles y la barra lateral marcan el estilo de toda la app; las d
 | 2026-10-29 | Confirmar muestra una simulación real de la carga (se corre y se deshace); si fallaría, no deja cargar |
 | 2026-10-29 | El consecutivo solo es clave si es único en el archivo (Móviles y Críticos numeran por almacén) |
 | 2026-10-29 | Todas las páginas toman el estilo del Resumen y la barra lateral: título 34 px, filtros en píldora, selector negro, cifras de 32 px, acción principal azul |
+| 2026-10-29 | Historial, Configuración y Usuarios conservan la barra lateral del último pilar abierto |
