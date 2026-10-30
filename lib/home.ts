@@ -4,6 +4,7 @@ import { catalogosPilar, todasLasPaginas } from "@/lib/datos";
 import { ESTADOS_ABIERTOS } from "@/lib/catalogos";
 import type { Indicadores, Pilar, Rol } from "@/lib/tipos";
 import { NAVES_EN_ESCENA, PERIODOS_HOME } from "@/lib/homeComun";
+import { fichaDesdeEquipos, type EquipoNombre, type FichaNave } from "@/components/planta/ficha";
 
 /*
  * Datos del home visual (Resumen de Móviles). Todo se lee con la sesión del usuario, así que el RLS
@@ -27,6 +28,7 @@ export type Resumen = {
   peor: [string, number, string] | null;
   taller: EnTaller[];
 };
+export type { FichaNave };
 export type Almacen = Resumen & {
   id: string;
   nombre: string;
@@ -34,6 +36,8 @@ export type Almacen = Resumen & {
   detenidos: string[];
   operando: [string, boolean][];
   ind: Ind | null;
+  /** Ficha de la nave para dibujarla con la plantilla 3D (null si el almacén no tiene). */
+  ficha: FichaNave | null;
 };
 export type Accion = { texto: string; href: string } | null;
 export type DatosHome = {
@@ -77,7 +81,7 @@ export async function datosHome({ pilar, periodo: pv, rol, idUsuario, metas }: {
   const desde90 = ahora - 90 * DIA;
   const supabase = await createClient();
 
-  const [cat, { data: abiertas }, { data: recientes }, indGlobal] = await Promise.all([
+  const [cat, { data: abiertas }, { data: recientes }, indGlobal, { data: fichas }, { data: activos }] = await Promise.all([
     catalogosPilar(pilar),
     todasLasPaginas<OrdenAbierta>((a, b) => supabase.from("v_ordenes_detalle")
       .select("id_orden, folio_ticket, id_equipo, id_almacen, nombre_equipo, descripcion_falla, fecha_ingreso, estatus_orden, asignado_a")
@@ -87,7 +91,25 @@ export async function datosHome({ pilar, periodo: pv, rol, idUsuario, metas }: {
       .eq("pilar", pilar).neq("estatus_orden", "cancelada").gte("fecha_ingreso", new Date(Math.min(desde90, desdePrevio)).toISOString())
       .order("fecha_ingreso").range(a, b)),
     indicadoresDe(pilar, new Date(desde).toISOString(), null),
+    // solo los almacenes con ficha (si la consulta falla, la planta usa el interior genérico)
+    supabase.from("almacenes").select("id_almacen, ficha").not("ficha", "is", null),
+    // equipos de todos los pilares (los que deje ver el RLS): de sus nombres y categorías sale la ficha de la nave
+    todasLasPaginas<{ id_almacen: string; nombre_equipo: string; categoria: string | null }>((a, b) =>
+      supabase.from("equipos").select("id_almacen, nombre_equipo, categoria").neq("estatus", "baja").order("id_equipo").range(a, b)),
   ]);
+  // Ficha de cada nave: la guardada en almacenes.ficha manda; si no, la que se deriva de sus equipos
+  // (si tampoco describe la nave, la escena la estima con el tamaño de la flota).
+  const fichaDe = new Map((fichas ?? []).map((f) => [f.id_almacen as string, f.ficha as FichaNave]));
+  const porAlmacen = new Map<string, EquipoNombre[]>();
+  for (const e of activos) {
+    const l = porAlmacen.get(e.id_almacen) ?? [];
+    l.push({ nombre: e.nombre_equipo, categoria: e.categoria });
+    porAlmacen.set(e.id_almacen, l);
+  }
+  for (const [id, lista] of porAlmacen) {
+    const derivada = fichaDe.has(id) ? null : fichaDesdeEquipos(lista);
+    if (derivada) fichaDe.set(id, derivada);
+  }
 
   // modelo y propiedad de cada equipo (catalogosPilar no trae modelo)
   const { data: extra } = await todasLasPaginas<{ id_equipo: string; modelo: string | null }>((a, b) =>
@@ -165,6 +187,7 @@ export async function datosHome({ pilar, periodo: pv, rol, idUsuario, metas }: {
         id, nombre: nombreAlmacen.get(id)!, total: r.total, paro: r.taller.length, externos: r.externos,
         fallas: r.fallas, fallasPrevias: r.fallasPrevias, origen: top(r.origenes), peor: peorEquipo(r.peores, false),
         taller: r.taller, detenidos: r.taller.map((x) => x.modelo ?? ""), operando: r.op.slice(0, MAX_EQUIPOS_NAVE), ind: null,
+        ficha: fichaDe.get(id) ?? null,
       };
     })
     .sort((a, b) => b.paro - a.paro || b.total - a.total);

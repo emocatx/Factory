@@ -10,9 +10,11 @@ import { CanvasTexture, RepeatWrapping, SRGBColorSpace, type Texture } from "thr
 import { Instance, Instances, RoundedBox } from "@react-three/drei";
 import { Equipo, Mat, tipoDeModelo } from "./Equipos3D";
 import type { Paleta } from "./paleta";
+import type { FichaNave } from "@/lib/home";
 
 type V3 = [number, number, number];
-export type NaveEscena = { id: string; nombre: string; total: number; paro: number; detenidos: string[]; operando: [string, boolean][] };
+/** `ficha`: si el almacén la tiene, la escena lo arma con la plantilla (components/planta) en vez de este interior. */
+export type NaveEscena = { id: string; nombre: string; total: number; paro: number; detenidos: string[]; operando: [string, boolean][]; ficha?: FichaNave | null };
 
 const ALTO = 2.8;
 // racks de dos niveles: bajos para que se vean los equipos que trabajan en los pasillos

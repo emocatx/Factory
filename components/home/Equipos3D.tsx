@@ -8,6 +8,7 @@ import { useFrame } from "@react-three/fiber";
 import { BoxGeometry, CylinderGeometry, MeshStandardMaterial, SphereGeometry, TorusGeometry, type BufferGeometry, type Group, type Mesh, type MeshBasicMaterial } from "three";
 import { RoundedBoxGeometry } from "three-stdlib";
 import type { Paleta } from "./paleta";
+import { useReloj } from "./Movimiento";
 
 type V3 = [number, number, number];
 export type TipoEquipo = "contrapeso" | "reach" | "doble" | "patin";
@@ -235,9 +236,11 @@ export function Equipo({ tipo, estado = "normal", p, posicion: pos, rot = 0, mov
   const fase = useMemo(() => (pos[0] * 7.3 + pos[2] * 3.1) % (Math.PI * 2), [pos]);
   const color = estado === "paro" ? p.paro : estado === "renta" ? p.renta : p.cuerpo;
   const Modelo = MODELOS[tipo] ?? Contrapeso;
-  useFrame(({ clock }) => {
-    if (p.quieto) return;
-    const t = clock.elapsedTime;
+  const reloj = useReloj();
+  // solo se mueve mientras la escena está animando (ver Movimiento.tsx); en reposo se queda donde iba
+  useFrame(() => {
+    if (p.quieto || !reloj.vivo) return;
+    const t = reloj.t;
     if (moviendo && ref.current) ref.current.position.x = pos[0] + Math.sin(t * 0.5 + fase) * recorrido;
     if (estado === "paro" && anillo.current) {
       const k = (t * 0.8 + fase) % 1;

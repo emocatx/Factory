@@ -4,16 +4,51 @@
 // (ver HomeMoviles): en celular no se descarga ni un byte de Three.js.
 // Vista general: todos los almacenes como edificios cerrados (geometría instanciada, muy ligera).
 // Al elegir uno se dibuja solo ese, por dentro, ampliado y con todos sus equipos.
+// Se dibuja a pedido (ver Movimiento.tsx): en reposo no gasta tarjeta gráfica.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Vector3, type Group } from "three";
-import { Environment, Lightformer, OrbitControls, OrthographicCamera, PerformanceMonitor, RoundedBox, SoftShadows } from "@react-three/drei";
+import { Canvas, createPortal, useFrame, useThree } from "@react-three/fiber";
+import { Group, Vector3 } from "three";
+import { Environment, Lightformer, OrbitControls, OrthographicCamera, RoundedBox, SoftShadows } from "@react-three/drei";
 import { EffectComposer, N8AO, SMAA, Vignette } from "@react-three/postprocessing";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { Mat } from "./Equipos3D";
 import { medidas, NaveInterior, type NaveEscena } from "./NaveInterior";
 import { ANEXO, Exteriores } from "./NaveExterior";
 import { PALETA, PALETA_OSCURA, type Paleta } from "./paleta";
+import { Depurar } from "./Depurar";
+import { Calidad, Movimiento, useReloj } from "./Movimiento";
+import { tipoDeModelo } from "./Equipos3D";
+import { CapaMarcas, marcasDe, Nave, ProyectorMarcas } from "@/components/planta/Nave";
+import { distribuir, fichaDeAlmacen, type Distribucion, type EquipoFlota } from "@/components/planta/ficha";
+
+/** La plantilla mide en metros; en esta escena 1 unidad = 4 m (así cabe con el mismo encuadre y luces). */
+const ESCALA_PLANTA = 0.25;
+
+/**
+ * Compila de antemano, en segundo plano, los sombreadores de la plantilla: una nave de muestra fuera de la escena
+ * (no se dibuja) pasada por compileAsync. Mientras viva, sus materiales mantienen esos programas, así entrar a un
+ * almacén con ficha no congela la escena compilando (y salir y volver a entrar tampoco).
+ */
+function Precalentar({ d, p }: { d: Distribucion; p: Paleta }) {
+  const grupo = useMemo(() => new Group(), []);
+  const { gl, camera, scene } = useThree();
+  const [montar, setMontar] = useState(false);
+  useEffect(() => { const id = setTimeout(() => setMontar(true), 1200); return () => clearTimeout(id); }, []);
+  useEffect(() => {
+    if (!montar) return;
+    const id = requestAnimationFrame(() => { gl.compileAsync(grupo, camera, scene).catch(() => {}); });
+    return () => cancelAnimationFrame(id);
+  }, [montar, gl, camera, scene, grupo]);
+  return montar ? createPortal(<Nave d={d} p={p} vista="moviles" escala={ESCALA_PLANTA} patio={false} />, grupo) : null;
+}
+
+/** Los equipos reales del almacén: tipo según su modelo; rojo en Mantto, ámbar renta, verde opera. */
+function flotaDe(n: NaveEscena): EquipoFlota[] {
+  return [
+    ...n.detenidos.map((m): EquipoFlota => ({ tipo: tipoDeModelo(m), estado: "paro" })),
+    ...n.operando.map(([m, renta]): EquipoFlota => ({ tipo: tipoDeModelo(m), estado: renta ? "renta" : "ok" })),
+  ];
+}
 
 const SEP_X = 13;
 const SEP_Z = 12;
@@ -90,8 +125,9 @@ function Calles({ p, m }: { p: Paleta; m: Malla }) {
 /** Marcador rojo que flota sobre el taller del almacén con más equipos en Mantto. */
 function Alerta({ p, pos }: { p: Paleta; pos: [number, number, number] }) {
   const ref = useRef<Group>(null);
-  useFrame(({ clock }) => {
-    if (ref.current && !p.quieto) ref.current.position.y = 3.4 + Math.sin(clock.elapsedTime * 2) * 0.18;
+  const reloj = useReloj();
+  useFrame(() => {
+    if (ref.current && !p.quieto && reloj.vivo) ref.current.position.y = 3.4 + Math.sin(reloj.t * 2) * 0.18;
   });
   return (
     <group ref={ref} position={[pos[0] + ANEXO[0], 3.4, pos[2] + ANEXO[2]]}>
@@ -108,25 +144,28 @@ function Alerta({ p, pos }: { p: Paleta; pos: [number, number, number] }) {
 }
 
 // Al cambiar lo que se ve (o el tamaño) encuadra la escena y se detiene: después el usuario puede
-// girar y acercar a mano sin que la cámara regrese sola.
-function Enfoque({ w, d, clave }: { w: number; d: number; clave: string }) {
+// girar y acercar a mano sin que la cámara regrese sola. Con "reducir movimiento" salta sin transición.
+function Enfoque({ w, d, clave, quieto }: { w: number; d: number; clave: string; quieto: boolean }) {
   const controls = useThree((s) => s.controls) as unknown as OrbitControlsImpl | null;
+  const invalidate = useThree((s) => s.invalidate);
   const { width: ancho, height: alto } = useThree((s) => s.size);
   const meta = useMemo(() => new Vector3(), []);
   const animando = useRef(true);
-  useEffect(() => { animando.current = true; }, [clave, ancho, alto]);
+  useEffect(() => { animando.current = true; invalidate(); }, [clave, ancho, alto, controls, invalidate]);
   useFrame(() => {
     if (!controls || !animando.current) return;
     const zoom = Math.min(34, zoomPara(ancho, alto, w, d));
     objetivo(0, 0, zoom, meta);
+    const k = quieto ? 1 : 0.1;
     const cam = controls.object as unknown as { zoom: number; position: Vector3; updateProjectionMatrix: () => void };
-    cam.zoom += (zoom - cam.zoom) * 0.1;
+    cam.zoom += (zoom - cam.zoom) * k;
     cam.updateProjectionMatrix();
     const antes = controls.target.clone();
-    controls.target.lerp(meta, 0.1);
+    controls.target.lerp(meta, k);
     cam.position.add(controls.target.clone().sub(antes));
     controls.update();
     if (Math.abs(cam.zoom - zoom) < 0.02 && controls.target.distanceTo(meta) < 0.01) animando.current = false;
+    else invalidate();
   });
   return null;
 }
@@ -163,7 +202,22 @@ export default function Escena3D({ naves, seleccion, onSelect, onTaller, quieto,
   const [alta, setAlta] = useState(true);
   // con un almacén elegido la escena es solo esa nave, del tamaño que pidan sus equipos
   const unica = seleccion ? naves.find((n) => n.id === seleccion) ?? null : null;
-  const dims = unica ? medidas(unica) : null;
+  // si el almacén tiene ficha, su nave se arma con la plantilla y sus equipos reales; si no, el interior genérico
+  const plantilla = useMemo(() => {
+    const f = unica ? fichaDeAlmacen(unica) : null;
+    return f && unica ? distribuir(f, flotaDe(unica)) : null;
+  }, [unica]);
+  const marcas = useMemo(() => (plantilla ? marcasDe(plantilla, "moviles") : []), [plantilla]);
+  // la primera nave con ficha que se vea sirve de muestra para precalentar (se queda fija)
+  const [muestra, setMuestra] = useState<Distribucion | null>(null);
+  useEffect(() => {
+    if (muestra) return;
+    const n = naves.find((x) => fichaDeAlmacen(x));
+    const f = n ? fichaDeAlmacen(n) : null;
+    if (n && f) setMuestra(distribuir(f, flotaDe(n)));
+  }, [naves, muestra]);
+  const refsMarcas = useRef<(HTMLSpanElement | null)[]>([]);
+  const dims = plantilla ? { ancho: plantilla.huella.ancho * ESCALA_PLANTA, fondo: plantilla.huella.fondo * ESCALA_PLANTA } : unica ? medidas(unica) : null;
   const m = useMemo<Malla>(() => dims ? { cols: 1, filas: 1, ancho: dims.ancho, fondo: dims.fondo } : malla(naves.length),
     [dims?.ancho, dims?.fondo, naves.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const pos = useCallback((i: number) => posicion(i, m), [m]);
@@ -175,9 +229,10 @@ export default function Escena3D({ naves, seleccion, onSelect, onTaller, quieto,
 
   return (
     <>
-      <Canvas shadows={alta} dpr={alta ? [1, 1.75] : 1} gl={{ antialias: false }} onPointerMissed={() => onSelect(null)} aria-hidden="true">
+      <Canvas frameloop="demand" shadows={alta} dpr={alta ? [1, 1.75] : 1} gl={{ antialias: false }} onPointerMissed={() => onSelect(null)} aria-hidden="true">
+        <Movimiento quieto={quieto} clave={seleccion ?? ""}>
         {/* Si el equipo no da los cuadros por segundo, se apagan sombras y efectos y baja la resolución. */}
-        <PerformanceMonitor onDecline={() => setAlta(false)} />
+        <Calidad onBaja={() => setAlta(false)} />
         <color attach="background" args={[p.fondo]} />
         {/* fijo en ambas vistas: encender o apagar SoftShadows recompila todos los shaders (congela la escena) */}
         {alta && <SoftShadows size={18} samples={8} focus={0.6} />}
@@ -194,28 +249,37 @@ export default function Escena3D({ naves, seleccion, onSelect, onTaller, quieto,
           <Lightformer intensity={1.2} position={[20, 4, -10]} rotation-y={-Math.PI / 2} scale={[20, 6, 1]} />
         </Environment>
         <Calles p={p} m={m} />
-        {unica
-          ? <NaveInterior nave={unica} i={0} p={p} onTaller={onTaller} />
-          : <Exteriores naves={naves} pos={pos} p={p} seleccion={seleccion} onSelect={onSelect} />}
+        {unica && plantilla
+          ? <Nave d={plantilla} p={p} vista="moviles" escala={ESCALA_PLANTA} patio={false} onTaller={() => onTaller(unica.id)} />
+          : unica
+            ? <NaveInterior nave={unica} i={0} p={p} onTaller={onTaller} />
+            : <Exteriores naves={naves} pos={pos} p={p} seleccion={seleccion} onSelect={onSelect} />}
+        {plantilla && <ProyectorMarcas marcas={marcas} refs={refsMarcas} d={plantilla} escala={ESCALA_PLANTA} />}
+        {muestra && alta && <Precalentar d={muestra} p={p} />}
         <Arbol p={p} posicion={esquina} />
         <Arbol p={p} posicion={[esquina[0] + 1.5, 0, esquina[2] - 0.6]} s={0.7} />
         <Arbol p={p} posicion={esquina2} />
         <Arbol p={p} posicion={[esquina2[0] - 1.6, 0, esquina2[2] + 0.6]} s={0.8} />
         {!unica && naves[peor]?.paro > 0 && <Alerta p={p} pos={pos(peor)} />}
-        <Enfoque w={m.ancho} d={m.fondo} clave={seleccion ?? ""} />
+        <Enfoque w={m.ancho} d={m.fondo} clave={seleccion ?? ""} quieto={quieto} />
         <Proyector naves={naves} refs={refs} punto={punto} seleccion={seleccion} />
+        {process.env.NODE_ENV !== "production" && <Depurar />}
         {alta && (
           <EffectComposer multisampling={0} enableNormalPass={false}>
-            <N8AO aoRadius={1.6} intensity={p.ao} distanceFalloff={0.6} quality="medium" halfRes />
+            {/* en la plantilla 1 unidad son 4 m: el radio de oclusión baja a 3 m, como en el prototipo */}
+            <N8AO aoRadius={plantilla ? 0.75 : 1.6} intensity={p.ao} distanceFalloff={plantilla ? 0.8 : 0.6} quality="medium" halfRes />
             <Vignette offset={0.35} darkness={oscuro ? 0.5 : 0.18} />
             <SMAA />
           </EffectComposer>
         )}
+        </Movimiento>
       </Canvas>
+      {/* Sin desenfoque de fondo: con 30 etiquetas que se mueven con la cámara, el desenfoque bajaba el giro a
+          57 cuadros por segundo; con el fondo casi opaco de vidrio-fuerte no se nota la diferencia. */}
       <div className="pointer-events-none absolute inset-0 z-[1] overflow-hidden">
         {naves.map((n, i) => (
           <button key={n.id} ref={(el) => { refs.current[i] = el; }} type="button" onClick={() => onSelect(n.id)}
-            className={`pointer-events-auto absolute left-0 top-0 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border bg-vidrio-fuerte py-0.5 pl-0.5 pr-2.5 font-medium text-tinta shadow-[0_4px_16px_rgb(0_0_0/0.08)] backdrop-blur-md hover:z-10 hover:border-azul ${n.paro > 0 ? "text-[12px]" : "text-[11px] text-suave"} ${seleccion === n.id ? "z-10 border-azul" : i === peor && n.paro > 0 ? "border-paro/60" : "border-borde/50"}`}>
+            className={`pointer-events-auto absolute left-0 top-0 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border bg-vidrio-fuerte py-0.5 pl-0.5 pr-2.5 font-medium text-tinta shadow-[0_4px_16px_rgb(0_0_0/0.08)] hover:z-10 hover:border-azul ${n.paro > 0 ? "text-[12px]" : "text-[11px] text-suave"} ${seleccion === n.id ? "z-10 border-azul" : i === peor && n.paro > 0 ? "border-paro/60" : "border-borde/50"}`}>
             <span className={`rounded-full ring-inset ring-panel ${n.paro > 0 ? "h-5 w-5 bg-paro ring-[5px]" : "h-4 w-4 bg-ok ring-[4px]"}`} aria-hidden="true" />
             <span>
               {i === peor && n.paro > 0 && <small className="block text-[10px] font-semibold leading-none text-paro-texto">Más equipos en Mantto</small>}
@@ -224,6 +288,7 @@ export default function Escena3D({ naves, seleccion, onSelect, onTaller, quieto,
           </button>
         ))}
       </div>
+      {plantilla && <CapaMarcas marcas={marcas} refs={refsMarcas} />}
     </>
   );
 }

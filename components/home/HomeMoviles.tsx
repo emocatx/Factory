@@ -181,7 +181,7 @@ export function HomeMoviles({ datos, hallazgos, base, almacenInicial }: { datos:
   // Al filtrar uno, la planta dibuja solo ese almacén, centrado y con todo el detalle.
   const naves = useMemo(() => almacenes
     .filter((a) => !seleccion || a.id === seleccion)
-    .map(({ id, nombre, total, paro, detenidos, operando }) => ({ id, nombre, total, paro, detenidos, operando })), [almacenes, seleccion]);
+    .map(({ id, nombre, total, paro, detenidos, operando, ficha }) => ({ id, nombre, total, paro, detenidos, operando, ficha })), [almacenes, seleccion]);
   const masAntiguo = [...v.taller].sort((a, b) => b.dias - a.dias)[0];
   const delta = v.fallas - v.fallasPrevias;
   const ordenados = useMemo(() => [...almacenes].sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { numeric: true })), [almacenes]);

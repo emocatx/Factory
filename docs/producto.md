@@ -206,7 +206,23 @@ Presupuesto de rendimiento del módulo 3D (equipo de oficina con gráficos integ
 | Memoria de GPU | < 150 MB |
 | Celular | Sin 3D: vista 2D |
 
-### Plantilla de nave (prototipo en `components/planta`, página de desarrollo `/prueba-planta`)
+### Plantilla de nave (en el Resumen; motor en `components/planta/Nave.tsx`, pruebas en `/prueba-planta`)
+
+**Cómo se arma cada almacén (sin código por almacén).** Al entrar a un almacén en el Resumen se ve su nave armada con
+una ficha y su flota real. La ficha se toma en este orden:
+1. `almacenes.ficha` (capturada o cargada con el programa de Inmueble), si existe.
+2. Derivada de los equipos registrados del almacén (`fichaDesdeEquipos`): andenes ("Andén…"), pasillos ("racks pasillo N"),
+   zonas y techo, con las mismas reglas del importador.
+3. Estimada por el tamaño de la flota (proporción de CDN 5, mínimo 6 andenes y 4 pasillos, solo taller) mientras el almacén
+   solo tenga montacargas. Se vuelve exacta sola al cargar Inmueble y Críticos.
+
+Adentro va la flota real: tipo según el modelo y color de estado (verde opera, ámbar renta, rojo en Mantto en el taller).
+La escena dibuja a pedido: con 10 s sin actividad se detiene (0 trabajo de GPU en reposo); con "reducir movimiento" no anima.
+Medición en desarrollo (GTX 1660 Ti, 1440×900): CDN 5 de 2,720 a 157 llamadas de dibujo, 144 fps, entrada de 184–394 ms.
+Pendiente: confirmar en un equipo con gráficos integrados, memoria en pantallas de alta densidad, modelos dudosos
+(RR5200S-30), más equipos en Mantto que cajones del taller, andenes de uno o dos lados, comedor y techo sin pieza.
+
+#### Prototipo original
 
 Cada almacén se dibuja desde una **ficha** corta, no desde un plano hecho a mano:
 
@@ -283,3 +299,4 @@ El Resumen de Móviles y la barra lateral marcan el estilo de toda la app; las d
 | 2026-10-30 | Equipo de agentes (diseño, planta 3D, datos, seguridad, pruebas) con reglas en `CLAUDE.md` y revisión automática de estilo y migraciones; ningún agente escribe en la base hasta tener una base de pruebas |
 | 2026-10-30 | Hallazgos automáticos, fase 1: seis reglas con mínimo de evidencia y una acción, en Resumen y Planes; reemplazan la sugerencia única de Planes |
 | 2026-10-30 | Movimiento y celular según las skills de Emil Kowalski: entrada de página de 200 ms, menús que crecen desde su botón, campos de 16 px en pantallas táctiles, toque inmediato y altura `dvh` |
+| 2026-10-30 | Plantilla de nave para todos los almacenes: ficha capturada → derivada de sus equipos → estimada por flota; flota real adentro; escena a pedido |
