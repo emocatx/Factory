@@ -219,8 +219,10 @@ una ficha y su flota real. La ficha se toma en este orden:
 Adentro va la flota real: tipo según el modelo y color de estado (verde opera, ámbar renta, rojo en Mantto en el taller).
 La escena dibuja a pedido: con 10 s sin actividad se detiene (0 trabajo de GPU en reposo); con "reducir movimiento" no anima.
 Medición en desarrollo (GTX 1660 Ti, 1440×900): CDN 5 de 2,720 a 157 llamadas de dibujo, 144 fps, entrada de 184–394 ms.
-Pendiente: confirmar en un equipo con gráficos integrados, memoria en pantallas de alta densidad, modelos dudosos
-(RR5200S-30), más equipos en Mantto que cajones del taller, andenes de uno o dos lados, comedor y techo sin pieza.
+Reglas (2026-10-30): el taller crece hasta que quepan todos los equipos en Mantto; con más de 40 andenes van en los dos
+lados; el tipo de cada montacargas sale de su categoría y, si no la tiene, del modelo (RR5… es reach); en la planta de
+Móviles los equipos de Críticos se ven neutros (su estado va en la planta de Críticos). Tamaño estimado: proporción de CDN 5.
+Pendiente: confirmar en un equipo con gráficos integrados, memoria en pantallas de alta densidad, comedor y techo sin pieza.
 
 #### Prototipo original
 
@@ -300,3 +302,4 @@ El Resumen de Móviles y la barra lateral marcan el estilo de toda la app; las d
 | 2026-10-30 | Hallazgos automáticos, fase 1: seis reglas con mínimo de evidencia y una acción, en Resumen y Planes; reemplazan la sugerencia única de Planes |
 | 2026-10-30 | Movimiento y celular según las skills de Emil Kowalski: entrada de página de 200 ms, menús que crecen desde su botón, campos de 16 px en pantallas táctiles, toque inmediato y altura `dvh` |
 | 2026-10-30 | Plantilla de nave para todos los almacenes: ficha capturada → derivada de sus equipos → estimada por flota; flota real adentro; escena a pedido |
+| 2026-10-30 | Plantilla 3D: taller que crece con los equipos en Mantto, andenes en dos lados con más de 40, tipo por categoría y luego modelo, Críticos neutros en Móviles |

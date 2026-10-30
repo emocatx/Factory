@@ -9,15 +9,26 @@ import { BoxGeometry, CylinderGeometry, MeshStandardMaterial, SphereGeometry, To
 import { RoundedBoxGeometry } from "three-stdlib";
 import type { Paleta } from "./paleta";
 import { useReloj } from "./Movimiento";
+import { SEP_CLASE } from "@/lib/homeComun";
 
 type V3 = [number, number, number];
 export type TipoEquipo = "contrapeso" | "reach" | "doble" | "patin";
 
-/** Clasifica el modelo de la base de datos en uno de los 4 tipos (un modelo desconocido cae en contrapeso). */
-export function tipoDeModelo(modelo = ""): TipoEquipo {
+
+/**
+ * Tipo de un equipo. Primero su categoría (llega con el programa anual), si dice qué es; si no, el modelo.
+ * Un modelo desconocido cae en contrapeso.
+ */
+export function tipoDeModelo(clave = ""): TipoEquipo {
+  const [categoria, modelo] = clave.includes(SEP_CLASE) ? clave.split(SEP_CLASE) : ["", clave];
+  const c = categoria.toLowerCase();
+  if (/reach|retr[aá]ctil/.test(c)) return "reach";
+  if (/doble|double|profundidad/.test(c)) return "doble";
+  if (/pat[ií]n|transpaleta|pallet/.test(c)) return "patin";
+  if (/contrapeso|counterbalance/.test(c)) return "contrapeso";
   const m = modelo.toUpperCase();
   if (/^(RMD|RD5|RRE|15B[PR]|N35ZDR)/.test(m)) return "doble";
-  if (/^ETR/.test(m)) return "reach";
+  if (/^(ETR|RR5)/.test(m)) return "reach";
   if (/^(PE|EPT|ECR|WP)/.test(m)) return "patin";
   return "contrapeso";
 }

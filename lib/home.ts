@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { catalogosPilar, todasLasPaginas } from "@/lib/datos";
 import { ESTADOS_ABIERTOS } from "@/lib/catalogos";
 import type { Indicadores, Pilar, Rol } from "@/lib/tipos";
-import { NAVES_EN_ESCENA, PERIODOS_HOME } from "@/lib/homeComun";
+import { NAVES_EN_ESCENA, PERIODOS_HOME, SEP_CLASE } from "@/lib/homeComun";
 import { fichaDesdeEquipos, type EquipoNombre, type FichaNave } from "@/components/planta/ficha";
 
 /*
@@ -16,7 +16,7 @@ const DIA = 86_400_000;
 const MAX_EQUIPOS_NAVE = 120;
 
 export type Ind = { disp: number | null; mttr: number | null; mtbf: number | null };
-export type EnTaller = { idOrden: string; folio: string; equipo: string; modelo: string | null; dias: number; falla: string };
+export type EnTaller = { idOrden: string; folio: string; equipo: string; modelo: string | null; clase: string; dias: number; falla: string };
 export type Resumen = {
   total: number;
   paro: number;
@@ -112,9 +112,11 @@ export async function datosHome({ pilar, periodo: pv, rol, idUsuario, metas }: {
   }
 
   // modelo y propiedad de cada equipo (catalogosPilar no trae modelo)
-  const { data: extra } = await todasLasPaginas<{ id_equipo: string; modelo: string | null }>((a, b) =>
-    supabase.from("equipos").select("id_equipo, modelo").eq("tipo_pilar", pilar).neq("estatus", "baja").order("id_equipo").range(a, b));
+  const { data: extra } = await todasLasPaginas<{ id_equipo: string; modelo: string | null; categoria: string | null }>((a, b) =>
+    supabase.from("equipos").select("id_equipo, modelo, categoria").eq("tipo_pilar", pilar).neq("estatus", "baja").order("id_equipo").range(a, b));
   const modelo = new Map(extra.map((e) => [e.id_equipo, e.modelo]));
+  // Para dibujarlo en 3D: categoría y modelo juntos (ver tipoDeModelo en components/home/Equipos3D.tsx)
+  const clase = new Map(extra.map((e) => [e.id_equipo, e.categoria ? `${e.categoria}${SEP_CLASE}${e.modelo ?? ""}` : e.modelo ?? ""]));
   const almacenDeEquipo = new Map(cat.equipos.map((e) => [e.id_equipo, e.id_almacen]));
   const nombreAlmacen = new Map(cat.almacenes.map((a) => [a.id_almacen, a.nombre_almacen]));
 
@@ -129,6 +131,7 @@ export async function datosHome({ pilar, periodo: pv, rol, idUsuario, metas }: {
     lista.push({
       idOrden: o.id_orden, folio: o.folio_ticket, equipo: o.nombre_equipo ?? "Sin equipo",
       modelo: o.id_equipo ? modelo.get(o.id_equipo) ?? null : null,
+      clase: o.id_equipo ? clase.get(o.id_equipo) ?? "" : "",
       dias: Math.max(0, Math.floor((ahora - new Date(o.fecha_ingreso).getTime()) / DIA)),
       falla: o.descripcion_falla,
     });
@@ -147,7 +150,7 @@ export async function datosHome({ pilar, periodo: pv, rol, idUsuario, metas }: {
     r.total++;
     if (e.propiedad !== "propio") r.externos++;
     if (!equiposEnTaller.has(e.id_equipo)) {
-      r.op.push([modelo.get(e.id_equipo) ?? "", e.propiedad !== "propio"]);
+      r.op.push([clase.get(e.id_equipo) ?? "", e.propiedad !== "propio"]);
     }
   }
   for (const [alm, lista] of enTaller) obtener(alm).taller = lista;
@@ -186,7 +189,7 @@ export async function datosHome({ pilar, periodo: pv, rol, idUsuario, metas }: {
       return {
         id, nombre: nombreAlmacen.get(id)!, total: r.total, paro: r.taller.length, externos: r.externos,
         fallas: r.fallas, fallasPrevias: r.fallasPrevias, origen: top(r.origenes), peor: peorEquipo(r.peores, false),
-        taller: r.taller, detenidos: r.taller.map((x) => x.modelo ?? ""), operando: r.op.slice(0, MAX_EQUIPOS_NAVE), ind: null,
+        taller: r.taller, detenidos: r.taller.map((x) => x.clase), operando: r.op.slice(0, MAX_EQUIPOS_NAVE), ind: null,
         ficha: fichaDe.get(id) ?? null,
       };
     })
@@ -205,6 +208,7 @@ export async function datosHome({ pilar, periodo: pv, rol, idUsuario, metas }: {
     taller: abiertas.map((o) => ({
       idOrden: o.id_orden, folio: o.folio_ticket, equipo: o.nombre_equipo ?? "Sin equipo",
       modelo: o.id_equipo ? modelo.get(o.id_equipo) ?? null : null,
+      clase: o.id_equipo ? clase.get(o.id_equipo) ?? "" : "",
       dias: Math.max(0, Math.floor((ahora - new Date(o.fecha_ingreso).getTime()) / DIA)), falla: o.descripcion_falla,
     })),
     ind: indGlobal,

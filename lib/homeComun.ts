@@ -8,3 +8,6 @@ export const PERIODOS_HOME = [
   { v: "7d", dias: 7, nombre: "7 días" },
   { v: "30d", dias: 30, nombre: "30 días" },
 ] as const;
+
+/** Separa la categoría del modelo en la clave de tipo que va a la planta 3D ("Categoría — MODELO"). */
+export const SEP_CLASE = " — ";

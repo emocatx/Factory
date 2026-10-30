@@ -141,7 +141,7 @@ export function fichaDeBase(id: string, nombre: string, base: FichaNave): FichaA
     if (k) zonas[k] = true;
   }
   const tope = (v: unknown, max: number) => Math.min(max, entero(v));
-  return { id, nombre, andenes, dosLados: false, pasillos, zonas, minisplits: tope(base.minisplits, 40), tableros: tope(base.tableros, 30), compresores: tope(base.compresores, 6), cargadores: tope(base.cargadores, 52) || undefined, fuente: base.fuente };
+  return { id, nombre, andenes, dosLados: andenes > ANDENES_DOS_LADOS, pasillos, zonas, minisplits: tope(base.minisplits, 40), tableros: tope(base.tableros, 30), compresores: tope(base.compresores, 6), cargadores: tope(base.cargadores, 52) || undefined, fuente: base.fuente };
 }
 
 /**
@@ -152,7 +152,7 @@ export function fichaDeBase(id: string, nombre: string, base: FichaNave): FichaA
 export function fichaEstimada(id: string, nombre: string, equipos: number): FichaAlmacen {
   const andenes = Math.max(6, Math.min(120, Math.round(equipos * 1.04)));
   const pasillos = Math.max(4, Math.min(60, Math.round(equipos * 0.64)));
-  return { id, nombre, andenes, dosLados: false, pasillos, zonas: { taller: true }, minisplits: 0, tableros: 0, compresores: 0, fuente: "estimada" };
+  return { id, nombre, andenes, dosLados: andenes > ANDENES_DOS_LADOS, pasillos, zonas: { taller: true }, minisplits: 0, tableros: 0, compresores: 0, fuente: "estimada" };
 }
 
 /**
@@ -202,7 +202,9 @@ const PASO_ANDEN = 5.05;   // m entre andenes (CDN 5: 57 andenes en 288 m)
 const EMBARQUE = 18;       // franja de embarque detrás de los andenes
 const FONDO_RACKS = 86;    // largo de los pasillos de racks
 const FRANJA_SUR = 18;     // mantenimiento y oficinas (sur) cuando los andenes van solo al norte
-const ANCHO_EXTREMO = 42;  // mantenimiento al oriente y oficinas al poniente cuando hay andenes en ambos lados
+const ANCHO_EXTREMO = 42;
+/** Con más andenes que esto se reparten en los dos lados de la nave (la ficha no dice cuántos lados tiene). */
+const ANDENES_DOS_LADOS = 40;  // mantenimiento al oriente y oficinas al poniente cuando hay andenes en ambos lados
 
 /**
  * Distribución completa de la nave. Con `flotaReal` (Resumen) los montacargas son los equipos del almacén y los
@@ -210,11 +212,17 @@ const ANCHO_EXTREMO = 42;  // mantenimiento al oriente y oficinas al poniente cu
  */
 export function distribuir(f: FichaAlmacen, flotaReal?: EquipoFlota[]): Distribucion {
   const inventar = !flotaReal;
+  // El taller crece para que quepan todos los equipos en Mantto (cajones de 3 × 4 m)
+  const nMantto = (flotaReal ?? inventada(f)).filter((e) => e.estado === "paro").length;
+  const filasSur = Math.max(1, Math.floor((FRANJA_SUR - 4 - 2) / 4));
+  const anchoTaller = Math.max(44, Math.ceil(nMantto / filasSur) * 3 + 2);
+  const colsExtremo = Math.max(1, Math.floor((ANCHO_EXTREMO - 4 - 2) / 3));
+  const fondoTaller = Math.min(FONDO_RACKS - 40, Math.max(34, Math.ceil(nMantto / colsExtremo) * 4 + 2));
   const porLado = f.dosLados ? Math.ceil(f.andenes / 2) : f.andenes;
   const anchoAndenes = porLado * PASO_ANDEN;
   const extremos = f.dosLados ? ANCHO_EXTREMO * 2 : 0;
   // lo mínimo para que quepan las zonas del sur cuando la ficha trae pocos andenes y pasillos
-  const SUR: [Zona, number][] = [["taller", 46], ["carga", 32], ["refacciones", 14], ["soldadura", 18], ["oficinas", 42], ["banos", 26]];
+  const SUR: [Zona, number][] = [["taller", anchoTaller + 2], ["carga", 32], ["refacciones", 14], ["soldadura", 18], ["oficinas", 42], ["banos", 26]];
   const anchoSur = f.dosLados ? 0 : 6 + SUR.reduce((a, [z, w]) => a + (f.zonas[z] ? w : 0), 0);
   const ancho = Math.max(anchoAndenes + extremos, f.pasillos * 7 + extremos, anchoSur, 60);
   const fondo = EMBARQUE + FONDO_RACKS + (f.dosLados ? EMBARQUE : FRANJA_SUR);
@@ -282,7 +290,7 @@ export function distribuir(f: FichaAlmacen, flotaReal?: EquipoFlota[]): Distribu
       const r = { id, nombre, x: x1 - ANCHO_EXTREMO + 2, z, w: ANCHO_EXTREMO - 4, d, tono };
       zona(r); z += d + 2; return r;
     };
-    const t = bloque("taller", "Taller de mantenimiento", 34, "taller");
+    const t = bloque("taller", "Taller de mantenimiento", fondoTaller, "taller");
     const c = bloque("carga", "Carga de baterías", 20, "carga");
     bloque("refacciones", "Refacciones", 12, "neutro");
     taller = t;
@@ -301,7 +309,7 @@ export function distribuir(f: FichaAlmacen, flotaReal?: EquipoFlota[]): Distribu
     bloque("soldadura", "Soldadura y pintura", 16, "neutro");
     bloque("refacciones", "Refacciones", 12, "neutro");
     const c = bloque("carga", "Carga de baterías", 30, "carga");
-    const t = bloque("taller", "Taller de mantenimiento", 44, "taller");
+    const t = bloque("taller", "Taller de mantenimiento", anchoTaller, "taller");
     taller = t;
     if (c) for (let i = 0; i < (f.cargadores ?? 26); i++) activos.push({ id: `car${i}`, categoria: "cargador", estado: estadoDe(azar(i, 7), 0.06), x: c.x + 1.5 + (i % 13) * 2.2, z: c.z + 2 + Math.floor(i / 13) * 9 });
     let xo = x0 + 2;
