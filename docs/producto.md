@@ -216,6 +216,8 @@ El Resumen de Móviles y la barra lateral marcan el estilo de toda la app; las d
 - **Tarjetas** de radio 22 px (el de la barra lateral) y 20 px de relleno; la cifra principal mide 32 px en todas (`.cifra`).
 - **Indicadores** sin icono en caja: icono gris pequeño junto a la etiqueta.
 - **Un solo color de acción principal**: azul ("Registrar", "Crear plan", "Liberar equipo").
+- **Escala cerrada**: letra de 10, 11, 12, 13, 14, 15, 17, 20, 22, 28, 34 y 38 px; radios de 10, 12, 14, 18, 22 y 24 px; colores solo
+  con tokens. La revisa `npm run revisar` y un hook antes de cada edición de un agente (ver `CLAUDE.md`).
 - El vidrio queda solo para lo que flota sobre la planta 3D; en las páginas planas las tarjetas son blancas y opacas.
 - **La barra lateral está en toda la app de trabajo**: Historial, Configuración y Usuarios muestran la del último pilar
   abierto (cookie `pilar`; si no hay, el primero que la persona puede ver). Solo "Elige tu pilar" va sin barra.
@@ -256,3 +258,4 @@ El Resumen de Móviles y la barra lateral marcan el estilo de toda la app; las d
 | 2026-10-29 | El consecutivo solo es clave si es único en el archivo (Móviles y Críticos numeran por almacén) |
 | 2026-10-29 | Todas las páginas toman el estilo del Resumen y la barra lateral: título 34 px, filtros en píldora, selector negro, cifras de 32 px, acción principal azul |
 | 2026-10-29 | Historial, Configuración y Usuarios conservan la barra lateral del último pilar abierto |
+| 2026-10-30 | Equipo de agentes (diseño, planta 3D, datos, seguridad, pruebas) con reglas en `CLAUDE.md` y revisión automática de estilo y migraciones; ningún agente escribe en la base hasta tener una base de pruebas |

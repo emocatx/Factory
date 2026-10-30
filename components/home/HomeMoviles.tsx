@@ -94,7 +94,7 @@ function PanelTaller({ abierto, onCerrar, titulo, lista, total, base, almacen, q
             <h2 id="taller-tit" className="text-[20px] font-semibold">{titulo}</h2>
             <p className="text-[13px] text-suave">{total} equipo{total === 1 ? "" : "s"} · del más antiguo al más reciente</p>
           </div>
-          <button type="button" onClick={onCerrar} className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-papel text-[18px] hover:bg-panel-2" aria-label="Cerrar lista de equipos en Mantto">×</button>
+          <button type="button" onClick={onCerrar} className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-papel text-[20px] hover:bg-panel-2" aria-label="Cerrar lista de equipos en Mantto">×</button>
         </div>
         <ul className="flex-1 overflow-y-auto px-2">
           {visibles.length === 0 && <li className="px-3 py-8 text-center text-suave">Ningún equipo en Mantto.</li>}

@@ -64,7 +64,7 @@ export function Tour({ rol, empresa, nombre, visto }: { rol: Rol; empresa: strin
         className="w-full max-w-[440px] rounded-t-[24px] bg-panel p-6 shadow-[0_20px_60px_rgb(0_0_0/0.25)] sm:rounded-[24px]">
         <p className="text-[13px] text-suave">Paso {i + 1} de {pasos.length}</p>
         <h2 id="tour-tit" className="mt-1 text-[22px] font-semibold">{p.titulo}</h2>
-        <p id="tour-txt" className="mt-2 text-[16px] leading-relaxed text-tinta">{p.texto}</p>
+        <p id="tour-txt" className="mt-2 text-[15px] leading-relaxed text-tinta">{p.texto}</p>
         <div className="mt-5 flex gap-1.5" aria-hidden="true">
           {pasos.map((_, k) => <span key={k} className={`h-1.5 flex-1 rounded-full ${k <= i ? "bg-azul" : "bg-panel-2"}`} />)}
         </div>

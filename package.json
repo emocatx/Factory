@@ -6,7 +6,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "revisar": "node .claude/hooks/revisar-cambios.mjs --todo"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",

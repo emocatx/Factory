@@ -152,7 +152,7 @@ export function ImportarPrograma({ pilar, almacenes, mapeos, cargar, simular, re
     <details className="caja-panel group mb-6 overflow-hidden">
       <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-6 py-4">
         <span>
-          <span className="block text-lg font-semibold">Importar programa de mantenimiento</span>
+          <span className="block text-[17px] font-semibold">Importar programa de mantenimiento</span>
           <span className="block text-[14px] text-suave">Activos, planes y fechas desde Excel: con la plantilla Factory o con tu propio formato.</span>
         </span>
         <span aria-hidden="true" className="text-suave transition-transform group-open:rotate-180">⌄</span>

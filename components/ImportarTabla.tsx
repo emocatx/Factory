@@ -76,7 +76,7 @@ export function ImportarTabla({
     <details className="caja-panel group mb-6 overflow-hidden">
       <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-6 py-4">
         <span>
-          <span className="block text-lg font-semibold">{titulo}</span>
+          <span className="block text-[17px] font-semibold">{titulo}</span>
           <span className="block text-[14px] text-suave">{ayuda}</span>
         </span>
         <span aria-hidden="true" className="text-suave transition-transform group-open:rotate-180">⌄</span>

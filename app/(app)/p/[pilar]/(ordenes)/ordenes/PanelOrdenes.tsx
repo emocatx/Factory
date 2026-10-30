@@ -66,7 +66,7 @@ export function PanelOrdenes(props: Props) {
                   <span className="folio">{o.folio_ticket}</span>
                   <span className={`text-sm font-semibold tabular-nums ${activo ? "text-sobre-tinta" : tonoHoras(h)}`}>{horas(h)}</span>
                 </div>
-                <p className="mt-2 text-lg font-semibold leading-snug">
+                <p className="mt-2 text-[17px] font-semibold leading-snug">
                   {pilar === "dorsales" ? (o.nombre_linea ?? "Sin línea") : (o.nombre_equipo ?? "Sin equipo")}
                 </p>
                 <p className={`text-sm ${activo ? "text-sobre-tinta/75" : "text-suave"}`}>

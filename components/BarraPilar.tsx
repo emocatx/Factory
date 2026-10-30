@@ -36,7 +36,7 @@ function Elemento({ href, texto, clave, activo, etiqueta }: { href: string; text
       <span className="shrink-0"><IconoSeccion clave={clave} chico /></span>
       <span className={`whitespace-nowrap text-[13px] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 ${activo ? "font-semibold" : "font-medium"}`}>{texto}</span>
       {etiqueta && (
-        <span className="absolute left-7 top-1 rounded-full bg-paro px-1 text-[9px] font-semibold leading-[14px] text-white group-hover:static group-hover:ml-auto group-hover:text-[10px] group-focus-within:static group-focus-within:ml-auto"
+        <span className="absolute left-7 top-1 rounded-full bg-paro px-1 text-[10px] font-semibold leading-[14px] text-white group-hover:static group-hover:ml-auto group-focus-within:static group-focus-within:ml-auto"
           aria-label={`${etiqueta} abiertas`}>{etiqueta}</span>
       )}
     </Link>
@@ -86,7 +86,7 @@ export function BarraPilar({ items, generales, abiertas, pilar, slug, usuario, a
           {accion && (
             <Link href={accion.href} title={accion.texto}
               className="mt-2 flex min-h-11 items-center gap-2.5 rounded-2xl bg-papel p-1.5 hover:bg-panel-2">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-azul text-[18px] leading-none text-sobre-azul" aria-hidden="true">+</span>
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-azul text-[20px] leading-none text-sobre-azul" aria-hidden="true">+</span>
               <span className="whitespace-nowrap text-[13px] font-semibold opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">{accion.texto}</span>
             </Link>
           )}

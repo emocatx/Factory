@@ -83,7 +83,7 @@ export function ImportarHistorial({ pilar, equipos, almacenes, origenes, modos, 
     <details className="caja-panel group mb-6 overflow-hidden">
       <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-6 py-4">
         <span>
-          <span className="block text-lg font-semibold">Importar historial de fallas</span>
+          <span className="block text-[17px] font-semibold">Importar historial de fallas</span>
           <span className="block text-[14px] text-suave">Sube tu registro previo (Excel o CSV) para alimentar indicadores y análisis de falla.</span>
         </span>
         <span aria-hidden="true" className="text-suave transition-transform group-open:rotate-180">⌄</span>
@@ -202,7 +202,7 @@ function Cifra({ valor, titulo, sub, tono }: { valor: number; titulo: string; su
   const color = { ok: "text-ok-texto", alerta: "text-alerta-texto", paro: "text-paro-texto" }[tono];
   return (
     <div className="rounded-[18px] bg-papel p-4">
-      <p className={`text-3xl font-semibold tabular-nums ${color}`}>{valor}</p>
+      <p className={`cifra ${color}`}>{valor}</p>
       <p className="mt-1 text-[15px] font-medium">{titulo}</p>
       <p className="text-[13px] text-suave">{sub}</p>
     </div>

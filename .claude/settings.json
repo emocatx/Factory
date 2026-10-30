@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/revisar-cambios.mjs\"",
+            "timeout": 20,
+            "statusMessage": "Revisando estilo y migraciones"
+          }
+        ]
+      }
+    ]
+  }
+}

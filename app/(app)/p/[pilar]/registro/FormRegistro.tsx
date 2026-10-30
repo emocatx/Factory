@@ -202,7 +202,7 @@ export function FormRegistro({ pilar, operaciones, usuario, almacenes, lineas, e
 
       <aside className="lg:sticky lg:top-24 lg:self-start">
         <div className="caja-panel p-5">
-          <p className="text-lg font-semibold">{dorsal ? "Generar solicitud" : "Registrar ingreso"}</p>
+          <p className="text-[17px] font-semibold">{dorsal ? "Generar solicitud" : "Registrar ingreso"}</p>
           <ul className="mt-3 space-y-2 text-[15px] text-suave">
             {(dorsal
               ? ["Mantenimiento la recibe como Pendiente.", "Se asigna a un técnico y se atiende.", "Al cerrar se define almacén y origen."]

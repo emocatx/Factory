@@ -152,7 +152,7 @@ export function Barra({ valor, tono }: { valor: number; tono?: "ok" | "alerta" |
 export function Vacio({ titulo, children, accion }: { titulo: string; children?: React.ReactNode; accion?: React.ReactNode }) {
   return (
     <div className="caja-panel flex flex-col items-center justify-center gap-2 px-6 py-14 text-center">
-      <p className="text-lg font-semibold">{titulo}</p>
+      <p className="text-[17px] font-semibold">{titulo}</p>
       {children && <div className="max-w-md text-[15px] text-suave">{children}</div>}
       {accion && <div className="mt-3">{accion}</div>}
     </div>

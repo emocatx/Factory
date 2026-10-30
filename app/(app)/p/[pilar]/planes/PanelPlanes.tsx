@@ -68,7 +68,7 @@ export function PanelPlanes({ pilar, planes, equipos, almacenes, asignados, alma
         const cada = nuevo.cada.trim() ? Number(nuevo.cada) : null;
         correr(() => crearPlan(pilar, { nombre: nuevo.nombre, tipo: nuevo.tipo, cada_dias: cada, tareas: nuevo.tareas }), () => setNuevo(vacio));
       }}>
-        <p className="text-lg font-semibold">Nuevo plan</p>
+        <p className="text-[17px] font-semibold">Nuevo plan</p>
         <label className="block">
           <span className="etiqueta">Servicio</span>
           <input className="campo" value={nuevo.nombre} onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })} placeholder="Ej. Servicio mensual montacargas" required />
@@ -98,7 +98,7 @@ export function PanelPlanes({ pilar, planes, equipos, almacenes, asignados, alma
       </form>
 
       <section className="caja-panel p-5">
-        <p className="text-lg font-semibold">Asignar a equipos</p>
+        <p className="text-[17px] font-semibold">Asignar a equipos</p>
         {res && <div className="mt-3"><Aviso tono={res.ok ? "ok" : "paro"}>{res.mensaje}</Aviso></div>}
         {planes.length === 0 ? (
           <p className="mt-3 text-[15px] text-suave">Crea un plan o cárgalo desde Excel para poder asignarlo.</p>

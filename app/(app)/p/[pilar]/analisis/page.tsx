@@ -237,9 +237,9 @@ export default async function Analisis({ params, searchParams }: { params: Promi
       {/* 4 · Reincidencia */}
       <Seccion titulo="Reincidencia" sub="Fallas del mismo componente en el mismo equipo dentro de los 30 días posteriores a una reparación.">
         <div className="grid gap-5 md:grid-cols-[320px_minmax(0,1fr)]">
-          <div className="caja-panel flex flex-col justify-between p-6">
-            <p className="text-[14px] font-medium text-suave">Fallas repetidas</p>
-            <p className={`mt-2 text-[56px] font-semibold leading-none tracking-[-0.03em] tabular-nums ${rein.pct != null && rein.pct > 15 ? "text-paro-texto" : ""}`}>
+          <div className="caja-panel flex flex-col justify-between p-5">
+            <p className="text-[13px] text-suave">Fallas repetidas</p>
+            <p className={`mt-2 cifra ${rein.pct != null && rein.pct > 15 ? "text-paro-texto" : ""}`}>
               {rein.pct == null ? "—" : `${rein.pct.toFixed(0)} %`}
             </p>
             <p className="mt-3 text-[14px] text-suave">{rein.repetidas} de {rein.base} fallas clasificadas. Arriba de 15 % sugiere reparaciones que no atacan la causa.</p>

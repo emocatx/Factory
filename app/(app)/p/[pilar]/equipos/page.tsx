@@ -94,7 +94,7 @@ export default async function Equipos({
           <p className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-[15px] text-suave" aria-live="polite">
             {conteos.map((c) => (
               <span key={c.etiqueta}>
-                <span className={`tabular-nums ${c.fuerte ? "text-lg font-semibold text-tinta" : "font-semibold text-tinta"}`}>{c.valor.toLocaleString("es-MX")}</span> {c.etiqueta}
+                <span className={`tabular-nums ${c.fuerte ? "text-[17px] font-semibold text-tinta" : "font-semibold text-tinta"}`}>{c.valor.toLocaleString("es-MX")}</span> {c.etiqueta}
               </span>
             ))}
           </p>
