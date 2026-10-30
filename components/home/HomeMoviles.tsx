@@ -6,6 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import type { Almacen, DatosHome, Ind } from "@/lib/home";
 import { indicadoresAlmacen } from "@/app/(app)/p/[pilar]/resumen/acciones";
 import { useTema } from "@/components/Tema";
+import { ListaHallazgos } from "@/components/Hallazgos";
+import type { Hallazgo } from "@/lib/hallazgos";
 
 // La escena solo se descarga en escritorio con WebGL (ver useModoVista).
 const Escena3D = dynamic(() => import("./Escena3D"), { ssr: false, loading: () => <Cargando /> });
@@ -119,6 +121,32 @@ function PanelTaller({ abierto, onCerrar, titulo, lista, total, base, almacen, q
   );
 }
 
+/** Hallazgos de todo el pilar en un panel lateral sobre la planta (en 2D van en la página). */
+function PanelHallazgos({ abierto, onCerrar, hallazgos }: { abierto: boolean; onCerrar: () => void; hallazgos: Hallazgo[] }) {
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!abierto) return;
+    ref.current?.querySelector("button")?.focus();
+    const tecla = (e: KeyboardEvent) => { if (e.key === "Escape") onCerrar(); };
+    window.addEventListener("keydown", tecla);
+    return () => window.removeEventListener("keydown", tecla);
+  }, [abierto, onCerrar]);
+  if (!abierto) return null;
+  return (
+    <aside ref={ref} role="dialog" aria-modal="true" aria-labelledby="hallazgos-panel-tit"
+      className="absolute bottom-4 right-4 top-4 z-50 flex w-[380px] flex-col rounded-[22px] vidrio-fuerte">
+      <div className="flex items-start gap-3 p-5 pb-3">
+        <div className="min-w-0 flex-1">
+          <h2 id="hallazgos-panel-tit" className="text-[20px] font-semibold">Hallazgos</h2>
+          <p className="text-[13px] text-suave">Todo Móviles · últimos 30 días · del más urgente al menos</p>
+        </div>
+        <button type="button" onClick={onCerrar} className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-papel text-[20px] hover:bg-panel-2" aria-label="Cerrar hallazgos">×</button>
+      </div>
+      <div className="flex-1 overflow-y-auto px-5 pb-5"><ListaHallazgos hallazgos={hallazgos} /></div>
+    </aside>
+  );
+}
+
 /** Filtro en píldora: etiqueta tenue y el valor elegido en negritas, con un select nativo (teclado y lector de pantalla). */
 function Filtro({ id, etiqueta, value, onChange, children }: { id: string; etiqueta: string; value: string; onChange: (v: string) => void; children: React.ReactNode }) {
   return (
@@ -132,11 +160,12 @@ function Filtro({ id, etiqueta, value, onChange, children }: { id: string; etiqu
   );
 }
 
-export function HomeMoviles({ datos, base, almacenInicial }: { datos: DatosHome; base: string; almacenInicial: string | null }) {
+export function HomeMoviles({ datos, hallazgos, base, almacenInicial }: { datos: DatosHome; hallazgos: Hallazgo[]; base: string; almacenInicial: string | null }) {
   const { modo, quieto } = useModoVista();
   const oscuro = useTema() === "oscuro";
   const [seleccion, setSeleccion] = useState<string | null>(almacenInicial);
   const [taller, setTaller] = useState(false);
+  const [verHallazgos, setVerHallazgos] = useState(false);
   const [indCache, setIndCache] = useState<Record<string, Ind>>({});
   const [, iniciar] = useTransition();
   const { global, almacenes, metas, periodo } = datos;
@@ -174,6 +203,10 @@ export function HomeMoviles({ datos, base, almacenInicial }: { datos: DatosHome;
   }, [almacenes, base, indCache, periodo.v]);
   const cerrarTaller = useCallback(() => setTaller(false), []);
   const abrirTaller = useCallback((id: string) => { elegir(id); setTaller(true); }, [elegir]);
+  // Los dos paneles laterales ocupan el mismo lugar: abrir uno cierra el otro.
+  useEffect(() => { if (taller) setVerHallazgos(false); }, [taller]);
+  const abrirHallazgos = useCallback(() => { setTaller(false); setVerHallazgos(true); }, []);
+  const cerrarHallazgos = useCallback(() => setVerHallazgos(false), []);
 
   const qPeriodo = (p: string) => `?periodo=${p}${seleccion ? `&almacen=${seleccion}` : ""}`;
   const hallazgo = alm
@@ -205,6 +238,15 @@ export function HomeMoviles({ datos, base, almacenInicial }: { datos: DatosHome;
         ))}
       </nav>
     </div>
+  );
+
+  // El chip toma el color del hallazgo más urgente.
+  const chipHallazgos = { paro: "bg-paro-suave text-paro-texto", alerta: "bg-alerta-suave text-alerta-texto", info: "bg-info-suave text-info-texto" }[hallazgos[0]?.tono ?? "info"];
+  const botonHallazgos = hallazgos.length > 0 && (
+    <button type="button" onClick={abrirHallazgos} aria-haspopup="dialog"
+      className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full vidrio pl-4 pr-1.5 text-[14px] font-semibold transition-colors hover:bg-vidrio-fuerte">
+      Hallazgos <span className={`chip ${chipHallazgos}`}>{hallazgos.length}</span>
+    </button>
   );
 
   const acciones = (
@@ -276,20 +318,21 @@ export function HomeMoviles({ datos, base, almacenInicial }: { datos: DatosHome;
         <div className="pointer-events-none absolute inset-x-5 top-5 z-[2] flex items-start gap-4">
           <div className="pointer-events-auto w-[320px] shrink-0">{titulo}</div>
           <div className="pointer-events-auto mx-auto pt-1">{filtros}</div>
-          <div className="pointer-events-auto shrink-0 pt-1">{acciones}</div>
+          <div className="pointer-events-auto flex shrink-0 items-start gap-2 pt-1">{botonHallazgos}{acciones}</div>
         </div>
         <div className="absolute left-5 top-[168px] z-[2] grid w-[300px] gap-3">
           {panelFlota}
           {ordenes}
           {fallas}
         </div>
-        {!taller && (
+        {!taller && !verHallazgos && (
           <div className="absolute bottom-5 left-[340px] right-5 z-[2] grid grid-cols-4 gap-3" data-tour="indicadores">
             {medidores}
             {peor}
           </div>
         )}
         {panel}
+        <PanelHallazgos abierto={verHallazgos} onCerrar={cerrarHallazgos} hallazgos={hallazgos} />
       </section>
     );
   }
@@ -300,6 +343,12 @@ export function HomeMoviles({ datos, base, almacenInicial }: { datos: DatosHome;
       {titulo}
       {acciones}
       {filtros}
+      {hallazgos.length > 0 && (
+        <section className={`p-5 ${VIDRIO}`} aria-labelledby="hallazgos-tit-2d">
+          <h2 id="hallazgos-tit-2d" className="mb-3 text-[15px] font-semibold">Hallazgos</h2>
+          <ListaHallazgos hallazgos={hallazgos.slice(0, 3)} />
+        </section>
+      )}
       <div className="grid gap-4 md:grid-cols-2">
         {panelFlota}
         <section className={`p-5 ${VIDRIO}`} aria-labelledby="alm-tit">

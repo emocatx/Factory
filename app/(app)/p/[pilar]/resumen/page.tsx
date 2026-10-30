@@ -10,6 +10,8 @@ import { infoPilar } from "@/lib/catalogos";
 import { horas, pct } from "@/lib/formato";
 import type { OrdenDetalle } from "@/lib/tipos";
 import { Encabezado, Segmentado, Tarjeta } from "@/components/ui";
+import { TarjetaHallazgos } from "@/components/Hallazgos";
+import { hallazgosDe } from "@/lib/hallazgosDatos";
 
 export const metadata = { title: "Resumen" };
 
@@ -53,11 +55,14 @@ export default async function Resumen({
 
   // Móviles: home visual (planta 3D en escritorio, 2D en celular). Los demás pilares siguen con este Resumen.
   if (pilar === "moviles") {
-    const datos = await datosHome({
-      pilar, periodo: pv, rol: perfil.rol, idUsuario: perfil.id,
-      metas: { disponibilidad: tenant.meta_disponibilidad_pct ?? null, mttr: tenant.meta_mttr_horas ?? null, mtbf: tenant.meta_mtbf_horas ?? null },
-    });
-    return <HomeMoviles datos={datos} base={`/p/${pilar}`} almacenInicial={esUuid(almacen) ? almacen : null} />;
+    const [datos, hallazgos] = await Promise.all([
+      datosHome({
+        pilar, periodo: pv, rol: perfil.rol, idUsuario: perfil.id,
+        metas: { disponibilidad: tenant.meta_disponibilidad_pct ?? null, mttr: tenant.meta_mttr_horas ?? null, mtbf: tenant.meta_mtbf_horas ?? null },
+      }),
+      hallazgosDe({ pilar, rol: perfil.rol, alcance: infoPilar(pilar).etiqueta }),
+    ]);
+    return <HomeMoviles datos={datos} hallazgos={hallazgos} base={`/p/${pilar}`} almacenInicial={esUuid(almacen) ? almacen : null} />;
   }
   const periodo = PERIODOS.find((x) => x.v === pv) ?? PERIODOS[2];
   const ahora = Date.now();
@@ -65,7 +70,7 @@ export default async function Resumen({
   const inicioSemanas = lunes(ahora) - (SEMANAS - 1) * 7 * DIA;
   const supabase = await createClient();
 
-  const [{ count: activos }, { data: det }, { data: filas }, { data: rec }] = await Promise.all([
+  const [{ count: activos }, { data: det }, { data: filas }, { data: rec }, hallazgos] = await Promise.all([
     supabase.from("equipos").select("id_equipo", { count: "exact", head: true }).eq("tipo_pilar", pilar).neq("estatus", "baja"),
     supabase.from("v_ordenes_detalle").select("folio_ticket, fecha_ingreso, descripcion_falla, nombre_equipo, nombre_almacen, nombre_linea")
       .eq("pilar", pilar).in("estatus_orden", abiertas).order("fecha_ingreso", { ascending: true }).limit(1000),
@@ -75,6 +80,7 @@ export default async function Resumen({
         .order("fecha_ingreso").range(a, b)),
     supabase.from("v_ordenes_detalle").select("id_orden, folio_ticket, fecha_cierre, notas_cierre, nombre_equipo, nombre_almacen, nombre_linea")
       .eq("pilar", pilar).eq("estatus_orden", "cerrada").order("fecha_cierre", { ascending: false }).limit(5),
+    hallazgosDe({ pilar, rol: perfil.rol, alcance: infoPilar(pilar).etiqueta }),
   ]);
 
   const detenidos = (det ?? []) as Pick<OrdenDetalle, "folio_ticket" | "fecha_ingreso" | "descripcion_falla" | "nombre_equipo" | "nombre_almacen" | "nombre_linea">[];
@@ -164,6 +170,12 @@ export default async function Resumen({
           </p>
         </Tarjeta>
       </div>
+
+      {hallazgos.length > 0 && (
+        <div className="entrar entrar-3 mt-6">
+          <TarjetaHallazgos hallazgos={hallazgos} alcance={infoPilar(pilar).etiqueta} />
+        </div>
+      )}
 
       <div className="entrar entrar-3 mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
         <section className="caja-panel p-5">

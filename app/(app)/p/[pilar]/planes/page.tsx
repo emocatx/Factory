@@ -4,7 +4,8 @@ import { sesionDePilar } from "@/lib/sesion";
 import { catalogosPilar, todasLasPaginas } from "@/lib/datos";
 import { esUuid } from "@/lib/filtros";
 import { infoPilar, puedeAsignar } from "@/lib/catalogos";
-import { aDia, etiquetaTipo, familia, frecuencia, hoyMx, nTareas, ocurrencias, sumarDias, temaDominante } from "@/lib/planes";
+import { aDia, etiquetaTipo, familia, frecuencia, hoyMx, nTareas, ocurrencias, sumarDias } from "@/lib/planes";
+import { hallazgosDe } from "@/lib/hallazgosDatos";
 import { Encabezado, Seccion, Segmentado, Tarjeta } from "@/components/ui";
 import { ImportarPrograma } from "@/components/importar/ImportarPrograma";
 import { PanelPlanes } from "./PanelPlanes";
@@ -36,16 +37,11 @@ export default async function Planes({
   const vista = f.vista === "calendario" ? "calendario" : "planes";
   const editar = puedeAsignar(perfil.rol);
   const supabase = await createClient();
-  const hace30 = new Date(Date.now() - 30 * 86_400_000).toISOString();
 
-  let fallasQ = supabase.from("v_ordenes_detalle").select("descripcion_falla, nombre_modo, nombre_equipo")
-    .eq("pilar", pilar).neq("estatus_orden", "cancelada").gte("fecha_ingreso", hace30).limit(2000);
-  if (almacen) fallasQ = fallasQ.eq("id_almacen", almacen);
-  const [{ data: planesData }, { data: todas }, cat, { data: fallas }, { data: empresa }] = await Promise.all([
+  const [{ data: planesData }, { data: todas }, cat, { data: empresa }] = await Promise.all([
     supabase.from("planes_mantenimiento").select("id_plan, pilar, nombre, tipo, cada_dias, tareas, activo").eq("pilar", pilar).order("nombre"),
     todasLasPaginas<PlanEquipo>((d, h) => supabase.from("v_plan_equipos").select("*").eq("pilar", pilar).order("proximo").order("id").range(d, h)),
     catalogosPilar(pilar),
-    fallasQ,
     // formatos de Excel que la empresa ya unió a la plantilla Factory (solo los usa el administrador)
     perfil.rol === "admin" ? supabase.from("tenants").select("mapeos_importacion").maybeSingle() : Promise.resolve({ data: null }),
   ]);
@@ -77,8 +73,9 @@ export default async function Planes({
     [...xs.reduce((m, a) => m.set(a.plan, (m.get(a.plan) ?? 0) + 1), new Map<string, number>())].sort((a, b) => b[1] - a[1])
       .slice(0, 2).map(([pl, n]) => `${n} ${pl.toLowerCase()}`).join(" · ");
 
-  const tema = temaDominante((fallas ?? []).map((x) => ({ texto: `${x.nombre_modo ?? ""} ${x.descripcion_falla ?? ""}`, equipo: x.nombre_equipo as string | null })));
-  const sugerir = tema && !planes.some((pl) => pl.nombre.toLowerCase().includes(tema.tema.split(" ")[0]));
+  // Lo que el análisis de falla sugiere convertir en preventivo (motor de hallazgos, lib/hallazgos.ts).
+  const sugerencias = (await hallazgosDe({ pilar, rol: perfil.rol, alcance: nombreAlcance, almacen: almacen || null }))
+    .filter((h) => h.regla === "repetitiva");
 
   // Tabla de planes con alcance: los que tienen equipos aquí, más los nuevos sin asignar.
   const filasPlan = planes.map((pl) => {
@@ -135,16 +132,15 @@ export default async function Planes({
             </Tarjeta>
           </div>
 
-          {sugerir && (
-            <div className="entrar entrar-3 mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-caja bg-info-suave px-6 py-4 text-[15px] text-info-texto">
+          {sugerencias.map((h) => (
+            <div key={h.clave} className="entrar entrar-3 mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-caja bg-info-suave px-6 py-4 text-[15px] text-info-texto">
               <p className="min-w-0 flex-1">
                 <strong className="font-semibold">Sugerido desde el análisis de falla:</strong>{" "}
-                en {nombreAlcance} {tema.n} de sus {tema.total} fallas de los últimos 30 días son de {tema.tema}{tema.en ? ` en ${tema.en}` : ""}.
-                Una inspección semanal de {tema.tema} podría cambiarlas de correctivo a preventivo.
+                {h.texto.charAt(0).toLowerCase() + h.texto.slice(1)} {h.porque}
               </p>
-              {editar && <Link href={`${qs({ nuevo: `Inspección de ${tema.tema}` })}#nuevo-plan`} className="font-semibold hover:underline">Crear plan ›</Link>}
+              {h.accion && <Link href={h.accion.href} className="font-semibold hover:underline">{h.accion.texto} ›</Link>}
             </div>
-          )}
+          ))}
 
           <div className="entrar entrar-3 mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
             <section className="caja-panel overflow-x-auto">

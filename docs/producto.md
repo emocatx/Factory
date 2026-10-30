@@ -60,6 +60,28 @@ La regla de los dos: **nadie da más de lo que tiene**.
 - **Metas:** una por empresa (lo que usa CAB). Metas por almacén quedan como módulo opcional.
 - **Periodo y almacén** viajan entre páginas (Resumen, Órdenes, Indicadores, Análisis).
 
+### Hallazgos automáticos (fase 1)
+
+Frases con un número, su base y una acción a un clic, calculadas con reglas sobre los datos del pilar
+(`lib/hallazgos.ts`; la carga, con los permisos de quien mira, en `lib/hallazgosDatos.ts`). Cada regla se calla si no
+hay evidencia suficiente. Se ordenan por urgencia y, dentro de la misma, por horas de paro.
+
+| # | Hallazgo | Aparece cuando | Acción | Quién lo ve |
+|---|---|---|---|---|
+| 1 | Órdenes sin asignar | Pendientes sin técnico por más de 24 h (avisa cuántas vienen del historial importado) | Asignar | Admin, supervisor, coordinador |
+| 2 | Preventivos vencidos | Servicios con más de 7 días de atraso, por almacén | Ver calendario | Todos |
+| 3 | Falla repetitiva | Un componente junta ≥30 % de las fallas de 30 días (mínimo 5 fallas y 3 del componente) y no hay plan con su nombre | Crear plan (prellenado) / Ver análisis | Todos |
+| 4 | Equipo reincidente | ≥3 fallas en 30 días, o el mismo componente falla ≥2 veces a menos de 30 días de repararse | Ver en análisis | Todos |
+| 5 | Órdenes sin movimiento | Asignadas o en proceso sin cambios por más de 7 días | Revisar órdenes | Admin, supervisor, coordinador |
+| 6 | Calidad del dato | ≥20 % de las fallas cerradas en 30 días sin componente o sin causa (mínimo 5 cerradas) | Ver análisis | Admin, supervisor, coordinador |
+
+- El componente sale de la falla capturada; si no lo trae, de palabras de la descripción ("rueda", "llanta", "batería"…).
+  La familia del equipo sale de su categoría (programa anual); si no la tiene, del nombre ("Transpaleta…").
+- Dónde: Resumen (tarjeta con los 3 primeros; en la planta 3D, botón "Hallazgos" que abre un panel), y Planes (solo
+  la falla repetitiva, como sugerencia de plan).
+- Pendiente: fase 2 (guardar "no aplica" por 30 días y medir el antes y el después de cada plan creado desde un
+  hallazgo) y fase 3 (resumen semanal por correo o WhatsApp).
+
 ## 6. Generalización pendiente (lo que hoy es de CAB)
 
 | Hoy | Hacia el producto |
@@ -259,3 +281,4 @@ El Resumen de Móviles y la barra lateral marcan el estilo de toda la app; las d
 | 2026-10-29 | Todas las páginas toman el estilo del Resumen y la barra lateral: título 34 px, filtros en píldora, selector negro, cifras de 32 px, acción principal azul |
 | 2026-10-29 | Historial, Configuración y Usuarios conservan la barra lateral del último pilar abierto |
 | 2026-10-30 | Equipo de agentes (diseño, planta 3D, datos, seguridad, pruebas) con reglas en `CLAUDE.md` y revisión automática de estilo y migraciones; ningún agente escribe en la base hasta tener una base de pruebas |
+| 2026-10-30 | Hallazgos automáticos, fase 1: seis reglas con mínimo de evidencia y una acción, en Resumen y Planes; reemplazan la sugerencia única de Planes |

@@ -41,28 +41,3 @@ export function ocurrencias(a: Pick<PlanEquipo, "proximo" | "cada_dias">, desde:
   for (let f = a.proximo; f <= hasta && fechas.length < 400; f = sumarDias(f, a.cada_dias)) if (f >= desde) fechas.push(f);
   return fechas;
 }
-
-// ------------------------------------------------------------------ sugerencia desde fallas
-const TEMAS: [string, RegExp][] = [
-  ["ruedas", /rueda|llanta/i],
-  ["baterías", /bater[ií]a|cargador/i],
-  ["frenos", /freno/i],
-  ["cadenas y mástil", /cadena|m[aá]stil/i],
-  ["sistema hidráulico", /hidr[aá]ul|manguera|aceite|fuga/i],
-  ["motor", /motor/i],
-  ["sistema eléctrico", /el[eé]ctric|cable|fusible|tarjeta/i],
-];
-
-/** Tema que concentra las fallas (por componente o descripción). Null si nada destaca. */
-export function temaDominante(fallas: { texto: string; equipo: string | null }[]) {
-  if (fallas.length < 5) return null;
-  const conteo = TEMAS.map(([tema, rx]) => {
-    const suyas = fallas.filter((f) => rx.test(f.texto));
-    return { tema, n: suyas.length, equipos: suyas.map((f) => f.equipo ?? "") };
-  }).sort((a, b) => b.n - a.n)[0];
-  if (conteo.n < 3 || conteo.n / fallas.length < 0.3) return null;
-  const fam = /transpaleta/i, mc = /montacarga/i;
-  const en = conteo.equipos.filter((e) => fam.test(e)).length / conteo.n >= 0.6 ? "transpaletas"
-    : conteo.equipos.filter((e) => mc.test(e)).length / conteo.n >= 0.6 ? "montacargas" : null;
-  return { tema: conteo.tema, n: conteo.n, total: fallas.length, en };
-}
