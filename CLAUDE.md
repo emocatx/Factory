@@ -42,6 +42,8 @@ Lo revisan `npm run revisar` y un hook que corre antes de cada edición (`.claud
 - Estados: verde `ok` = opera, rojo `paro` = detenido o en Mantto, ámbar `renta` = renta, naranja `alerta` = atención.
 - Una sola acción principal por pantalla, azul (`btn-primario`); el resto `btn-sec`.
 - El vidrio (`vidrio`) solo en lo que flota sobre la planta 3D.
+- Movimiento: estas pantallas se abren decenas de veces al día. Entradas cortas (`.entrar`, 200 ms, `--ease-salida`), menús que crecen desde su botón (`abrir`), nada animado en acciones de teclado ni `ease-in`; solo se animan `transform` y `opacity`.
+- Celular: campos de 16 px o más en pantallas táctiles (lo fuerza `globals.css`), `min-h-dvh` en vez de `100vh`, toque inmediato (`touch-action: manipulation`).
 - Funciona a 375 px sin scroll horizontal, con controles de 40 px o más, etiquetas y foco visibles.
 
 ### Datos (Supabase)

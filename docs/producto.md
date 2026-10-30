@@ -282,3 +282,4 @@ El Resumen de Móviles y la barra lateral marcan el estilo de toda la app; las d
 | 2026-10-29 | Historial, Configuración y Usuarios conservan la barra lateral del último pilar abierto |
 | 2026-10-30 | Equipo de agentes (diseño, planta 3D, datos, seguridad, pruebas) con reglas en `CLAUDE.md` y revisión automática de estilo y migraciones; ningún agente escribe en la base hasta tener una base de pruebas |
 | 2026-10-30 | Hallazgos automáticos, fase 1: seis reglas con mínimo de evidencia y una acción, en Resumen y Planes; reemplazan la sugerencia única de Planes |
+| 2026-10-30 | Movimiento y celular según las skills de Emil Kowalski: entrada de página de 200 ms, menús que crecen desde su botón, campos de 16 px en pantallas táctiles, toque inmediato y altura `dvh` |

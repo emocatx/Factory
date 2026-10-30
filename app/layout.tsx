@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: "Seguimiento de fallas y control de activos — Anacronyc y JRia",
 };
 
-export const viewport: Viewport = { themeColor: [{ media: "(prefers-color-scheme: light)", color: "#f5f5f7" }, { media: "(prefers-color-scheme: dark)", color: "#0b0c0d" }] };
+export const viewport: Viewport = { viewportFit: "cover", interactiveWidget: "resizes-content", themeColor: [{ media: "(prefers-color-scheme: light)", color: "#f5f5f7" }, { media: "(prefers-color-scheme: dark)", color: "#0b0c0d" }] };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Modo oscuro: lo elige cada usuario en su menú (cookie "tema"); por defecto, claro.

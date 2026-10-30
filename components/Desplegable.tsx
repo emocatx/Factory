@@ -151,7 +151,7 @@ export function Desplegable({
       </button>
 
       {abierto && (
-        <div className={`absolute left-0 z-50 mt-2 min-w-full overflow-hidden rounded-[18px] ${etiqueta ? "w-max max-w-[340px]" : "right-0"} bg-panel shadow-[0_12px_40px_rgb(0_0_0/0.14),0_0_0_1px_rgb(0_0_0/0.04)] motion-safe:animate-[entrar_160ms_ease-out]`}>
+        <div className={`absolute left-0 z-50 mt-2 min-w-full overflow-hidden rounded-[18px] ${etiqueta ? "w-max max-w-[340px]" : "right-0"} bg-panel shadow-[0_12px_40px_rgb(0_0_0/0.14),0_0_0_1px_rgb(0_0_0/0.04)] origin-top motion-safe:animate-[abrir_150ms_var(--ease-salida)]`}>
           {conBuscador && (
             <div className="border-b border-papel p-2">
               <input autoFocus value={filtro} onChange={(e) => { setFiltro(e.target.value); setActivo(0); }} placeholder="Buscar…"

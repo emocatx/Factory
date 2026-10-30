@@ -56,6 +56,9 @@
   --color-borde-campo: #8e8e93;        /* contorno de campos (3.3:1 contra blanco) */
   --color-renta: #a16207;               /* ámbar: equipos de renta (4.9:1 sobre blanco) */
   --color-reja: #f0f0f2;               /* rejilla de gráficas */
+
+  /* Movimiento: salida fuerte para lo que entra o sale, sin "ease-in" en la interfaz */
+  --ease-salida: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 /*
@@ -104,7 +107,19 @@
   --color-reja: #23282b;
 }
 
-html { color-scheme: light; accent-color: var(--color-azul); }
+html {
+  color-scheme: light; accent-color: var(--color-azul);
+  -webkit-tap-highlight-color: transparent; /* sin el destello gris al tocar en el celular */
+  -webkit-text-size-adjust: 100%;
+}
+/* Toque inmediato en celular (sin la espera del doble toque) y sin seleccionar el texto de un botón al mantenerlo */
+a, button, [role="button"], summary { touch-action: manipulation; }
+button, [role="button"], summary { -webkit-user-select: none; user-select: none; }
+/* En pantallas táctiles un campo con letra menor a 16 px hace que el iPhone acerque la página al tocarlo.
+   Fuera de capa para ganarle a las utilidades; en escritorio cada campo conserva su tamaño. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea { font-size: max(16px, 1em); }
+}
 :root[data-tema="oscuro"] select.campo, :root[data-tema="oscuro"] select.selector {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23f2f4f3' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
@@ -125,11 +140,14 @@ a { text-underline-offset: 3px; }
 h1, h2, h3 { text-wrap: balance; letter-spacing: -0.022em; font-weight: 600; }
 h1 { letter-spacing: -0.03em; }
 
-@keyframes entrar { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
-.entrar { animation: entrar 420ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-.entrar-2 { animation-delay: 70ms; }
-.entrar-3 { animation-delay: 140ms; }
-.entrar-4 { animation-delay: 210ms; }
+/* Entrada de página: corta porque estas pantallas se abren decenas de veces al día (menos de 300 ms en total). */
+@keyframes entrar { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.entrar { animation: entrar 200ms var(--ease-salida) both; }
+.entrar-2 { animation-delay: 30ms; }
+.entrar-3 { animation-delay: 60ms; }
+.entrar-4 { animation-delay: 90ms; }
+/* Listas y menús: crecen desde el botón que los abre, nunca desde cero */
+@keyframes abrir { from { opacity: 0; transform: translateY(-4px) scale(0.97); } to { opacity: 1; transform: none; } }
 
 /* Mientras un filtro recalcula los datos, el contenido de abajo se atenúa (ver FormFiltros). */
 form[aria-busy] ~ * { transition: opacity 180ms ease-out; }
@@ -155,7 +173,7 @@ form[data-cargando] ~ * { opacity: 0.5; pointer-events: none; }
 }
 @utility caja-panel { @apply rounded-caja bg-panel; }
 @utility tarjeta-enlace {
-  @apply rounded-caja bg-panel transition-[box-shadow,transform] duration-300 ease-out hover:shadow-[0_4px_28px_rgb(0_0_0/0.08)] motion-safe:hover:scale-[1.01];
+  @apply rounded-caja bg-panel transition-[box-shadow,transform] duration-200 ease-out hover:shadow-[0_4px_28px_rgb(0_0_0/0.08)] motion-safe:hover:scale-[1.01];
 }
 @utility etiqueta { @apply mb-1.5 block text-sm font-medium text-suave; }
 @utility campo {
