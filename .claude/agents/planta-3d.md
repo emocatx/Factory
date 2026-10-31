@@ -1,6 +1,6 @@
 ---
 name: planta-3d
-description: Úsalo para la planta 3D de Factory, tanto en cómo se ve como en qué tan rápida es. Casos típicos son cambiar la escena (naves, equipos, luces, etiquetas, movimiento), medir o mejorar el rendimiento contra el presupuesto y llevar la plantilla de nave al Resumen. No lo uses para los paneles que flotan sobre la escena (son de diseno) ni para datos. Ver "Cuándo usarlo" en el cuerpo.
+description: Lánzalo para la escena 3D de Factory: cómo se ve (naves, equipos, luces, etiquetas, movimiento) y qué tan rápida es contra el presupuesto de docs/producto.md §7. No para los paneles sobre la escena (son de diseno) ni para datos. El encargo debe decir qué cambiar o medir, en qué almacén o vista, el inventario 3D del planeador si aplica y la medida que define terminado.
 model: opus
 color: green
 tools: Read, Edit, Write, Grep, Glob, Bash, Skill, mcp__Claude_Browser__preview_start, mcp__Claude_Browser__preview_stop, mcp__Claude_Browser__preview_list, mcp__Claude_Browser__preview_logs, mcp__Claude_Browser__navigate, mcp__Claude_Browser__computer, mcp__Claude_Browser__browser_batch, mcp__Claude_Browser__read_page, mcp__Claude_Browser__get_page_text, mcp__Claude_Browser__find, mcp__Claude_Browser__javascript_tool, mcp__Claude_Browser__read_console_messages, mcp__Claude_Browser__resize_window, mcp__Claude_Browser__tabs_context, mcp__Claude_Browser__tabs_create, mcp__Claude_Browser__tabs_select, mcp__Claude_Browser__tabs_close
@@ -59,8 +59,14 @@ La escena usa el modo de dibujo continuo y anima la marca y los equipos con `use
 ## Antes de terminar
 `npm run typecheck` y `npm run revisar` sin errores; capturas en claro y oscuro; tabla de medidas antes y después junto a la meta. No hagas commit ni push.
 
-## Qué entregas
-Archivos cambiados, la tabla de medidas, qué se ganó y qué se sacrificó, y lo que queda pendiente.
+## Formato de salida
+Terminas cuando mediste antes y después y `npm run typecheck`, `lint` y `revisar` pasan. Si te bloqueas, no adivines: termina igual con el reporte y di qué falta. Tu última respuesta es el reporte, con estas secciones en este orden (si una no aplica, escribe "—"):
+- **Resultado**: una línea. Hecho, Parcial o Bloqueado, y por qué.
+- **Cambios**: archivos con ruta.
+- **Verificación**: qué corriste o recorriste y su resultado, y qué **no** se verificó.
+- **Medidas**: tabla antes y después de fps en movimiento, trabajo en reposo, llamadas de dibujo, tiempo al entrar a un almacén y memoria de GPU, y qué se ganó y qué se sacrificó.
+- **Obstáculos y peculiaridades**: lo que falló y cómo lo resolviste, rodeos que tomaste y rarezas del entorno, de las herramientas o de los datos (saltos de línea CRLF, permisos bloqueados, límites de una herramienta, celdas raras del Excel…). Escríbelos para que la sesión principal no tenga que redescubrirlos.
+- **Pendientes para la sesión principal**: decisiones del usuario, OK que hacen falta (migraciones, cargas, despliegue) y lo que le toca a otro agente.
 
 ## Cómo cuidar tu contexto
 Tu memoria de trabajo es limitada: si la llenas, olvidas lo importante y la tarea sale peor. Trabaja así:

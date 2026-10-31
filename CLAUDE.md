@@ -77,6 +77,7 @@ Lo revisan `npm run revisar` y un hook que corre antes de cada edición (`.claud
 
 - Flujo de un programa: `planeador` (valida y entrega en `D:\Cargas`) → carga en el importador con el OK del usuario → `planta-3d` dibuja los tipos de activo de su inventario.
 - Modelo por agente: `opus` para datos, seguridad, planeador y planta-3d (razonamiento con SQL, permisos, datos y rendimiento); `sonnet` para diseno y pruebas. Cada agente sigue su sección "Cómo cuidar tu contexto" (ubicar antes de leer, salidas cortas, datos grandes por script, reporte breve).
+- Cada agente: su descripción dice cuándo lanzarlo y qué debe traer el encargo; sus herramientas son solo las que necesita (`seguridad` y `pruebas` no editan, `planeador` no edita código, ninguno aplica migraciones); y termina con su "Formato de salida" (resultado, cambios, verificación, obstáculos y peculiaridades, pendientes).
 - Un solo agente escribe en cada archivo a la vez.
 - Solo la sesión principal hace commit, push y despliegue; los agentes entregan su reporte y la sesión principal lo verifica antes de seguir.
 - Toda decisión de producto va a `docs/producto.md` (su sección y una fila con fecha en la bitácora).
