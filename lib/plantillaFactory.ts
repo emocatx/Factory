@@ -157,11 +157,11 @@ export function leerPlantilla(tabla: string[][], filaEnc: number, m: Mapeo, hoja
 
   const extra: Problema[] = [];
   if (desconocidas.size) extra.push({
-    tipo: "frecuencia-desconocida",
+    tipo: "frecuencia-desconocida", nivel: "error",
     texto: `Frecuencias que no se reconocen: ${[...desconocidas].slice(0, 6).map(([t, n]) => `«${t}» (${n})`).join(", ")}. Usa 1M, 2M, 3M, 4M, 6M o 12M; esas filas no crean plan.`,
   });
-  if (fechasMalas) extra.push({ tipo: "fecha-invalida", texto: `${fechasMalas} fila${fechasMalas === 1 ? "" : "s"} con una fecha que no se entiende (usa dd/mm/aaaa): ese plan arranca a partir de hoy.` });
-  if (incompletas) extra.push({ tipo: "fila-incompleta", texto: `${incompletas} fila${incompletas === 1 ? "" : "s"} sin almacén o sin denominación: no se leen.` });
+  if (fechasMalas) extra.push({ tipo: "fecha-invalida", nivel: "aviso", texto: `${fechasMalas} fila${fechasMalas === 1 ? "" : "s"} con una fecha que no se entiende (usa dd/mm/aaaa): ese plan arranca a partir de hoy.` });
+  if (incompletas) extra.push({ tipo: "fila-incompleta", nivel: "error", texto: `${incompletas} fila${incompletas === 1 ? "" : "s"} sin almacén o sin denominación: no se leen.` });
   return armarLectura("plantilla", hoja, [...activos.values()], extra, tareas);
 }
 

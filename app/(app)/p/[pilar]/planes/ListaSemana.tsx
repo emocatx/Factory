@@ -3,7 +3,8 @@
 import { useMemo, useState, useTransition } from "react";
 import { Aviso } from "@/components/ui";
 import { Desplegable, type Opcion } from "@/components/Desplegable";
-import { ETIQUETA_ESTATUS, MAX_MOTIVO, type EstatusPrograma, type FilaLista } from "@/lib/programa";
+import { sumarDias } from "@/lib/planes";
+import { ETIQUETA_ESTATUS, MAX_MOTIVO, rangoSemana, semanaDe, type EstatusPrograma, type FilaLista } from "@/lib/programa";
 import { asignarPrograma, cambiarEstatusPrograma } from "./accionesPrograma";
 
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
@@ -35,9 +36,14 @@ type Accion = keyof typeof APLICA;
 const DEL_TECNICO: EstatusPrograma[] = ["asignado", "en_ejecucion", "reprogramado"];
 
 type Props = {
+  /** Prefijo de los id del formulario (hay dos listas en la página: vencidos y semana). */
+  id: string;
   pilar: string;
   filas: FilaLista[];
-  desde: string;
+  /** Lunes de la semana mostrada: la fecha que se propone al reprogramar si es futura. */
+  desde?: string;
+  /** "dia" para la semana; "semana" para los vencidos, que abarcan varias semanas y años. */
+  agrupar?: "dia" | "semana";
   hoy: string;
   yo: string;
   /** Admin, supervisor o coordinador: todo el programa del pilar. */
@@ -48,8 +54,8 @@ type Props = {
   responsables: Opcion[];
 };
 
-/** Servicios de la semana por día, con selección múltiple y acciones sobre lo elegido. */
-export function ListaSemana({ pilar, filas, desde, hoy, yo, editor, cambia, filtrado, responsables }: Props) {
+/** Servicios por día (o por semana), con selección múltiple y acciones sobre lo elegido. */
+export function ListaSemana({ id, pilar, filas, desde, agrupar = "dia", hoy, yo, editor, cambia, filtrado, responsables }: Props) {
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [modo, setModo] = useState<Accion | null>(null);
   const [fecha, setFecha] = useState(hoy);
@@ -60,11 +66,21 @@ export function ListaSemana({ pilar, filas, desde, hoy, yo, editor, cambia, filt
 
   const elegible = (f: FilaLista) => cambia && (editor || (f.id_responsable === yo && DEL_TECNICO.includes(f.estatus)));
   const elegibles = useMemo(() => filas.filter(elegible), [filas]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Los mismos límites que valida la base (cambiar_estatus_programa): completar hasta 7 días atrás el técnico y 90
+  // los editores, nunca a futuro; reprogramar de hoy a 30 días el técnico y 366 los editores.
+  const limites = {
+    completar: { min: sumarDias(hoy, editor ? -90 : -7), max: hoy },
+    reprogramar: { min: hoy, max: sumarDias(hoy, editor ? 366 : 30) },
+  };
+  // Grupos por fecha (día) o por el lunes de la semana ISO (semana).
   const dias = useMemo(() => {
     const m = new Map<string, FilaLista[]>();
-    for (const f of filas) m.set(f.fecha_programada, [...(m.get(f.fecha_programada) ?? []), f]);
+    for (const f of filas) {
+      const k = agrupar === "semana" ? lunesDe(f.fecha_programada) : f.fecha_programada;
+      m.set(k, [...(m.get(k) ?? []), f]);
+    }
     return [...m].sort(([a], [b]) => a.localeCompare(b));
-  }, [filas]);
+  }, [filas, agrupar]);
   const elegidas = filas.filter((f) => sel.has(f.id));
   const paraAccion = (a: Accion) => elegidas.filter((f) => (APLICA[a] as readonly string[]).includes(f.estatus)).map((f) => f.id);
 
@@ -72,7 +88,7 @@ export function ListaSemana({ pilar, filas, desde, hoy, yo, editor, cambia, filt
     setSel((s) => { const n = new Set(s); for (const id of ids) { if (marcar) n.add(id); else n.delete(id); } return n; });
   }
   function abrir(a: Accion) {
-    setRes(null); setMotivo(""); setFecha(a === "reprogramar" ? (desde > hoy ? desde : hoy) : hoy); setResponsable("");
+    setRes(null); setMotivo(""); setFecha(a === "reprogramar" && desde && desde > hoy && desde <= limites.reprogramar.max ? desde : hoy); setResponsable("");
     setModo(a);
   }
   function correr(a: Accion) {
@@ -125,13 +141,20 @@ export function ListaSemana({ pilar, filas, desde, hoy, yo, editor, cambia, filt
           <div key={dia}>
             <div className="flex min-h-11 items-center gap-3 border-t border-papel px-5 pt-3 pb-1">
               {propios.length > 0 && (
-                <input type="checkbox" className="h-5 w-5" aria-label={`Seleccionar los de ${DIAS[diaSemana(dia)].toLowerCase()} ${corta(dia)}`}
+                <input type="checkbox" className="h-5 w-5"
+                  aria-label={`Seleccionar los de ${agrupar === "semana" ? tituloSemana(dia).toLowerCase() : `${DIAS[diaSemana(dia)].toLowerCase()} ${corta(dia)}`}`}
                   checked={propios.every((f) => sel.has(f.id))} onChange={(e) => alternar(propios.map((f) => f.id), e.target.checked)} />
               )}
-              <h3 className={`text-[15px] font-semibold ${dia === hoy ? "text-azul" : ""}`}>
-                {DIAS[diaSemana(dia)]} {corta(dia)}{dia === hoy ? " · hoy" : ""}
-              </h3>
-              <span className="ml-auto text-[13px] text-suave tabular-nums">{hechos} de {xs.length} completado{xs.length === 1 ? "" : "s"}</span>
+              {agrupar === "semana" ? (
+                <h3 className="text-[15px] font-semibold">{tituloSemana(dia)}</h3>
+              ) : (
+                <h3 className={`text-[15px] font-semibold ${dia === hoy ? "text-azul" : ""}`}>
+                  {DIAS[diaSemana(dia)]} {corta(dia)}{dia === hoy ? " · hoy" : ""}
+                </h3>
+              )}
+              <span className="ml-auto shrink-0 text-[13px] text-suave tabular-nums">
+                {agrupar === "semana" ? `${xs.length} servicio${xs.length === 1 ? "" : "s"}` : `${hechos} de ${xs.length} completado${xs.length === 1 ? "" : "s"}`}
+              </span>
             </div>
             <ul>
               {xs.map((f) => <Fila key={f.id} f={f} elegible={elegible(f)} marcada={sel.has(f.id)} alternar={(v) => alternar([f.id], v)} />)}
@@ -168,7 +191,10 @@ export function ListaSemana({ pilar, filas, desde, hoy, yo, editor, cambia, filt
                 <label className="w-full sm:w-auto">
                   <span className="etiqueta">{modo === "completar" ? "Fecha realizada" : "Nueva fecha"}</span>
                   <input type="date" required className="campo min-h-11" value={fecha} onChange={(e) => setFecha(e.target.value)}
-                    max={modo === "completar" ? hoy : undefined} min={modo === "reprogramar" ? hoy : undefined} />
+                    min={limites[modo].min} max={limites[modo].max} aria-describedby={`${id}-limite`} />
+                  <span id={`${id}-limite`} className="mt-1 block text-[12px] text-suave">
+                    {modo === "completar" ? `Del ${corta(limites.completar.min)} a hoy` : `De hoy al ${corta(limites.reprogramar.max)} ${limites.reprogramar.max.slice(0, 4)}`}
+                  </span>
                 </label>
               )}
               {(modo === "reprogramar" || modo === "no_realizado") && (
@@ -180,8 +206,8 @@ export function ListaSemana({ pilar, filas, desde, hoy, yo, editor, cambia, filt
               )}
               {modo === "asignar" && (
                 <div className="min-w-0 flex-1 basis-60">
-                  <label htmlFor="programa-responsable" className="etiqueta">Responsable</label>
-                  <Desplegable id="programa-responsable" arriba value={responsable} onChange={setResponsable} opciones={responsables} placeholder="Elige técnico o supervisor" />
+                  <label htmlFor={`${id}-responsable`} className="etiqueta">Responsable</label>
+                  <Desplegable id={`${id}-responsable`} arriba value={responsable} onChange={setResponsable} opciones={responsables} placeholder="Elige técnico o supervisor" />
                 </div>
               )}
               <div className="flex w-full items-center gap-2 sm:w-auto">
@@ -197,6 +223,19 @@ export function ListaSemana({ pilar, filas, desde, hoy, yo, editor, cambia, filt
       )}
     </div>
   );
+}
+
+/** Lunes de la semana ISO de una fecha. */
+function lunesDe(iso: string) {
+  const s = semanaDe(iso);
+  return rangoSemana(s.anio, s.semana)!.desde;
+}
+
+/** "Semana 42 · 13–19 oct 2025" (o "29 sep–5 oct" si cambia de mes), a partir del lunes. */
+function tituloSemana(lunes: string) {
+  const domingo = sumarDias(lunes, 6);
+  const inicio = lunes.slice(5, 7) === domingo.slice(5, 7) ? String(+lunes.slice(8, 10)) : corta(lunes);
+  return `Semana ${semanaDe(lunes).semana} · ${inicio}–${corta(domingo)} ${domingo.slice(0, 4)}`;
 }
 
 function Fila({ f, elegible, marcada, alternar }: { f: FilaLista; elegible: boolean; marcada: boolean; alternar: (v: boolean) => void }) {

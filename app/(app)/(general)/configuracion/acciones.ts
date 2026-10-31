@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { exigirRol } from "@/lib/sesion";
 import { esPilar, PILARES } from "@/lib/catalogos";
+import { esUuid } from "@/lib/filtros";
+import { enteroFicha } from "@/lib/planAnual";
 
 function volver(msg: string, error = false, ancla = ""): never {
   revalidatePath("/", "layout");
@@ -109,4 +111,43 @@ export async function importarAlmacenes(filas: Record<string, string>[]): Promis
     mensaje: `${nuevos.length} almacén(es) creados${omitidos.length ? `, ${omitidos.length} ya existían y se omitieron` : ""}.`,
     detalle: omitidos.length ? omitidos.slice(0, 50).map((o) => `Ya existía: ${o}`) : undefined,
   };
+}
+
+/** Lo que se captura a mano de la ficha de un almacén (la nave en 3D se arma con esto). */
+export type FichaManual = { andenes?: number; pasillos?: number; dosLados?: boolean };
+
+/**
+ * Guarda a mano andenes, pasillos y si los andenes van en los dos lados (Configuración o la revisión del importador).
+ * Se mezcla sobre almacenes.ficha con fuente "manual", la fecha y ficha.manual = claves capturadas; el programa
+ * anual ya no las pisa (migración 20261031000003_ficha_manual). Solo admin (lo exige también la RLS de almacenes).
+ */
+export async function guardarFichaAlmacen(idAlmacen: string, ficha: FichaManual): Promise<{ ok: boolean; mensaje: string }> {
+  await exigirRol(["admin"]);
+  if (!esUuid(idAlmacen)) return { ok: false, mensaje: "Almacén no válido." };
+  const nueva: FichaManual = {};
+  for (const k of ["andenes", "pasillos"] as const) {
+    if (ficha?.[k] === undefined) continue;
+    if (!enteroFicha(ficha[k])) return { ok: false, mensaje: `${k === "andenes" ? "Andenes" : "Pasillos"}: escribe un número entero de 0 a 500.` };
+    nueva[k] = ficha[k];
+  }
+  if (ficha?.dosLados !== undefined) {
+    if (typeof ficha.dosLados !== "boolean") return { ok: false, mensaje: "Indica si los andenes van en los dos lados." };
+    nueva.dosLados = ficha.dosLados;
+  }
+  const claves = Object.keys(nueva);
+  if (!claves.length) return { ok: false, mensaje: "No hay nada que guardar." };
+
+  const supabase = await createClient();
+  const { data, error: e1 } = await supabase.from("almacenes").select("ficha, nombre_almacen").eq("id_almacen", idAlmacen).maybeSingle();
+  if (e1) return { ok: false, mensaje: traducir(e1.message) };
+  if (!data) return { ok: false, mensaje: "No se encontró el almacén." };
+  const actual = data.ficha && typeof data.ficha === "object" && !Array.isArray(data.ficha) ? (data.ficha as Record<string, unknown>) : {};
+  const previas = Array.isArray(actual.manual) ? actual.manual.filter((x): x is string => typeof x === "string") : [];
+  const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+  const { error } = await supabase.from("almacenes")
+    .update({ ficha: { ...actual, ...nueva, manual: [...new Set([...previas, ...claves])], fuente: "manual", actualizado: hoy } })
+    .eq("id_almacen", idAlmacen);
+  if (error) return { ok: false, mensaje: traducir(error.message) };
+  revalidatePath("/", "layout");
+  return { ok: true, mensaje: `Ficha de ${data.nombre_almacen} guardada.` };
 }

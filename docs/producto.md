@@ -238,6 +238,14 @@ Presupuesto de rendimiento del módulo 3D (equipo de oficina con gráficos integ
   en Móviles (tope 158) y Críticos (tope 92) los SAP de 4 dígitos quedan fuera de la serie.
 - Andenes con número romano en medio ("Anden MTY II 01") cuentan para la ficha.
 - Fechas con errores de captura: "0CT", "25MAY", "OCT26", "264M", "18 MOV", "EN".
+- **El original basta (2026-10-31).** El archivo CABLOMTO se sube tal cual; no hace falta la plantilla Factory ni el planeador
+  para cargarlo. El año del programa sale de "AÑO:" (o del año más frecuente); una fecha con año mal capturado que cae en
+  la semana de su columna se corrige sola (Inmueble: 51) y se avisa; las que no se pueden corregir no se cargan. Avisos
+  por nivel (error, aviso, info) con la lista de renglones: planes sin fechas o con frecuencia cruzada, fechas que no
+  cuadran con su frecuencia, almacenes sin mantenimiento de racks por pasillo (la nave sale sin pasillos).
+- **Ficha manual (2026-10-31).** Andenes, pasillos y "andenes en dos lados" se capturan en la revisión del importador o
+  en Configuración → Almacenes (solo admin); quedan en `ficha.manual` y un programa posterior no los pisa
+  (migración 20261031000003).
 - **Equipo o servicio (2026-10-31).** Un equipo se nombra EQUIPO ALMACÉN NÚMERO ("Andén SMO 01"). Una fila que empieza
   con la actividad (revisión, reparación, inspección, resane, pintura, limpieza, balizamiento…; `SERVICIO`) es un
   servicio aparte (también lo que pertenece a un área: "Mobiliario oficinas 01", "Baños oficinas", instalaciones,
@@ -349,3 +357,4 @@ El Resumen de Móviles y la barra lateral marcan el estilo de toda la app; las d
 | 2026-10-31 | Lo que pertenece a un área (mobiliario, baños, instalaciones, luminarias) es servicio; louvers y cortinas sin SAP son equipos por dar de alta |
 | 2026-10-31 | Programa semanal de preventivos: cada fecha del programa es un servicio con responsable y estatus (programado, asignado, en ejecución, completado, reprogramado, no realizado); cumplimiento contra la fecha original |
 | 2026-10-31 | Programa semanal, ajustes de seguridad y rendimiento: completar con fecha de hasta 7 días atrás (técnico) o 90 (editores), reprogramar hasta 30 días (técnico) o 366 (editores), alta y borrado directos solo del admin, bitácora de cada cambio y vencidos sin límite de año |
+| 2026-10-31 | El importador lee el original CABLOMTO sin plantilla: corrige el año mal capturado, avisa por nivel con renglones; la ficha de nave capturada a mano manda sobre el programa |

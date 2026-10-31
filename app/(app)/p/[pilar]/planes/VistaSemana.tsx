@@ -2,7 +2,7 @@ import Link from "next/link";
 import { catalogosPilar } from "@/lib/datos";
 import { esUuid } from "@/lib/filtros";
 import { hoyMx, sumarDias } from "@/lib/planes";
-import { programaSemana, resumenPrograma, responsablesPrograma } from "@/lib/programaDatos";
+import { programaSemana, programaVencidos, resumenPrograma, responsablesPrograma } from "@/lib/programaDatos";
 import {
   cumplimiento, cumplimientoATiempo, esEstatusPrograma, ETIQUETA_ESTATUS, porcentaje, rangoSemana, semanaDe,
   ESTATUS_PROGRAMA, type EstatusPrograma, type MetricasPrograma,
@@ -20,6 +20,10 @@ const num = (n: number) => n.toLocaleString("es-MX");
 const textoPct = (v: number | null) => (v === null ? "—" : `${v.toLocaleString("es-MX")}%`);
 
 const ABIERTOS: EstatusPrograma[] = ["programado", "asignado", "en_ejecucion", "reprogramado"];
+/** Cuántos vencidos se traen a la lista (los más viejos primero); el total se cuenta aparte. */
+const LIMITE_VENCIDOS = 200;
+/** Con más vencidos que esto, la sección empieza plegada para no empujar la semana hacia abajo. */
+const PLEGAR_DESDE = 15;
 
 export type FiltrosSemana = { almacen: string; semana?: string; resp?: string; estatus?: string };
 
@@ -52,11 +56,15 @@ export async function VistaSemana({ pilar, perfil, f, segmentado }: {
 
   const anio = +hoy.slice(0, 4);
   const sub = `Programa semanal de ${infoPilar(pilar).etiqueta}: qué toca, quién lo hace y qué falta.`;
-  const [{ resumen, error: fallaResumen }, semana, responsables, cat] = await Promise.all([
+  // Los vencidos van arriba de la semana actual (en otra semana se repetirían o no vendrían al caso), salvo que el
+  // filtro de estatus pida algo que no puede estar vencido o un estatus abierto en particular.
+  const conVencidos = esActual && (estatus === "" || estatus === "abiertos" || estatus === "vencidos");
+  const [{ resumen, error: fallaResumen }, semana, responsables, cat, vencidos] = await Promise.all([
     resumenPrograma(pilar, `${anio}-01-01`, `${anio}-12-31`, { almacen, responsable: resp === "sin" ? undefined : resp }),
     programaSemana(pilar, elegida.anio, elegida.semana, { almacen, responsable: resp, estatus: estatusConsulta }),
     responsablesPrograma(pilar),
     catalogosPilar(pilar, { equipos: false }),
+    conVencidos ? programaVencidos(pilar, { almacen, responsable: resp }, LIMITE_VENCIDOS) : null,
   ]);
 
   const qs = (extra: Record<string, string>) =>
@@ -115,6 +123,7 @@ export async function VistaSemana({ pilar, perfil, f, segmentado }: {
   const mes = MESES[+hoy.slice(5, 7) - 1];
   const editor = puedeAsignar(perfil.rol);
   const cambia = editor || perfil.rol === "tecnico";
+  const opcionesResponsable = responsables.map((r) => ({ valor: r.id, etiqueta: r.id === perfil.id ? `${r.nombre} (yo)` : r.nombre, detalle: r.rol === "tecnico" ? "Técnico" : "Supervisor" }));
 
   return (
     <>
@@ -140,6 +149,42 @@ export async function VistaSemana({ pilar, perfil, f, segmentado }: {
           pie={t.no_realizados ? `${num(t.no_realizados)} no realizado${t.no_realizados === 1 ? "" : "s"}` : "Ninguno sin realizar"} />
       </div>
 
+      {vencidos?.error && (
+        <div className="entrar entrar-3 mt-6">
+          <Aviso tono="paro">No se pudieron cargar los vencidos de semanas anteriores. Vuelve a intentarlo en unos minutos.</Aviso>
+        </div>
+      )}
+      {vencidos && !vencidos.error && vencidos.total > 0 && (
+        // suppressHydrationWarning: si alguien la abre antes de que cargue React, el "open" ya no es el del servidor.
+        <details className="entrar entrar-3 caja-panel group mt-6" open={vencidos.total <= PLEGAR_DESDE} suppressHydrationWarning>
+          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-5 py-4">
+            <span className="min-w-0">
+              <span className="block text-[20px] font-semibold">
+                Vencidos de semanas anteriores <span className="text-paro-texto tabular-nums">({num(vencidos.total)})</span>
+              </span>
+              <span className="mt-0.5 block text-[14px] text-suave">
+                Abiertos con fecha antes del lunes {corta(rango.desde)}, los más viejos primero
+                {vencidos.total > vencidos.filas.length ? ` · se muestran los ${num(vencidos.filas.length)} más antiguos de ${num(vencidos.total)}` : ""}
+              </span>
+            </span>
+            <span aria-hidden="true" className="text-suave transition-transform group-open:rotate-180">⌄</span>
+          </summary>
+          <ListaSemana
+            key={`v${almacen}${resp}${estatus}`}
+            id="vencidos"
+            pilar={pilar}
+            filas={vencidos.filas}
+            agrupar="semana"
+            hoy={hoy}
+            yo={perfil.id}
+            editor={editor}
+            cambia={cambia}
+            filtrado={!!(almacen || resp || estatus)}
+            responsables={opcionesResponsable}
+          />
+        </details>
+      )}
+
       <section className="entrar entrar-3 mt-6 caja-panel">
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 pb-3 pt-5">
           <div className="min-w-0">
@@ -158,6 +203,7 @@ export async function VistaSemana({ pilar, perfil, f, segmentado }: {
         </div>
         <ListaSemana
           key={`${clave(elegida)}${almacen}${resp}${estatus}`}
+          id="semana"
           pilar={pilar}
           filas={filas}
           desde={rango.desde}
@@ -166,7 +212,7 @@ export async function VistaSemana({ pilar, perfil, f, segmentado }: {
           editor={editor}
           cambia={cambia}
           filtrado={!!(almacen || resp || estatus)}
-          responsables={responsables.map((r) => ({ valor: r.id, etiqueta: r.id === perfil.id ? `${r.nombre} (yo)` : r.nombre, detalle: r.rol === "tecnico" ? "Técnico" : "Supervisor" }))}
+          responsables={opcionesResponsable}
         />
       </section>
 

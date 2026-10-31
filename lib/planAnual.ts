@@ -102,7 +102,16 @@ export type Activo = {
 
 export type FichaArchivo = { almacen: string; activos: number; andenes: number; pasillos: number; zonas: Categoria[]; techo: { louvers: number; extractores: number; inyectores: number } };
 export type PlanPropuesto = { nombre: string; categoria: Categoria; frecuencia: Frecuencia; cada_dias: number; activos: number; codigos: string[]; tareas?: string };
-export type Problema = { tipo: "sin-sap" | "sap-repetido" | "sin-frecuencia" | "frecuencia-desconocida" | "fecha-invalida" | "fila-incompleta" | "ficha-incompleta"; texto: string };
+export type TipoProblema =
+  | "sin-sap" | "sap-repetido" | "sin-frecuencia" | "frecuencia-desconocida" | "fecha-invalida" | "fila-incompleta"
+  | "fechas-corregidas" | "fechas-fuera" | "sin-fechas" | "frecuencia-no-cuadra" | "sin-pasillos" | "sin-andenes";
+/** Una fila del archivo detrás de un problema, para mostrarla en la lista desplegable del aviso. */
+export type FilaProblema = { fila: number; almacen: string; denominacion: string; detalle: string };
+/**
+ * Lo que conviene revisar antes de guardar. `nivel` dice cómo se pinta: error (paro), aviso (alerta) o info (neutral).
+ * Uno por tipo. `filas` trae el detalle; `almacenes`, los almacenes del archivo a los que aplica (sin-pasillos, sin-andenes).
+ */
+export type Problema = { tipo: TipoProblema; nivel: "error" | "aviso" | "info"; texto: string; filas?: FilaProblema[]; almacenes?: string[] };
 export type Lectura = {
   hoja: string;
   /** "cablomto" = programa anual CABLOMTO-F01; "plantilla" = tabla con columnas (plantilla Factory o propia). */
@@ -148,10 +157,75 @@ function columnas(tabla: Celda[][]) {
     }
   }
   // calendario: las columnas a la derecha de "NÚMERO DE SEMANA"
-  let semanas = -1;
-  for (let r = 0; r <= fEnc && semanas < 0; r++) semanas = tabla[r].findIndex((c) => /^numero de semana/.test(normalizar(c)));
-  return { fEnc, den, num, alm, semanas, plan: frec(gPlan, gLanz), lanz: frec(gLanz, gTiempo), tiempo: frec(gTiempo, gTiempo + 6) };
+  let semanas = -1, fSem = -1;
+  for (let r = 0; r <= fEnc && semanas < 0; r++) { semanas = tabla[r].findIndex((c) => /^numero de semana/.test(normalizar(c))); if (semanas >= 0) fSem = r; }
+  return { fEnc, den, num, alm, semanas, fSem, plan: frec(gPlan, gLanz), lanz: frec(gLanz, gTiempo), tiempo: frec(gTiempo, gTiempo + 6) };
 }
+
+/** "AÑO: 2026" en las filas de arriba del encabezado (el valor va unas columnas a la derecha). */
+function anioEncabezado(tabla: Celda[][], fEnc: number): number | null {
+  for (let r = 0; r <= fEnc; r++) {
+    const fila = tabla[r] ?? [];
+    const i = fila.findIndex((c) => /^ano:?$/.test(normalizar(c)));
+    if (i < 0) continue;
+    for (let k = i + 1; k < Math.min(fila.length, i + 8); k++) {
+      const v = Number(String(fila[k] ?? "").trim());
+      if (Number.isInteger(v) && v >= 2000 && v <= 2100) return v;
+    }
+  }
+  return null;
+}
+
+const DIA_MS = 86_400_000;
+const isoDe = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+const msDe = (iso: string) => Date.parse(`${iso}T00:00:00Z`);
+
+/**
+ * Lunes (inicio) de la semana de cada columna del calendario: la fila de "NÚMERO DE SEMANA" trae 1…53 y la de
+ * "PERIODO DE SEMANA" trae "29 al 04". La semana 1 empieza el día que dice su periodo (diciembre del año anterior
+ * si es mayor que el día final); sin periodo, el lunes de la semana del 1 de enero. Una columna cuyo periodo no
+ * cuadra con su número no se usa.
+ */
+function semanasDelCalendario(tabla: Celda[][], c: { fEnc: number; semanas: number; fSem: number }, anio: number) {
+  const lunes = new Map<number, string>();
+  if (c.semanas < 0 || c.fSem < 0) return { lunes, inicio: null as number | null };
+  const fNum = tabla[c.fSem];
+  let fPer = -1;
+  for (let r = 0; r <= c.fEnc && fPer < 0; r++) if ((tabla[r] ?? []).some((x) => /^periodo de semana/.test(normalizar(x)))) fPer = r;
+  const periodo = (k: number) => {
+    const m = normalizar(fPer >= 0 ? tabla[fPer][k] : "").match(/^(\d{1,2}) ?al ?(\d{1,2})$/);
+    return m ? { desde: Number(m[1]), hasta: Number(m[2]) } : null;
+  };
+  const numero = (k: number) => { const n = Number(String(fNum[k] ?? "").trim()); return Number.isInteger(n) && n >= 1 && n <= 53 ? n : null; };
+  const k1 = fNum.findIndex((_, k) => k > c.semanas && numero(k) === 1);
+  const p1 = k1 >= 0 ? periodo(k1) : null;
+  const enero1 = Date.UTC(anio, 0, 1);
+  const inicio = p1
+    ? (p1.desde > p1.hasta ? Date.UTC(anio - 1, 11, p1.desde) : Date.UTC(anio, 0, p1.desde))
+    : enero1 - ((new Date(enero1).getUTCDay() + 6) % 7) * DIA_MS;
+  for (let k = c.semanas + 1; k < fNum.length; k++) {
+    const n = numero(k);
+    if (n === null) continue;
+    const ms = inicio + (n - 1) * 7 * DIA_MS;
+    const p = periodo(k);
+    if (p && p.desde !== new Date(ms).getUTCDate()) continue;
+    lunes.set(k, isoDe(ms));
+  }
+  return { lunes, inicio };
+}
+
+/** La misma fecha con otro año (29 de febrero → 28 si el año no es bisiesto). */
+function conAnio(fecha: string, anio: number) {
+  const [, m, d] = fecha.split("-").map(Number);
+  return `${anio}-${p2(m)}-${p2(Math.min(d, new Date(Date.UTC(anio, m, 0)).getUTCDate()))}`;
+}
+
+/** Fechas al año según la frecuencia (1M = 12, 2M = 6…). */
+const AL_ANIO: Record<Frecuencia, number> = { "1M": 12, "2M": 6, "3M": 4, "4M": 3, "6M": 2, "12M": 1 };
+const fechaTexto = (iso: string) => {
+  const [y, m, d] = iso.split("-");
+  return `${d} ${["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"][Number(m) - 1]} ${y}`;
+};
 
 const MESES: Record<string, number> = { ENE: 1, FEB: 2, MAR: 3, ABR: 4, MAY: 5, JUN: 6, JUL: 7, AGO: 8, SEP: 9, SET: 9, OCT: 10, NOV: 11, DIC: 12 };
 /** Meses mal escritos que aparecen en los programas ("18 MOV", "EN"). */
@@ -177,11 +251,15 @@ export function fechaProgramada(c: Celda): { fecha: string; frecuencias: Frecuen
   return { fecha: `${anio}-${p2(mes)}-${p2(dia)}`, frecuencias };
 }
 
+/** Semanas de holgura al comparar una fecha con la semana de su columna (0 = tiene que caer en esa semana). */
+const HOLGURA_SEMANAS = 0;
+
 export function leerPlanAnual(tabla: Celda[][], hoja = ""): Lectura | null {
   const c = columnas(tabla);
   // el formato se reconoce por el bloque "PLAN DE MANTENIMIENTO" con sus columnas 1M…12M (una tabla plana no lo trae)
   if (!c || c.den < 0 || c.alm < 0 || !Object.keys(c.plan).length) return null;
-  const activos: Activo[] = [];
+  type Leida = { col: number; texto: string; fecha: string; frecuencias: Frecuencia[] };
+  const leidos: { a: Activo; fechas: Leida[] }[] = [];
   for (let i = c.fEnc + 1; i < tabla.length; i++) {
     const r = tabla[i];
     const denominacion = String(r[c.den] ?? "").replace(/\s+/g, " ").trim();
@@ -198,15 +276,105 @@ export function leerPlanAnual(tabla: Celda[][], hoja = ""): Lectura | null {
       const vals = FRECUENCIAS.map((f) => (g[f] === undefined ? NaN : Number(r[g[f]!]))).filter((n) => Number.isFinite(n));
       return vals.length ? vals.reduce((a, b) => a + b, 0) : null;
     };
-    const programadas: Activo["programadas"] = [];
-    if (c.semanas >= 0) for (let k = c.semanas + 1; k < r.length; k++) { const p = fechaProgramada(r[k]); if (p) programadas.push(p); }
-    programadas.sort((a, b) => a.fecha.localeCompare(b.fecha));
-    activos.push({
-      fila: i + 1, almacen, sap, sinSap: !/^\d{4,}$/.test(sap), denominacion, categoria: categoriaDe(denominacion),
-      frecuencias: FRECUENCIAS.filter((f) => planes[f]), planes, lanzamientos: suma(c.lanz), horas: suma(c.tiempo), programadas,
+    const fechas: Leida[] = [];
+    if (c.semanas >= 0) for (let k = c.semanas + 1; k < r.length; k++) {
+      const p = fechaProgramada(r[k]);
+      if (p) fechas.push({ col: k, texto: r[k] instanceof Date ? fechaTexto(p.fecha) : String(r[k]).replace(/\s+/g, " ").trim(), ...p });
+    }
+    leidos.push({
+      a: {
+        fila: i + 1, almacen, sap, sinSap: !/^\d{4,}$/.test(sap), denominacion, categoria: categoriaDe(denominacion),
+        frecuencias: FRECUENCIAS.filter((f) => planes[f]), planes, lanzamientos: suma(c.lanz), horas: suma(c.tiempo), programadas: [],
+      },
+      fechas,
     });
   }
-  return activos.length ? armarLectura("cablomto", hoja, activos) : null;
+  if (!leidos.length) return null;
+
+  // Año del programa: el del encabezado ("AÑO: 2026") o el que más se repite en las fechas
+  const porAnio = new Map<number, number>();
+  for (const { fechas } of leidos) for (const f of fechas) { const y = Number(f.fecha.slice(0, 4)); porAnio.set(y, (porAnio.get(y) ?? 0) + 1); }
+  const anio = anioEncabezado(tabla, c.fEnc) ?? [...porAnio].sort((x, y) => y[1] - x[1])[0]?.[0] ?? null;
+  const { lunes, inicio } = anio ? semanasDelCalendario(tabla, c, anio) : { lunes: new Map<number, string>(), inicio: null };
+  const semanaDe = (ms: number) => (inicio === null ? null : Math.floor((ms - inicio) / (7 * DIA_MS)) + 1);
+  const enSuSemana = (fecha: string, col: number) => {
+    const l = lunes.get(col);
+    if (!l) return false;
+    const d = msDe(fecha) - msDe(l);
+    return d >= -HOLGURA_SEMANAS * 7 * DIA_MS && d < (1 + HOLGURA_SEMANAS) * 7 * DIA_MS;
+  };
+
+  // Una fecha de otro año cuya columna es de una semana del programa tiene el año mal capturado ("15 JUL 25" en la
+  // semana 29 de 2026): se corrige. Si no se puede saber, no se carga y queda como problema.
+  const corregidas: FilaProblema[] = [], fuera: FilaProblema[] = [];
+  for (const { a, fechas } of leidos) {
+    const fila = (detalle: string): FilaProblema => ({ fila: a.fila, almacen: a.almacen, denominacion: a.denominacion, detalle });
+    for (const f of fechas) {
+      let fecha = f.fecha;
+      if (anio && Number(fecha.slice(0, 4)) !== anio && !enSuSemana(fecha, f.col)) {
+        const nueva = conAnio(fecha, anio);
+        const l = lunes.get(f.col), sem = l ? ` (semana ${semanaDe(msDe(l))})` : "";
+        if (enSuSemana(nueva, f.col)) { corregidas.push(fila(`«${f.texto}» → ${fechaTexto(nueva)}${sem}`)); fecha = nueva; }
+        else { fuera.push(fila(`«${f.texto}»${l ? ` en la columna de la semana ${semanaDe(msDe(l))}` : ""}`)); continue; }
+      }
+      a.programadas.push({ fecha, frecuencias: f.frecuencias });
+    }
+    a.programadas.sort((x, y) => x.fecha.localeCompare(y.fecha));
+  }
+  const activos = leidos.map((x) => x.a);
+  const extra: Problema[] = [];
+  const s = (n: number, uno = "", varios = "s") => (n === 1 ? uno : varios);
+  if (corregidas.length) extra.push({
+    tipo: "fechas-corregidas", nivel: "info", filas: corregidas,
+    texto: `${corregidas.length} fecha${s(corregidas.length)} con año mal capturado corregida${s(corregidas.length)} a ${anio}: su columna es de una semana de ${anio}.`,
+  });
+  if (fuera.length) extra.push({
+    tipo: "fechas-fuera", nivel: "error", filas: fuera,
+    texto: `${fuera.length} fecha${s(fuera.length)} fuera de ${anio} que no se pud${s(fuera.length, "o", "ieron")} corregir: no entra${s(fuera.length, "", "n")} al programa. Corrígela${s(fuera.length)} en el archivo.`,
+  });
+
+  // Fechas contra el plan: solo si el archivo trae calendario
+  if (c.semanas >= 0) {
+    const sinFechas: FilaProblema[] = [], noCuadra: FilaProblema[] = [];
+    // Fechas esperadas en las semanas que cubre el calendario: el año completo pide las exactas (trimestral = 4);
+    // uno de 48 semanas (Móviles, Críticos) admite una menos según el mes en que arranque.
+    const cubiertas = Math.min(52, inicio === null || !lunes.size ? 52 : Math.max(...[...lunes.values()].map((l) => semanaDe(msDe(l)) ?? 0)));
+    const esperadas = (f: Frecuencia): [number, number] => {
+      if (cubiertas >= 52) return [AL_ANIO[f], AL_ANIO[f]];
+      const x = (AL_ANIO[f] * cubiertas) / 52;
+      return [Math.max(1, Math.floor(x)), Math.ceil(x)];
+    };
+    for (const a of activos) {
+      const fila = (detalle: string): FilaProblema => ({ fila: a.fila, almacen: a.almacen, denominacion: a.denominacion, detalle });
+      const otras = [...new Set(a.programadas.flatMap((p) => p.frecuencias))].filter((f) => !a.frecuencias.includes(f));
+      for (const f of a.frecuencias) {
+        const fechas = [...new Set(fechasDe(a, f))];
+        if (!fechas.length) {
+          sinFechas.push(fila(otras.length
+            ? `Plan ${f}; sus fechas dicen ${otras.join(", ")} (${a.programadas.slice(0, 3).map((p) => fechaTexto(p.fecha)).join(", ")})`
+            : `Plan ${f} sin fechas en el calendario (vacío o con error, p. ej. #REF!)`));
+          continue;
+        }
+        const delAnio = fechas.filter((x) => Number(x.slice(0, 4)) === anio);
+        const [min, max] = esperadas(f);
+        if (anio && (delAnio.length < min || delAnio.length > max)) {
+          noCuadra.push(fila(`${f}: ${delAnio.length} fecha${s(delAnio.length)} en ${anio} en vez de ${min === max ? min : `${min} o ${max}`}`));
+        }
+        const porSemana = new Map<number, string[]>();
+        for (const x of fechas) { const w = semanaDe(msDe(x)); if (w !== null) porSemana.set(w, [...(porSemana.get(w) ?? []), x]); }
+        for (const [w, xs] of porSemana) if (xs.length > 1) noCuadra.push(fila(`${xs.length} fechas ${f} en la semana ${w} (${xs.map(fechaTexto).join(" y ")})`));
+      }
+    }
+    if (sinFechas.length) extra.push({
+      tipo: "sin-fechas", nivel: "aviso", filas: sinFechas,
+      texto: `${sinFechas.length} plan${s(sinFechas.length, "", "es")} sin fechas en el calendario, o con fechas de otra frecuencia: no entra${s(sinFechas.length, "", "n")} al programa semanal y se cuenta${s(sinFechas.length, "", "n")} desde hoy.`,
+    });
+    if (noCuadra.length) extra.push({
+      tipo: "frecuencia-no-cuadra", nivel: "aviso", filas: noCuadra,
+      texto: `${noCuadra.length} caso${s(noCuadra.length)} en que las fechas no cuadran con la frecuencia (p. ej. trimestral con 3 fechas en el año, o dos fechas en la misma semana). Se cargan como vienen.`,
+    });
+  }
+  return armarLectura("cablomto", hoja, activos, extra);
 }
 
 /** Fichas, planes propuestos y problemas a partir de los activos leídos (común a los dos lectores). */
@@ -244,21 +412,30 @@ export function armarLectura(formato: Lectura["formato"], hoja: string, activos:
   const sinSap = activos.filter((a) => a.sinSap && !esServicio(a.denominacion));
   if (sinSap.length) {
     const por = [...new Set(sinSap.map((a) => a.almacen))].map((x) => `${x}: ${sinSap.filter((a) => a.almacen === x).length}`).join(", ");
-    problemas.push({ tipo: "sin-sap", texto: `${sinSap.length} equipo${sinSap.length === 1 ? "" : "s"} sin número SAP, por dar de alta (${por}). Se cargan con su consecutivo como clave interna y quedan marcados en Equipos hasta que se capture su SAP.` });
+    problemas.push({ tipo: "sin-sap", nivel: "aviso", texto: `${sinSap.length} equipo${sinSap.length === 1 ? "" : "s"} sin número SAP, por dar de alta (${por}). Se cargan con su consecutivo como clave interna y quedan marcados en Equipos hasta que se capture su SAP.` });
   }
   const cuenta = new Map<string, number>();
   activos.filter((a) => !a.sinSap).forEach((a) => cuenta.set(a.sap, (cuenta.get(a.sap) ?? 0) + 1));
   const rep = [...cuenta].filter(([, n]) => n > 1);
-  if (rep.length) problemas.push({ tipo: "sap-repetido", texto: `${rep.length} número${rep.length === 1 ? "" : "s"} SAP repetido${rep.length === 1 ? "" : "s"}: ${rep.slice(0, 8).map(([s, n]) => `${s} (×${n})`).join(", ")}.` });
+  if (rep.length) problemas.push({ tipo: "sap-repetido", nivel: "error", texto: `${rep.length} número${rep.length === 1 ? "" : "s"} SAP repetido${rep.length === 1 ? "" : "s"}: ${rep.slice(0, 8).map(([s, n]) => `${s} (×${n})`).join(", ")}.` });
   const sinFrec = activos.filter((a) => !a.frecuencias.length);
-  if (sinFrec.length) problemas.push({ tipo: "sin-frecuencia", texto: `${sinFrec.length} activo${sinFrec.length === 1 ? "" : "s"} sin frecuencia de plan (quedaría${sinFrec.length === 1 ? "" : "n"} sin plan).` });
+  if (sinFrec.length) problemas.push({
+    tipo: "sin-frecuencia", nivel: "error", texto: `${sinFrec.length} activo${sinFrec.length === 1 ? "" : "s"} sin frecuencia de plan (quedaría${sinFrec.length === 1 ? "" : "n"} sin plan).`,
+    filas: sinFrec.map((a) => ({ fila: a.fila, almacen: a.almacen, denominacion: a.denominacion, detalle: "Sin frecuencia en el plan de mantenimiento" })),
+  });
   problemas.push(...extra);
-  // solo si el archivo describe naves (trae andenes o pasillos); el de Críticos, por ejemplo, no
+  // Solo si el archivo describe naves (trae andenes o pasillos); el de Críticos, por ejemplo, no. No es un error de
+  // lectura: el programa no trae mantenimiento de racks por pasillo (o de andenes) en esos almacenes.
   const describeNaves = fichas.some((f) => f.andenes || f.pasillos);
-  const incompletas = describeNaves ? fichas.filter((f) => !f.pasillos || !f.andenes) : [];
-  if (incompletas.length) problemas.push({
-    tipo: "ficha-incompleta",
-    texto: `Fichas incompletas: ${incompletas.map((f) => `${f.almacen} (${[!f.andenes && "sin andenes", !f.pasillos && "sin pasillos"].filter(Boolean).join(", ")})`).join("; ")}.`,
+  const faltan = (k: "pasillos" | "andenes") => (describeNaves ? fichas.filter((f) => !f[k]).map((f) => f.almacen) : []);
+  const sinPasillos = faltan("pasillos"), sinAndenes = faltan("andenes");
+  if (sinPasillos.length) problemas.push({
+    tipo: "sin-pasillos", nivel: "aviso", almacenes: sinPasillos,
+    texto: `Sin mantenimiento de racks por pasillo en: ${sinPasillos.join(", ")} — la nave se dibuja sin pasillos; puedes capturar los pasillos aquí o en Configuración.`,
+  });
+  if (sinAndenes.length) problemas.push({
+    tipo: "sin-andenes", nivel: "aviso", almacenes: sinAndenes,
+    texto: `Sin mantenimiento de andenes en: ${sinAndenes.join(", ")} — la nave se dibuja sin andenes; puedes capturar los andenes aquí o en Configuración.`,
   });
   return { hoja, formato, activos, fichas, planes, problemas };
 }
@@ -366,7 +543,12 @@ export type Carga = {
  * su primera aparición. El consecutivo de los activos sin SAP es su clave (INF-784) solo si no se repite en el
  * archivo: en Móviles cada almacén numera desde 1, y ahí esos activos se reconocen por almacén y nombre.
  */
-export function armarCarga(l: Lectura, empates: Record<string, string>, hoy: string, archivo: string, pilar = ""): { carga: Carga; sinAlmacen: number; sapQuitados: number; clavesQuitadas: number } {
+/** Andenes y pasillos que la persona captura en la revisión, por almacén del archivo; mandan sobre lo leído. */
+export type AjustesFicha = Record<string, { andenes?: number; pasillos?: number }>;
+
+export function armarCarga(
+  l: Lectura, empates: Record<string, string>, hoy: string, archivo: string, pilar = "", ajustesFicha: AjustesFicha = {},
+): { carga: Carga; sinAlmacen: number; sapQuitados: number; clavesQuitadas: number; ajustesIgnorados: string[] } {
   const vistos = new Set<string>(), claves = new Set<string>();
   const consecutivos = l.activos.filter((a) => a.sinSap && /^\d+$/.test(a.sap)).map((a) => Number(a.sap));
   const consUnico = new Set(consecutivos).size === consecutivos.length;
@@ -402,16 +584,83 @@ export function armarCarga(l: Lectura, empates: Record<string, string>, hoy: str
   const planes = l.planes.filter((p) => usados.has(normalizar(p.nombre))).map((p) => ({
     n: p.nombre, d: p.cada_dias, t: p.tareas ?? (p.codigos.length ? `Códigos de plan SAP: ${p.codigos.join(", ")}` : ""),
   }));
-  // La ficha solo se actualiza desde archivos que describen la nave (andenes o pasillos): así un programa
-  // de otro pilar no borra lo que dejó el de Infraestructura.
-  const fichas = l.fichas.filter((f) => empates[f.almacen] && empates[f.almacen] !== OMITIR && (f.andenes || f.pasillos)).map((f) => ({
-    alm: empates[f.almacen],
-    ficha: {
-      ...(f.andenes ? { andenes: f.andenes } : {}), ...(f.pasillos ? { pasillos: f.pasillos } : {}),
-      ...(f.zonas.length ? { zonas: f.zonas } : {}),
-      ...(f.techo.louvers + f.techo.extractores + f.techo.inyectores ? { techo: f.techo } : {}),
-      fuente: "programa-anual", actualizado: hoy,
-    },
-  }));
-  return { carga: { archivo, activos, planes, asignaciones, programa, fichas }, sinAlmacen, sapQuitados, clavesQuitadas };
+  // La ficha solo se actualiza desde archivos que describen la nave (andenes o pasillos), o si la persona la
+  // ajustó en la revisión: así un programa de otro pilar no borra lo que dejó el de Infraestructura.
+  const ajustesIgnorados: string[] = [];
+  const ajuste = (almacen: string) => {
+    const a = ajustesFicha[almacen];
+    if (!a) return {};
+    const r: { andenes?: number; pasillos?: number } = {};
+    for (const k of ["andenes", "pasillos"] as const) {
+      if (a[k] === undefined) continue;
+      if (enteroFicha(a[k])) r[k] = a[k]; else ajustesIgnorados.push(`${almacen}: ${k}`);
+    }
+    return r;
+  };
+  const fichas = l.fichas.flatMap((f) => {
+    const alm = empates[f.almacen];
+    if (!alm || alm === OMITIR) return [];
+    const aj = ajuste(f.almacen);
+    const andenes = aj.andenes ?? f.andenes, pasillos = aj.pasillos ?? f.pasillos;
+    if (!f.andenes && !f.pasillos && aj.andenes === undefined && aj.pasillos === undefined) return [];
+    return [{
+      alm,
+      ficha: {
+        ...(andenes || aj.andenes !== undefined ? { andenes } : {}), ...(pasillos || aj.pasillos !== undefined ? { pasillos } : {}),
+        ...(f.zonas.length ? { zonas: f.zonas } : {}),
+        ...(f.techo.louvers + f.techo.extractores + f.techo.inyectores ? { techo: f.techo } : {}),
+        fuente: "programa-anual", actualizado: hoy,
+      },
+    }];
+  });
+  return { carga: { archivo, activos, planes, asignaciones, programa, fichas }, sinAlmacen, sapQuitados, clavesQuitadas, ajustesIgnorados };
+}
+
+/** Andenes o pasillos válidos en una ficha: entero de 0 a 500. */
+export const enteroFicha = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 500;
+
+export type ResumenFechas = {
+  total: number;
+  /** Fechas por mes ("2026-03" → 512), en orden. */
+  porMes: Record<string, number>;
+  /** Fechas en la semana 1 del año (lunes a domingo de la semana del 1 de enero). */
+  semana1: number;
+  porAlmacen: Record<string, number>;
+  desde: string | null;
+  hasta: string | null;
+};
+
+/**
+ * Resumen de las fechas que lleva la carga, para mostrarlo antes de simular. Cuenta cada fecha distinta de cada
+ * activo y plan (lo mismo que se guarda); `porAlmacen` va por id del almacén de Factory.
+ */
+export function resumenFechas(carga: Carga): ResumenFechas {
+  const alm = new Map(carga.activos.map((a) => [a.i, a.alm]));
+  const vistas = new Set<string>();
+  const porMes: Record<string, number> = {}, porAlmacen: Record<string, number> = {};
+  let desde: string | null = null, hasta: string | null = null;
+  for (const p of carga.programa) {
+    const k = `${p.i}|${normalizar(p.n)}|${p.f}`;
+    if (vistas.has(k)) continue;
+    vistas.add(k);
+    const mes = p.f.slice(0, 7);
+    porMes[mes] = (porMes[mes] ?? 0) + 1;
+    const a = alm.get(p.i) ?? "";
+    porAlmacen[a] = (porAlmacen[a] ?? 0) + 1;
+    if (!desde || p.f < desde) desde = p.f;
+    if (!hasta || p.f > hasta) hasta = p.f;
+  }
+  // semana 1: la que contiene el 1 de enero del año que más se repite
+  const porAnio = new Map<string, number>();
+  for (const [mes, n] of Object.entries(porMes)) porAnio.set(mes.slice(0, 4), (porAnio.get(mes.slice(0, 4)) ?? 0) + n);
+  const anio = Number([...porAnio].sort((x, y) => y[1] - x[1])[0]?.[0]);
+  let semana1 = 0;
+  if (anio) {
+    const enero1 = Date.UTC(anio, 0, 1);
+    const lunes = enero1 - ((new Date(enero1).getUTCDay() + 6) % 7) * DIA_MS;
+    const ini = isoDe(lunes), fin = isoDe(lunes + 6 * DIA_MS);
+    for (const k of vistas) { const f = k.slice(k.lastIndexOf("|") + 1); if (f >= ini && f <= fin) semana1++; }
+  }
+  const ordenado = Object.fromEntries(Object.entries(porMes).sort(([x], [y]) => x.localeCompare(y)));
+  return { total: vistas.size, porMes: ordenado, semana1, porAlmacen, desde, hasta };
 }

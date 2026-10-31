@@ -7,6 +7,7 @@ import { alternarActivo, crearAlmacen, crearModo, crearOrigen, guardarMetas, imp
 import { ImportarAlmacenes } from "@/components/importar/ImportarAlmacenes";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { diagnosticarLlave } from "@/lib/diagnostico";
+import { FichaAlmacen, type Ficha } from "./FichaAlmacen";
 
 export const metadata = { title: "Configuración" };
 
@@ -15,11 +16,11 @@ export default async function Configuracion({ searchParams }: { searchParams: Pr
   const sp = await searchParams;
   const supabase = await createClient();
   const [a, o, m] = await Promise.all([
-    supabase.from("almacenes").select("id_almacen, nombre_almacen, activo").order("nombre_almacen"),
+    supabase.from("almacenes").select("id_almacen, nombre_almacen, activo, ficha").order("nombre_almacen"),
     supabase.from("origenes_falla").select("id_origen, nombre, pilares, orden, activo").order("orden").order("nombre"),
     supabase.from("modos_falla").select("id_modo, nombre, pilares, orden, activo").order("orden").order("nombre"),
   ]);
-  const almacenes = (a.data ?? []) as Almacen[];
+  const almacenes = (a.data ?? []) as (Almacen & { ficha: Ficha })[];
   // Se ocultan los que solo aplicaban a pilares retirados (p. ej. Dorsales)
   const vigente = (x: { pilares: Pilar[] | null }) => !x.pilares || x.pilares.some(esPilar);
   const origenes = ((o.data ?? []) as Origen[]).filter(vigente);
@@ -52,8 +53,11 @@ export default async function Configuracion({ searchParams }: { searchParams: Pr
 
       <ImportarAlmacenes importar={importarAlmacenes} />
       <div className="grid gap-6">
-        <Lista id="almacenes" titulo="Almacenes" sub="CEDIS y sitios donde están los equipos." tabla="almacenes"
-          items={almacenes.map((x) => ({ id: x.id_almacen, nombre: x.nombre_almacen, activo: x.activo }))}
+        <Lista id="almacenes" titulo="Almacenes" sub="CEDIS y sitios donde están los equipos. La ficha de la nave (andenes y pasillos) arma la planta en 3D." tabla="almacenes"
+          items={almacenes.map((x) => ({
+            id: x.id_almacen, nombre: x.nombre_almacen, activo: x.activo,
+            detalle: <FichaAlmacen id={x.id_almacen} nombre={x.nombre_almacen} ficha={x.ficha} editable={esAdmin(perfil.rol)} />,
+          }))}
           accion={crearAlmacen} placeholder="Ej. CDN1, Tijuana" />
       </div>
 
@@ -110,7 +114,7 @@ function Alternar({ tabla, id, activo }: { tabla: string; id: string; activo: bo
 
 function Lista({ id, titulo, sub, tabla, items, accion, placeholder }: {
   id: string; titulo: string; sub: string; tabla: string;
-  items: { id: string; nombre: string; activo: boolean }[]; accion: (f: FormData) => Promise<void>; placeholder: string;
+  items: { id: string; nombre: string; activo: boolean; detalle?: React.ReactNode }[]; accion: (f: FormData) => Promise<void>; placeholder: string;
 }) {
   return (
     <section id={id} className="caja-panel scroll-mt-24 p-6">
@@ -121,12 +125,15 @@ function Lista({ id, titulo, sub, tabla, items, accion, placeholder }: {
         <input id={`nuevo-${id}`} name="nombre" required className="campo min-h-11" placeholder={placeholder} />
         <BotonEnviar className="btn-primario min-h-11 shrink-0" pendiente="Agregando…">Agregar</BotonEnviar>
       </form>
-      <ul className="mt-5 max-h-80 space-y-1.5 overflow-y-auto">
+      <ul className={`mt-5 space-y-1.5 overflow-y-auto ${items.some((i) => i.detalle) ? "max-h-[32rem]" : "max-h-80"}`}>
         {items.length === 0 && <li className="py-4 text-center text-[15px] text-suave">Sin registros todavía.</li>}
         {items.map((i) => (
-          <li key={i.id} className="flex items-center justify-between rounded-xl bg-papel px-4 py-2">
-            <span className={i.activo ? "font-medium" : "text-suave line-through"}>{i.nombre}</span>
-            <Alternar tabla={tabla} id={i.id} activo={i.activo} />
+          <li key={i.id} className="rounded-xl bg-papel px-4 py-2">
+            <div className="flex items-center justify-between gap-3">
+              <span className={i.activo ? "font-medium" : "text-suave line-through"}>{i.nombre}</span>
+              <Alternar tabla={tabla} id={i.id} activo={i.activo} />
+            </div>
+            {i.detalle}
           </li>
         ))}
       </ul>

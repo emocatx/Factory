@@ -36,8 +36,27 @@ function rangoMes(s: string): [string, string] | null {
 
 const ACCIONES: Record<string, string> = {
   alta: "Alta", edicion: "Edición", asignacion: "Asignación", inicio: "Inicio de atención", cierre: "Cierre", reapertura: "Reapertura", cancelacion: "Cancelación",
-  baja: "Baja", paro: "Entró en paro", liberacion: "Liberado", importacion: "Carga del programa anual",
+  baja: "Baja", paro: "Entró en paro", liberacion: "Liberado", importacion: "Carga del programa anual", eliminacion: "Eliminación",
 };
+
+/** Servicios del programa semanal: las mismas acciones, con las palabras del preventivo. */
+const ACCIONES_PROGRAMA: Record<string, string> = {
+  asignacion: "Asignación", inicio: "En ejecución", cierre: "Completado", reprogramacion: "Reprogramado",
+  no_realizado: "No realizado", reapertura: "Regresó a programado", eliminacion: "Eliminación", edicion: "Edición",
+};
+
+const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const corta = (iso?: string) => (iso && /^\d{4}-\d{2}-\d{2}/.test(iso) ? `${+iso.slice(8, 10)} ${MESES[+iso.slice(5, 7) - 1]} ${iso.slice(0, 4)}` : "");
+
+/** Qué cambió en un servicio del programa, en pocas palabras: la fecha que importa y el motivo si hay. */
+function detallePrograma(accion: string, d: Record<string, string>, responsable?: string) {
+  const fecha = accion === "cierre" ? corta(d.fecha_realizada) && `hecho el ${corta(d.fecha_realizada)}`
+    : accion === "reprogramacion" ? corta(d.fecha_programada) && `al ${corta(d.fecha_programada)}`
+    : corta(d.fecha_programada) && `del ${corta(d.fecha_programada)}`;
+  const motivo = accion === "reprogramacion" || accion === "no_realizado" ? d.motivo : "";
+  const a = accion === "asignacion" && responsable ? `a ${responsable}` : "";
+  return [a, fecha, motivo].filter(Boolean).join(" · ");
+}
 
 export default async function Historial({ searchParams }: { searchParams: Promise<Filtros> }) {
   const { tenant, perfil } = await obtenerSesion();
@@ -167,13 +186,16 @@ export default async function Historial({ searchParams }: { searchParams: Promis
         <ol className="caja-panel divide-y divide-papel">
           {eventos.map((ev) => {
             const d = (ev.datos_despues ?? ev.datos_antes ?? {}) as Record<string, string>;
+            const programa = ev.tabla === "programa_mantenimiento";
+            const detalle = programa ? detallePrograma(ev.accion, d, d.id_responsable ? nombreDe.get(d.id_responsable) : undefined) : "";
             return (
               <li key={ev.id} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3 text-sm">
                 <span className="w-40 shrink-0 tabular-nums text-xs text-suave">{fechaHora(ev.fecha, tenant.zona_horaria)}</span>
-                <span className="chip bg-papel">{ACCIONES[ev.accion] ?? ev.accion}</span>
+                <span className="chip bg-papel">{(programa ? ACCIONES_PROGRAMA[ev.accion] : ACCIONES[ev.accion]) ?? ev.accion}</span>
                 <span className="font-medium">
                   {ev.tabla === "ordenes_mantenimiento" ? <>Orden <span className="folio">{d.folio_ticket}</span></>
                     : ev.accion === "importacion" ? <>{d.equipos_nuevos} equipos nuevos, {d.equipos_actualizados} actualizados, {d.asignaciones_nuevas} asignaciones a planes</>
+                    : programa ? <>Preventivo de {d.nombre_equipo ?? "equipo sin nombre"}{detalle && <span className="font-normal text-suave"> · {detalle}</span>}</>
                     : <>Equipo {d.nombre_equipo}</>}
                 </span>
                 <span className="text-xs text-suave">{ev.usuario_id ? nombreDe.get(ev.usuario_id) ?? "Usuario" : "Sistema"}</span>

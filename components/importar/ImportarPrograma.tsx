@@ -5,12 +5,17 @@
 // cuyas columnas se unen a las de Factory una vez y quedan guardadas para la empresa.
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { leerArchivoTabla } from "@/lib/tabla";
-import { armarCarga, CATEGORIAS, leerPlanAnual, normalizar, OMITIR, proximaProgramada, sugerirAlmacen, type Carga, type Categoria, type Lectura } from "@/lib/planAnual";
+import {
+  armarCarga, CATEGORIAS, enteroFicha, leerPlanAnual, normalizar, OMITIR, proximaProgramada, resumenFechas, sugerirAlmacen,
+  type AjustesFicha, type Carga, type Categoria, type Lectura, type Problema,
+} from "@/lib/planAnual";
 import {
   ALMACENES_ELEGIDOS, CAMPOS, faltantes, filaEncabezados, firmaEncabezados, leerPlantilla, mapeoAutomatico, mapeoParaGuardar, plantillaXlsx,
   type Campo, type Mapeo, type MapeosGuardados,
 } from "@/lib/plantillaFactory";
 import type { Simulacion } from "@/app/(app)/p/[pilar]/planes/acciones";
+import { guardarFichaAlmacen } from "@/app/(app)/(general)/configuracion/acciones";
+import { Barra } from "@/components/ui";
 
 type Almacen = { id: string; nombre: string };
 type Respuesta = { ok: boolean; mensaje: string };
@@ -21,6 +26,17 @@ const PASOS = ["Subir archivo", "Revisar", "Confirmar"] as const;
 const n = (v: number) => v.toLocaleString("es-MX");
 const hoyMx = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
 const fechaCorta = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
+const mesCorto = (ym: string) => new Date(`${ym}-15T12:00:00Z`).toLocaleDateString("es-MX", { month: "short", year: "numeric", timeZone: "UTC" });
+
+// Cómo se pinta cada aviso según su nivel; el prefijo dice lo mismo que el color para quien no lo distingue
+const NIVEL: Record<Problema["nivel"], { orden: number; clase: string; prefijo: string }> = {
+  error: { orden: 0, clase: "bg-paro-suave text-paro-texto", prefijo: "Error" },
+  aviso: { orden: 1, clase: "bg-alerta-suave text-alerta-texto", prefijo: "Revisar" },
+  info: { orden: 2, clase: "bg-papel text-tinta", prefijo: "Nota" },
+};
+
+/** Valor de un campo numérico de la ficha: vacío = sin ajuste; lo demás se guarda tal cual para que armarCarga lo valide. */
+const leerCampo = (v: string) => (v.trim() === "" ? undefined : Number(v));
 
 /** Primero el formato CABLOMTO en cualquiera de sus hojas; si no, la primera hoja como tabla con encabezados. */
 async function leer(archivo: File): Promise<Fuente | "sin-encabezados" | null> {
@@ -60,6 +76,7 @@ export function ImportarPrograma({ pilar, almacenes, mapeos, cargar, simular, re
   const [resultado, setResultado] = useState<Respuesta | null>(null);
   const [sim, setSim] = useState<{ carga: Carga; r: Respuesta & { simulacion?: Simulacion } } | null>(null);
   const [todosCambios, setTodosCambios] = useState(false);
+  const [ajustes, setAjustes] = useState<AjustesFicha>({});
   const [guardando, iniciar] = useTransition();
   const hoy = useMemo(hoyMx, []);
 
@@ -84,9 +101,22 @@ export function ImportarPrograma({ pilar, almacenes, mapeos, cargar, simular, re
   }, [lectura]);
   const filtrados = useMemo(() => (lectura?.activos ?? []).filter((a) => (!filtroAlm || a.almacen === filtroAlm) && (!filtroCat || a.categoria === filtroCat)), [lectura, filtroAlm, filtroCat]);
   const nombreAlm = (id: string) => almacenes.find((a) => a.id === id)?.nombre;
-  const preparado = useMemo(() => (lectura && !sinEmpatar ? armarCarga(lectura, empates, hoy, fuente?.archivo ?? "", pilar) : null), [lectura, empates, sinEmpatar, hoy, fuente, pilar]);
+  const preparado = useMemo(() => (lectura && !sinEmpatar ? armarCarga(lectura, empates, hoy, fuente?.archivo ?? "", pilar, ajustes) : null),
+    [lectura, empates, sinEmpatar, hoy, fuente, pilar, ajustes]);
+  const fechas = useMemo(() => (preparado ? resumenFechas(preparado.carga) : null), [preparado]);
+  const problemas = useMemo(() => [...(lectura?.problemas ?? [])].sort((a, b) => NIVEL[a.nivel].orden - NIVEL[b.nivel].orden), [lectura]);
+  // Almacenes del archivo a los que les falta un dato de la nave, para resaltarlos en la tabla
+  const faltaFicha = useMemo(() => {
+    const de = (t: Problema["tipo"]) => new Set(problemas.find((p) => p.tipo === t)?.almacenes ?? []);
+    return { andenes: de("sin-andenes"), pasillos: de("sin-pasillos") };
+  }, [problemas]);
+  // Lo capturado a mano en almacenes que sí se cargan; se guarda también como ficha manual al confirmar
+  const ajustados = useMemo(() => Object.entries(ajustes).flatMap(([alm, a]) => {
+    const id = empates[alm], ficha = { ...(enteroFicha(a.andenes) ? { andenes: a.andenes } : {}), ...(enteroFicha(a.pasillos) ? { pasillos: a.pasillos } : {}) };
+    return id && id !== OMITIR && Object.keys(ficha).length ? [{ alm, id, ficha }] : [];
+  }), [ajustes, empates]);
   // Solo el programa de inmueble describe la nave (andenes, pasillos); en los demás no se pide la ficha.
-  const conNave = !!lectura?.fichas.some((f) => f.andenes || f.pasillos);
+  const conNave = !!lectura?.fichas.some((f) => f.andenes || f.pasillos) || faltaFicha.andenes.size + faltaFicha.pasillos.size > 0;
   const conCodigos = !!lectura?.planes.some((p) => p.codigos.length);
   const conHoras = !!lectura?.activos.some((a) => a.horas !== null);
 
@@ -103,7 +133,7 @@ export function ImportarPrograma({ pilar, almacenes, mapeos, cargar, simular, re
   const simulacion = sim && sim.carga === carga ? sim.r : null;
 
   function reiniciar() {
-    setPaso(1); setFuente(null); setMapeo({}); setElegidos({}); setError(null); setResultado(null); setFiltroAlm(""); setFiltroCat("");
+    setPaso(1); setFuente(null); setMapeo({}); setElegidos({}); setAjustes({}); setError(null); setResultado(null); setFiltroAlm(""); setFiltroCat("");
   }
 
   async function alElegir(archivo: File | undefined) {
@@ -138,6 +168,15 @@ export function ImportarPrograma({ pilar, almacenes, mapeos, cargar, simular, re
     setResultado(null);
     iniciar(async () => {
       const r = await cargar(pilar, preparado.carga);
+      // lo capturado a mano queda como ficha manual: el siguiente programa ya no lo pisa
+      if (r.ok && ajustados.length) {
+        const fallas: string[] = [];
+        for (const a of ajustados) {
+          const g = await guardarFichaAlmacen(a.id, a.ficha).catch(() => ({ ok: false, mensaje: "sin conexión" }));
+          if (!g.ok) fallas.push(`${a.alm}: ${g.mensaje}`);
+        }
+        if (fallas.length) r.mensaje += ` No se guardó la ficha manual de ${fallas.join("; ")}.`;
+      }
       setResultado(r);
       // lo decidido (columnas y almacenes) queda guardado para la próxima vez
       if (r.ok && recordar) {
@@ -253,13 +292,36 @@ export function ImportarPrograma({ pilar, almacenes, mapeos, cargar, simular, re
                   ))}
                 </dl>
 
-                {lectura.problemas.length > 0 && (
+                {problemas.length > 0 && (
                   <section aria-labelledby="imp-avisos">
                     <h3 id="imp-avisos" className="mb-2 text-[17px] font-semibold">Avisos</h3>
                     <ul className="space-y-2">
-                      {lectura.problemas.map((p) => (
-                        <li key={p.tipo} className={`rounded-[14px] px-4 py-3 text-[14px] ${p.tipo === "sin-sap" ? "bg-alerta-suave text-alerta-texto" : "bg-paro-suave text-paro-texto"}`}>{p.texto}</li>
-                      ))}
+                      {problemas.map((p) => {
+                        const nv = NIVEL[p.nivel];
+                        return (
+                          <li key={p.tipo} className={`rounded-[14px] px-4 py-3 text-[14px] ${nv.clase}`}>
+                            <p><strong className="font-semibold">{nv.prefijo}:</strong> {p.texto}</p>
+                            {!!p.filas?.length && (
+                              <details className="group/filas mt-2">
+                                <summary className="inline-flex min-h-10 cursor-pointer list-none items-center gap-1.5 font-medium underline-offset-2 hover:underline">
+                                  <span aria-hidden="true" className="transition-transform group-open/filas:rotate-90">›</span>
+                                  Ver {p.filas.length === 1 ? "la fila" : `las ${n(p.filas.length)} filas`}
+                                </summary>
+                                <ul className="mt-1 max-h-80 divide-y divide-papel overflow-y-auto rounded-[12px] bg-panel text-tinta">
+                                  {p.filas.map((f, i) => (
+                                    <li key={`${f.fila}-${i}`} className="grid gap-x-3 px-3 py-2 sm:grid-cols-[4.5rem_6rem_minmax(0,1fr)_minmax(0,1fr)] sm:items-baseline">
+                                      <span className="text-[13px] text-suave sm:text-[14px]"><span className="tabular-nums">Fila {f.fila}</span><span className="sm:hidden"> · <span className="font-mono">{f.almacen}</span></span></span>
+                                      <span className="hidden font-mono sm:block">{f.almacen}</span>
+                                      <span className="break-words">{f.denominacion}</span>
+                                      <span className="break-words text-suave">{f.detalle}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </details>
+                            )}
+                          </li>
+                        );
+                      })}
                     </ul>
                   </section>
                 )}
@@ -267,8 +329,13 @@ export function ImportarPrograma({ pilar, almacenes, mapeos, cargar, simular, re
                 <section aria-labelledby="imp-almacenes">
                   <h3 id="imp-almacenes" className="mb-1 text-[17px] font-semibold">{conNave ? "Almacenes y su ficha" : "Almacenes"}</h3>
                   <p className="mb-3 text-[14px] text-suave">{conNave
-                    ? "Andenes y pasillos salen de las denominaciones (“Andén CDNQ 12”, “racks pasillo 05”); arman la nave en 3D."
+                    ? "Andenes y pasillos salen de las denominaciones (“Andén CDNQ 12”, “racks pasillo 05”) y arman la nave en 3D. Si faltan o no cuadran, escríbelos: lo capturado aquí queda como ficha manual y el programa ya no lo cambia."
                     : "Elige a qué almacén de Factory corresponde cada uno del archivo."}</p>
+                  {preparado && preparado.ajustesIgnorados.length > 0 && (
+                    <p role="alert" className="mb-3 rounded-[14px] bg-paro-suave px-4 py-3 text-[14px] text-paro-texto">
+                      No se usan estos valores (deben ser enteros de 0 a 500): {preparado.ajustesIgnorados.join(", ")}.
+                    </p>
+                  )}
                   {sinEmpatar > 1 && (
                     <p className="mb-3 flex flex-wrap items-center gap-3 rounded-[14px] bg-papel px-4 py-3 text-[14px]">
                       <span>{sinEmpatar} almacenes del archivo no existen en Factory (o tienen varias opciones).</span>
@@ -278,7 +345,7 @@ export function ImportarPrograma({ pilar, almacenes, mapeos, cargar, simular, re
                       </button>
                     </p>
                   )}
-                  <div className="overflow-x-auto">
+                  <div className="relative overflow-x-auto">
                     <table className={`w-full text-[14px] ${conNave ? "min-w-[860px]" : "min-w-[520px]"}`}>
                       <thead className="text-left text-[13px] text-suave">
                         <tr>{["Archivo", "Almacén en Factory", "Activos", ...(conNave ? ["Andenes", "Pasillos", "Zonas", "Louvers · extractores · inyectores"] : [])].map((h) => <th key={h} className="px-3 pb-2 font-medium">{h}</th>)}</tr>
@@ -301,8 +368,26 @@ export function ImportarPrograma({ pilar, almacenes, mapeos, cargar, simular, re
                               </td>
                               <td className="px-3 py-2 tabular-nums">{n(f.activos)}</td>
                               {conNave && <>
-                                <td className={`px-3 py-2 tabular-nums ${f.andenes ? "" : "text-paro-texto"}`}>{f.andenes || "falta"}</td>
-                                <td className={`px-3 py-2 tabular-nums ${f.pasillos ? "" : "text-paro-texto"}`}>{f.pasillos || "falta"}</td>
+                                {(["andenes", "pasillos"] as const).map((k) => {
+                                  const propio = ajustes[f.almacen]?.[k], leido = f[k], valor = propio ?? (leido || undefined);
+                                  const malo = propio !== undefined && !enteroFicha(propio), falta = valor === undefined && faltaFicha[k].has(f.almacen);
+                                  return (
+                                    <td key={k} className="px-3 py-2">
+                                      <label className="sr-only" htmlFor={`imp-${k}-${f.almacen}`}>{k === "andenes" ? "Andenes" : "Pasillos"} de {f.almacen}</label>
+                                      <input id={`imp-${k}-${f.almacen}`} type="number" inputMode="numeric" min={0} max={500} step={1}
+                                        value={valor ?? ""} placeholder={falta ? "falta" : "—"} aria-invalid={malo || falta || undefined}
+                                        onChange={(e) => setAjustes((x) => {
+                                          const v = leerCampo(e.target.value), resto = { ...x[f.almacen] };
+                                          // escribir lo mismo que trae el archivo no cuenta como ajuste manual
+                                          if (v === undefined || v === leido) delete resto[k]; else resto[k] = v;
+                                          const otros = { ...x };
+                                          if (Object.keys(resto).length) otros[f.almacen] = resto; else delete otros[f.almacen];
+                                          return otros;
+                                        })}
+                                        className={`min-h-10 w-20 rounded-[10px] px-2.5 tabular-nums placeholder:text-current placeholder:opacity-70 ${malo || falta ? "bg-paro-suave text-paro-texto" : propio !== undefined ? "bg-info-suave text-info-texto" : "bg-papel"}`} />
+                                    </td>
+                                  );
+                                })}
                                 <td className="px-3 py-2 text-suave">{f.zonas.map((z) => CATEGORIAS[z]).join(", ") || "—"}</td>
                                 <td className="px-3 py-2 tabular-nums text-suave">{f.techo.louvers} · {f.techo.extractores} · {f.techo.inyectores}</td>
                               </>}
@@ -312,6 +397,13 @@ export function ImportarPrograma({ pilar, almacenes, mapeos, cargar, simular, re
                       </tbody>
                     </table>
                   </div>
+                  {conNave && (
+                    <p className="mt-2 text-[13px] text-suave">
+                      {ajustados.length
+                        ? `${ajustados.length === 1 ? "1 almacén lleva" : `${ajustados.length} almacenes llevan`} andenes o pasillos capturados a mano (en azul).`
+                        : "En rojo, lo que falta; en azul, lo que captures a mano."}
+                    </p>
+                  )}
                 </section>
 
                 <section aria-labelledby="imp-planes">
@@ -417,6 +509,52 @@ export function ImportarPrograma({ pilar, almacenes, mapeos, cargar, simular, re
                   <span className="text-suave"> Factory hizo la carga de prueba y la deshizo: esto es lo que va a pasar. Todavía no se guardó nada.</span>
                 </p>
 
+                {fechas && (
+                  <section aria-labelledby="imp-fechas" className="rounded-[18px] bg-papel p-4">
+                    <h3 id="imp-fechas" className="text-[17px] font-semibold">Fechas del programa</h3>
+                    {fechas.total === 0 ? (
+                      <p className="mt-1 text-[14px] text-suave">El archivo no trae fechas programadas: los servicios se calculan desde hoy con su frecuencia.</p>
+                    ) : (() => {
+                      const meses = Object.entries(fechas.porMes), tope = Math.max(...meses.map(([, v]) => v));
+                      const porAlm = Object.entries(fechas.porAlmacen).sort((a, b) => b[1] - a[1]);
+                      return (
+                        <>
+                          <p className="mt-1 text-[14px] text-suave">
+                            <strong className="font-semibold text-tinta tabular-nums">{n(fechas.total)}</strong> fechas
+                            {fechas.desde && fechas.hasta && <> del {fechaCorta(fechas.desde)} al {fechaCorta(fechas.hasta)}</>}
+                            {" "}· <strong className="font-semibold text-tinta tabular-nums">{n(fechas.semana1)}</strong> en la semana 1 del año.
+                          </p>
+                          <div className="mt-4 grid gap-6 lg:grid-cols-2">
+                            <div>
+                              <h4 className="mb-2 text-[14px] font-medium">Por mes</h4>
+                              <ul className="space-y-1.5">
+                                {meses.map(([m, v]) => (
+                                  <li key={m} className="grid grid-cols-[4.5rem_minmax(0,1fr)_3.5rem] items-center gap-3 text-[13px]">
+                                    <span className="text-suave">{mesCorto(m)}</span>
+                                    <Barra valor={(v / tope) * 100} tono="tinta" />
+                                    <span className="text-right tabular-nums">{n(v)}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="mb-2 text-[14px] font-medium">Por almacén</h4>
+                              <ul className="max-h-80 divide-y divide-panel-2 overflow-y-auto pr-3 text-[14px]">
+                                {porAlm.map(([id, v]) => (
+                                  <li key={id} className="flex items-baseline justify-between gap-3 py-1.5">
+                                    <span className="min-w-0 truncate">{nombreAlm(id) ?? "—"}</span>
+                                    <span className="tabular-nums">{n(v)}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </section>
+                )}
+
                 {!simulacion ? (
                   <p role="status" aria-busy="true" className="rounded-[14px] bg-papel px-4 py-3 text-[14px] text-suave">Simulando la carga de {n(preparado.carga.activos.length)} activos…</p>
                 ) : !simulacion.ok || !simulacion.simulacion ? (
@@ -431,13 +569,14 @@ export function ImportarPrograma({ pilar, almacenes, mapeos, cargar, simular, re
                     : <><span className="text-suave line-through decoration-1">{antes ?? "sin dato"}</span> <span aria-hidden="true">→</span><span className="sr-only">cambia a</span> <span className="font-medium">{ahora ?? "sin dato"}</span></>;
                   return (
                     <>
-                      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                        {[
+                      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                        {([
                           ["Equipos nuevos", s.equipos_nuevos],
                           ["Equipos que cambian", s.cambios_total],
                           ["Planes nuevos", s.planes_nuevos],
                           ["Asignaciones nuevas", s.asignaciones_nuevas],
-                        ].map(([t, v]) => (
+                          ...(typeof s.programadas_nuevas === "number" ? [["Fechas nuevas", s.programadas_nuevas]] : []),
+                        ] as [string, number][]).map(([t, v]) => (
                           <div key={t} className="rounded-[18px] bg-papel px-4 py-3">
                             <dt className="text-[13px] text-suave">{t}</dt>
                             <dd className="text-[22px] font-semibold tabular-nums">{n(v as number)}</dd>
@@ -453,6 +592,15 @@ export function ImportarPrograma({ pilar, almacenes, mapeos, cargar, simular, re
                         {preparado.clavesQuitadas > 0 && <li>{preparado.clavesQuitadas === 1 ? "1 activo con clave repetida en el archivo se carga" : `${n(preparado.clavesQuitadas)} activos con clave repetida en el archivo se cargan`} sin clave.</li>}
                         {preparado.sinAlmacen > 0 && <li>{n(preparado.sinAlmacen)} activos de almacenes marcados “No cargar” se quedan fuera.</li>}
                         <li>{s.fichas ? `${n(s.fichas)} fichas de almacén (andenes, pasillos y zonas) se actualizan.` : "Las fichas de almacén no se tocan."}</li>
+                        {ajustados.length > 0 && (
+                          <li>Andenes o pasillos capturados a mano en {ajustados.length === 1 ? "1 almacén" : `${ajustados.length} almacenes`} ({ajustados.map((a) => a.alm).join(", ")}): se guardan como ficha manual y los siguientes programas no los cambian.</li>
+                        )}
+                        {s.programa && (
+                          <li>
+                            Programa del pilar después de cargar: {n(s.programa.total)} fechas
+                            {s.programa.desde && s.programa.hasta ? `, del ${fechaCorta(s.programa.desde)} al ${fechaCorta(s.programa.hasta)}` : ""}.
+                          </li>
+                        )}
                         <li>
                           Agenda del pilar después de cargar:{" "}
                           <span className={s.agenda.vencidos ? "font-medium text-paro-texto" : ""}>{n(s.agenda.vencidos)} servicios vencidos</span>,
