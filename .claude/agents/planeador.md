@@ -45,7 +45,8 @@ Por almacén y categoría (la de la columna Categoría o, si falta, `categoriaDe
 Cada fecha programada del archivo (las columnas de semana, lunes a domingo; `Activo.programadas` y `fechasDe`) se vuelve un servicio del programa semanal con su estatus, y contra ellas se mide el cumplimiento. Revísalas:
 - Total por semana ISO y por almacén (cuántos mantenimientos tiene la semana 1, 2…), para que el usuario lo compare con su archivo.
 - Fechas fuera del año del programa (p. ej. 2018 o 2025 en un programa 2026), fechas ilegibles y planes con frecuencia pero sin ninguna fecha.
-- Fechas que no cuadran con su frecuencia (un 4M con 5 fechas en el año, dos fechas de la misma frecuencia en la misma semana).
+- Fechas que no cuadran con su frecuencia (un 4M con 5 fechas en el año, dos fechas de la misma frecuencia en la misma semana). Una visita de frecuencia mayor cubre a la menor: 3 trimestrales + 1 anual son 4 visitas, igual que 4 trimestrales con "3M-12M" el mismo día.
+- **Fecha escrita en otra columna.** Cada columna de semana tiene su número y periodo ("12 al 18" de enero); la fecha escrita en la celda debe caer en esa semana. Si no cae (p. ej. "04 MAR" en la semana 3 de enero, "08 ABR" en la semana 8 de febrero), casi siempre se copió o arrastró la celda de otra fila o mes, y la fila queda con meses sin servicio y otros con dos. Lista cada caso con fila, equipo, columna (semana y periodo), la fecha escrita y la fecha que tocaría según la columna, y marca las filas donde hay varias seguidas (patrón de copiado). No corrijas solo: el usuario decide si manda la columna o la fecha. La excepción es el año mal capturado con el día y mes correctos para su columna, que el importador ya corrige.
 - En el archivo limpio van en la columna "Fechas programadas" (AAAA-MM-DD separadas por coma) de cada fila de activo y frecuencia; verifica que la relectura da el mismo número de fechas que el original.
 
 ## Paso 3. Qué se dibuja y qué solo va al plan
