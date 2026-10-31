@@ -73,7 +73,7 @@ export default async function Resumen({
   const supabase = await createClient();
 
   const anio = new Date(ahora + OFFSET).getUTCFullYear();
-  const [{ count: activos }, { data: det }, { data: filas }, { data: rec }, hallazgos, programa] = await Promise.all([
+  const [{ count: activos }, { data: det }, { data: filas }, { data: rec }, hallazgos, { resumen: programa }] = await Promise.all([
     supabase.from("equipos").select("id_equipo", { count: "exact", head: true }).eq("tipo_pilar", pilar).neq("estatus", "baja"),
     supabase.from("v_ordenes_detalle").select("folio_ticket, fecha_ingreso, descripcion_falla, nombre_equipo, nombre_almacen, nombre_linea")
       .eq("pilar", pilar).in("estatus_orden", abiertas).order("fecha_ingreso", { ascending: true }).limit(1000),

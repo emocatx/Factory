@@ -2,19 +2,27 @@ import "server-only";
 import { createClient } from "./supabase/server";
 import type { Almacen, Equipo, Linea, Modo, Origen, Perfil, Pilar } from "./tipos";
 
-/** Supabase entrega como máximo 1000 filas por consulta: junta todas las páginas. */
+/** Error de una consulta de Supabase (PostgREST): mensaje y código de Postgres o de PostgREST. */
+export type ErrorConsulta = { message: string; code?: string };
+
+/**
+ * Supabase entrega como máximo 1000 filas por consulta: junta todas las páginas.
+ * Si una página falla devuelve lo que alcanzó a juntar y el error: quien decide con la lista completa
+ * (cruces, altas) debe revisar `error` antes de usar `data`.
+ */
 export async function todasLasPaginas<T>(
-  consulta: (desde: number, hasta: number) => PromiseLike<{ data: unknown[] | null; error: unknown }>,
+  consulta: (desde: number, hasta: number) => PromiseLike<{ data: unknown[] | null; error: ErrorConsulta | null }>,
   tam = 1000,
-): Promise<{ data: T[] }> {
+): Promise<{ data: T[]; error: ErrorConsulta | null }> {
   const todo: T[] = [];
   for (let desde = 0; desde < 100_000; desde += tam) {
     const { data, error } = await consulta(desde, desde + tam - 1);
-    if (error || !data) break;
+    if (error) return { data: todo, error };
+    if (!data) break;
     todo.push(...(data as T[]));
     if (data.length < tam) break;
   }
-  return { data: todo };
+  return { data: todo, error: null };
 }
 
 /**

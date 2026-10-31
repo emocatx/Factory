@@ -107,6 +107,15 @@ frecuencias que no cuadran).
 - Cumplimiento: completados entre programados a la fecha, medido contra la fecha original del programa (reprogramar
   no oculta el atraso); a tiempo = completado a más tardar el domingo de su semana. Avance de la semana y del mes,
   vencidos y reprogramados, por almacén y por responsable (`resumen_programa`).
+- Vencidos: todo lo abierto con fecha de una semana anterior a la actual, **de cualquier año** (no solo el periodo
+  que se mide), para que la cifra cuadre con la lista de vencidos.
+- Límites: al completar, la fecha real no puede ser futura ni de hace más de 7 días (técnico) o 90 días (admin,
+  supervisor, coordinador). Al reprogramar, la nueva fecha va de hoy a 30 días (técnico) o a 366 días (editores).
+- Nadie cambia un servicio directo en la tabla: todo cambio de estatus o de responsable pasa por las dos funciones.
+  Dar de alta o borrar servicios a mano es solo del admin (alta siempre como "programado", sin responsable, con plan
+  y equipo del mismo pilar); la carga del programa anual sigue igual.
+- Bitácora: cada cambio de estatus, fecha o responsable y cada borrado queda en la bitácora con quién lo hizo y el
+  antes y después (estatus, fechas, responsable y motivo). La carga del programa deja un solo registro, como antes.
 - Dónde: Planes → "Semana" (lista por día, selección múltiple, barra de acciones) y franja en el Resumen de Críticos
   e Infraestructura.
 
@@ -339,3 +348,4 @@ El Resumen de Móviles y la barra lateral marcan el estilo de toda la app; las d
 | 2026-10-31 | Equipo y servicio son filas distintas: "Resane y pintura andén CDNF 03" no es un servicio del andén CDNF 3; los servicios usan su clave como SAP y sin render; los equipos sin SAP quedan por dar de alta |
 | 2026-10-31 | Lo que pertenece a un área (mobiliario, baños, instalaciones, luminarias) es servicio; louvers y cortinas sin SAP son equipos por dar de alta |
 | 2026-10-31 | Programa semanal de preventivos: cada fecha del programa es un servicio con responsable y estatus (programado, asignado, en ejecución, completado, reprogramado, no realizado); cumplimiento contra la fecha original |
+| 2026-10-31 | Programa semanal, ajustes de seguridad y rendimiento: completar con fecha de hasta 7 días atrás (técnico) o 90 (editores), reprogramar hasta 30 días (técnico) o 366 (editores), alta y borrado directos solo del admin, bitácora de cada cambio y vencidos sin límite de año |

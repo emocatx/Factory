@@ -30,8 +30,18 @@ export type FilaPrograma = {
   fecha_realizada: string | null; motivo: string | null; origen: "programa-anual" | "manual";
   nombre_equipo: string; sap_id: string | null; clave_id: string | null; categoria: string | null;
   id_almacen: string | null; nombre_almacen: string | null; plan: string; cada_dias: number | null;
-  anio_iso: number; semana_iso: number; vencido: boolean; a_tiempo: boolean;
+  vencido: boolean; a_tiempo: boolean;
 };
+
+/** Lo que piden la lista de la semana y la de vencidos (menos datos por fila que la vista completa). */
+export const COLUMNAS_LISTA = [
+  "id", "fecha_programada", "fecha_original", "estatus", "id_responsable", "responsable", "fecha_realizada", "motivo",
+  "nombre_equipo", "sap_id", "clave_id", "nombre_almacen", "plan", "vencido",
+] as const satisfies readonly (keyof FilaPrograma)[];
+export type FilaLista = Pick<FilaPrograma, (typeof COLUMNAS_LISTA)[number]>;
+
+/** Estatus que siguen abiertos (lo que falta por hacer). */
+export const ESTATUS_ABIERTOS = ["programado", "asignado", "en_ejecucion", "reprogramado"] as const satisfies readonly EstatusPrograma[];
 
 /** Conteos de un grupo (empresa, almacén o responsable) en el periodo, medidos por la fecha del programa. */
 export type MetricasPrograma = {

@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { Aviso } from "@/components/ui";
 import { Desplegable, type Opcion } from "@/components/Desplegable";
-import { ETIQUETA_ESTATUS, MAX_MOTIVO, type EstatusPrograma, type FilaPrograma } from "@/lib/programa";
+import { ETIQUETA_ESTATUS, MAX_MOTIVO, type EstatusPrograma, type FilaLista } from "@/lib/programa";
 import { asignarPrograma, cambiarEstatusPrograma } from "./accionesPrograma";
 
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
@@ -36,7 +36,7 @@ const DEL_TECNICO: EstatusPrograma[] = ["asignado", "en_ejecucion", "reprogramad
 
 type Props = {
   pilar: string;
-  filas: FilaPrograma[];
+  filas: FilaLista[];
   desde: string;
   hoy: string;
   yo: string;
@@ -58,10 +58,10 @@ export function ListaSemana({ pilar, filas, desde, hoy, yo, editor, cambia, filt
   const [res, setRes] = useState<{ ok: boolean; mensaje: string } | null>(null);
   const [pend, iniciar] = useTransition();
 
-  const elegible = (f: FilaPrograma) => cambia && (editor || (f.id_responsable === yo && DEL_TECNICO.includes(f.estatus)));
+  const elegible = (f: FilaLista) => cambia && (editor || (f.id_responsable === yo && DEL_TECNICO.includes(f.estatus)));
   const elegibles = useMemo(() => filas.filter(elegible), [filas]); // eslint-disable-line react-hooks/exhaustive-deps
   const dias = useMemo(() => {
-    const m = new Map<string, FilaPrograma[]>();
+    const m = new Map<string, FilaLista[]>();
     for (const f of filas) m.set(f.fecha_programada, [...(m.get(f.fecha_programada) ?? []), f]);
     return [...m].sort(([a], [b]) => a.localeCompare(b));
   }, [filas]);
@@ -199,7 +199,7 @@ export function ListaSemana({ pilar, filas, desde, hoy, yo, editor, cambia, filt
   );
 }
 
-function Fila({ f, elegible, marcada, alternar }: { f: FilaPrograma; elegible: boolean; marcada: boolean; alternar: (v: boolean) => void }) {
+function Fila({ f, elegible, marcada, alternar }: { f: FilaLista; elegible: boolean; marcada: boolean; alternar: (v: boolean) => void }) {
   const ref = f.sap_id ? `SAP ${f.sap_id}` : f.clave_id;
   const detalle = f.estatus === "completado" && f.fecha_realizada ? `Hecho el ${corta(f.fecha_realizada)}`
     : f.fecha_original ? `Era el ${corta(f.fecha_original)}${f.motivo ? ` · ${f.motivo}` : ""}`

@@ -8,7 +8,7 @@ import {
   ESTATUS_PROGRAMA, type EstatusPrograma, type MetricasPrograma,
 } from "@/lib/programa";
 import { infoPilar, puedeAsignar } from "@/lib/catalogos";
-import { Barra, Encabezado, Kpi, Vacio } from "@/components/ui";
+import { Aviso, Barra, Encabezado, Kpi, Vacio } from "@/components/ui";
 import { Desplegable } from "@/components/Desplegable";
 import { FormFiltros } from "@/components/FormFiltros";
 import { ListaSemana } from "./ListaSemana";
@@ -52,9 +52,9 @@ export async function VistaSemana({ pilar, perfil, f, segmentado }: {
 
   const anio = +hoy.slice(0, 4);
   const sub = `Programa semanal de ${infoPilar(pilar).etiqueta}: qué toca, quién lo hace y qué falta.`;
-  const [resumen, semana, responsables, cat] = await Promise.all([
+  const [{ resumen, error: fallaResumen }, semana, responsables, cat] = await Promise.all([
     resumenPrograma(pilar, `${anio}-01-01`, `${anio}-12-31`, { almacen, responsable: resp === "sin" ? undefined : resp }),
-    programaSemana(pilar, elegida.anio, elegida.semana, { almacen, responsable: resp === "sin" ? undefined : resp, estatus: estatusConsulta }),
+    programaSemana(pilar, elegida.anio, elegida.semana, { almacen, responsable: resp, estatus: estatusConsulta }),
     responsablesPrograma(pilar),
     catalogosPilar(pilar, { equipos: false }),
   ]);
@@ -87,7 +87,7 @@ export async function VistaSemana({ pilar, perfil, f, segmentado }: {
   );
 
   // Sin la migración del programa (tabla, vista y resumen_programa) la consulta falla: solo el aviso.
-  if (!resumen) {
+  if (fallaResumen === "migracion" || semana.error === "migracion") {
     return (
       <>
         <Encabezado titulo="Planes de mantenimiento" sub={sub}>{segmentado("semana")}</Encabezado>
@@ -99,8 +99,18 @@ export async function VistaSemana({ pilar, perfil, f, segmentado }: {
       </>
     );
   }
+  if (!resumen || semana.error) {
+    return (
+      <>
+        <Encabezado titulo="Planes de mantenimiento" sub={sub}>{segmentado("semana")}</Encabezado>
+        <div className="entrar entrar-2">
+          <Aviso tono="paro">No se pudo cargar el programa. Vuelve a intentarlo en unos minutos.</Aviso>
+        </div>
+      </>
+    );
+  }
 
-  const filas = semana.filas.filter((x) => (resp === "sin" ? !x.id_responsable : true) && (estatus === "vencidos" ? x.vencido : true));
+  const filas = estatus === "vencidos" ? semana.filas.filter((x) => x.vencido) : semana.filas;
   const t = resumen.totales;
   const mes = MESES[+hoy.slice(5, 7) - 1];
   const editor = puedeAsignar(perfil.rol);

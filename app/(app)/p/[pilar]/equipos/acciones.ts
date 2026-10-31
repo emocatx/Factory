@@ -112,12 +112,14 @@ export async function importarEquipos(
   const clave = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
 
   type Existente = FilaEquipo & { id_equipo: string };
-  const [{ data: alm }, { data: eqs }] = await Promise.all([
+  const [{ data: alm }, { data: eqs, error: errorEqs }] = await Promise.all([
     supabase.from("almacenes").select("id_almacen, nombre_almacen"),
     todasLasPaginas<Existente>((d, h) => supabase.from("equipos")
       .select("id_equipo, nombre_equipo, sap_id, serie, clave_id, id_almacen, tipo_pilar, propiedad, modelo, fabricante, proveedor")
       .order("id_equipo").range(d, h)),
   ]);
+  // Sin la lista completa de equipos no se puede saber cuáles ya existen (se duplicarían).
+  if (errorEqs) return { ok: false, mensaje: "No se pudo leer la lista de equipos. Intenta de nuevo." };
   const almacenes = new Map((alm ?? []).map((a) => [clave(a.nombre_almacen as string), a.id_almacen as string]));
   const porSerie = new Map(eqs.filter((e) => e.serie).map((e) => [clave(e.serie!), e]));
   const porSap = new Map(eqs.filter((e) => e.sap_id).map((e) => [clave(e.sap_id!), e]));
