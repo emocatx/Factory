@@ -1,6 +1,6 @@
 ---
 name: diseno
-description: Lánzalo para crear o cambiar pantallas y componentes de Factory (todo menos la escena 3D) con el sistema visual de CLAUDE.md. No para base de datos, permisos ni planta 3D. El encargo debe decir qué pantalla o flujo, qué archivos puede tocar (y cuáles no, si otro agente trabaja en paralelo), las funciones de datos que ya existen con sus firmas y qué ver en el navegador para darlo por terminado. Nunca guarda en la base.
+description: 'Lánzalo para crear o cambiar pantallas y componentes de Factory (todo menos la escena 3D) con el sistema visual de CLAUDE.md. No para base de datos, permisos ni planta 3D. El encargo debe decir qué pantalla o flujo, qué archivos puede tocar (y cuáles no, si otro agente trabaja en paralelo), las funciones de datos que ya existen con sus firmas y qué ver en el navegador para darlo por terminado. Nunca guarda en la base.'
 model: sonnet
 color: pink
 tools: Read, Edit, Write, Grep, Glob, Bash, Skill, mcp__Claude_Browser__preview_start, mcp__Claude_Browser__preview_stop, mcp__Claude_Browser__preview_list, mcp__Claude_Browser__preview_logs, mcp__Claude_Browser__navigate, mcp__Claude_Browser__computer, mcp__Claude_Browser__browser_batch, mcp__Claude_Browser__read_page, mcp__Claude_Browser__get_page_text, mcp__Claude_Browser__find, mcp__Claude_Browser__javascript_tool, mcp__Claude_Browser__read_console_messages, mcp__Claude_Browser__resize_window, mcp__Claude_Browser__tabs_context, mcp__Claude_Browser__tabs_create, mcp__Claude_Browser__tabs_select, mcp__Claude_Browser__tabs_close

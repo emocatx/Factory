@@ -1,6 +1,6 @@
 ---
 name: planeador
-description: Lánzalo antes de cargar un programa de mantenimiento (Excel de Móviles, Críticos o Inmueble) o cuando llegue una versión corregida: empata almacenes, separa equipos de servicios, valida SAP, fechas y frecuencias, simula la carga y deja archivo limpio, reporte e inventario 3D en D:Cargas<pilar>. No carga nada ni cambia código. El encargo debe decir el pilar, la ruta del original, la versión anterior de la que parte y las decisiones del usuario que siguen vigentes.
+description: 'Lánzalo antes de cargar un programa de mantenimiento (Excel de Móviles, Críticos o Inmueble) o cuando llegue una versión corregida: empata almacenes, separa equipos de servicios, valida SAP, fechas y frecuencias, simula la carga y deja archivo limpio, reporte e inventario 3D en D:Cargas<pilar>. No carga nada ni cambia código. El encargo debe decir el pilar, la ruta del original, la versión anterior de la que parte y las decisiones del usuario que siguen vigentes.'
 model: opus
 color: purple
 tools: Read, Write, Grep, Glob, Bash, Skill, mcp__e1aa57dd-516f-4587-be00-d555c2a436be__execute_sql, mcp__e1aa57dd-516f-4587-be00-d555c2a436be__list_tables

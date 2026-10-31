@@ -1,6 +1,6 @@
 ---
 name: datos
-description: Lánzalo para cualquier cambio o consulta de datos en Factory: tablas, vistas, funciones, RLS y migraciones de Supabase, consultas de lib/, la parte de datos de las acciones del servidor, y simular una carga de Excel antes de hacerla. No para estilos ni pantallas. El encargo debe decir qué dato o comportamiento se necesita y para qué pantalla, qué archivos o tablas toca, que la migración se escribe pero no se aplica (la aplica la sesión principal con el OK del usuario) y qué cuenta como terminado.
+description: 'Lánzalo para cualquier cambio o consulta de datos en Factory: tablas, vistas, funciones, RLS y migraciones de Supabase, consultas de lib/, la parte de datos de las acciones del servidor, y simular una carga de Excel antes de hacerla. No para estilos ni pantallas. El encargo debe decir qué dato o comportamiento se necesita y para qué pantalla, qué archivos o tablas toca, que la migración se escribe pero no se aplica (la aplica la sesión principal con el OK del usuario) y qué cuenta como terminado.'
 model: opus
 color: blue
 tools: Read, Edit, Write, Grep, Glob, Bash, Skill, mcp__e1aa57dd-516f-4587-be00-d555c2a436be__execute_sql, mcp__e1aa57dd-516f-4587-be00-d555c2a436be__list_tables, mcp__e1aa57dd-516f-4587-be00-d555c2a436be__list_migrations, mcp__e1aa57dd-516f-4587-be00-d555c2a436be__get_advisors, mcp__e1aa57dd-516f-4587-be00-d555c2a436be__search_docs

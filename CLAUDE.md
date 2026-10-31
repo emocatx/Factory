@@ -78,6 +78,13 @@ Lo revisan `npm run revisar` y un hook que corre antes de cada edición (`.claud
 - Flujo de un programa: `planeador` (valida y entrega en `D:\Cargas`) → carga en el importador con el OK del usuario → `planta-3d` dibuja los tipos de activo de su inventario.
 - Modelo por agente: `opus` para datos, seguridad, planeador y planta-3d (razonamiento con SQL, permisos, datos y rendimiento); `sonnet` para diseno y pruebas. Cada agente sigue su sección "Cómo cuidar tu contexto" (ubicar antes de leer, salidas cortas, datos grandes por script, reporte breve).
 - Cada agente: su descripción dice cuándo lanzarlo y qué debe traer el encargo; sus herramientas son solo las que necesita (`seguridad` y `pruebas` no editan, `planeador` no edita código, ninguno aplica migraciones); y termina con su "Formato de salida" (resultado, cambios, verificación, obstáculos y peculiaridades, pendientes).
+- **Cuándo sí usar un subagente:** investigación y exploración amplia (buscar en muchos archivos, revisar un Excel o
+  la base); revisiones (seguridad, código, recorridos de `pruebas`); y tareas que necesitan su propia indicación (el
+  sistema visual de `diseno`, el presupuesto de `planta-3d`, las reglas del `planeador`).
+- **Cuándo no:** un agente que solo sería una "persona experta" sin herramientas ni reglas propias; flujos de varios
+  pasos donde cada uno depende del anterior (los hace la sesión principal en orden, o un solo agente de punta a punta);
+  y correr pruebas para depurar, donde hace falta la salida completa: typecheck, lint o build que fallan se corren y
+  se corrigen en la sesión principal. `pruebas` es para el recorrido final y para comparar antes y después.
 - Un solo agente escribe en cada archivo a la vez.
 - Solo la sesión principal hace commit, push y despliegue; los agentes entregan su reporte y la sesión principal lo verifica antes de seguir.
 - Toda decisión de producto va a `docs/producto.md` (su sección y una fila con fecha en la bitácora).

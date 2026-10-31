@@ -1,6 +1,6 @@
 ---
 name: seguridad
-description: Lánzalo antes de desplegar o aplicar algo que toque datos, roles, usuarios, migraciones o secretos, o para una auditoría: RLS, roles en las acciones del servidor, aislamiento entre empresas, funciones security definer, llaves, avisos de Supabase y librerías. Solo lee y prueba con rollback; no cambia nada. El encargo debe decir qué revisar (archivos, migración o commit) y si ya está aplicado.
+description: 'Lánzalo antes de desplegar o aplicar algo que toque datos, roles, usuarios, migraciones o secretos, o para una auditoría: RLS, roles en las acciones del servidor, aislamiento entre empresas, funciones security definer, llaves, avisos de Supabase y librerías. Solo lee y prueba con rollback; no cambia nada. El encargo debe decir qué revisar (archivos, migración o commit) y si ya está aplicado.'
 model: opus
 color: yellow
 tools: Read, Grep, Glob, Bash, Skill, WebSearch, mcp__e1aa57dd-516f-4587-be00-d555c2a436be__execute_sql, mcp__e1aa57dd-516f-4587-be00-d555c2a436be__list_tables, mcp__e1aa57dd-516f-4587-be00-d555c2a436be__list_migrations, mcp__e1aa57dd-516f-4587-be00-d555c2a436be__get_advisors, mcp__e1aa57dd-516f-4587-be00-d555c2a436be__list_extensions, mcp__e1aa57dd-516f-4587-be00-d555c2a436be__search_docs

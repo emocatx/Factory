@@ -1,6 +1,6 @@
 ---
 name: planta-3d
-description: Lánzalo para la escena 3D de Factory: cómo se ve (naves, equipos, luces, etiquetas, movimiento) y qué tan rápida es contra el presupuesto de docs/producto.md §7. No para los paneles sobre la escena (son de diseno) ni para datos. El encargo debe decir qué cambiar o medir, en qué almacén o vista, el inventario 3D del planeador si aplica y la medida que define terminado.
+description: 'Lánzalo para la escena 3D de Factory: cómo se ve (naves, equipos, luces, etiquetas, movimiento) y qué tan rápida es contra el presupuesto de docs/producto.md §7. No para los paneles sobre la escena (son de diseno) ni para datos. El encargo debe decir qué cambiar o medir, en qué almacén o vista, el inventario 3D del planeador si aplica y la medida que define terminado.'
 model: opus
 color: green
 tools: Read, Edit, Write, Grep, Glob, Bash, Skill, mcp__Claude_Browser__preview_start, mcp__Claude_Browser__preview_stop, mcp__Claude_Browser__preview_list, mcp__Claude_Browser__preview_logs, mcp__Claude_Browser__navigate, mcp__Claude_Browser__computer, mcp__Claude_Browser__browser_batch, mcp__Claude_Browser__read_page, mcp__Claude_Browser__get_page_text, mcp__Claude_Browser__find, mcp__Claude_Browser__javascript_tool, mcp__Claude_Browser__read_console_messages, mcp__Claude_Browser__resize_window, mcp__Claude_Browser__tabs_context, mcp__Claude_Browser__tabs_create, mcp__Claude_Browser__tabs_select, mcp__Claude_Browser__tabs_close
