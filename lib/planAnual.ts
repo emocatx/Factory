@@ -355,7 +355,11 @@ export function leerPlanAnual(tabla: Celda[][], hoja = ""): Lectura | null {
             : `Plan ${f} sin fechas en el calendario (vacío o con error, p. ej. #REF!)`));
           continue;
         }
-        const delAnio = fechas.filter((x) => Number(x.slice(0, 4)) === anio);
+        // La visita de una frecuencia mayor cubre a la menor: trimestral + anual = 3 fechas 3M y 1 de 12M, o 4 de 3M
+        // con la anual el mismo día ("3M-12M"); las dos formas suman 4 visitas.
+        const mayores = a.frecuencias.filter((g) => DIAS_FRECUENCIA[g] > DIAS_FRECUENCIA[f]);
+        const cubren = new Set([...fechas, ...mayores.flatMap((g) => fechasDe(a, g))]);
+        const delAnio = [...cubren].filter((x) => Number(x.slice(0, 4)) === anio);
         const [min, max] = esperadas(f);
         if (anio && (delAnio.length < min || delAnio.length > max)) {
           noCuadra.push(fila(`${f}: ${delAnio.length} fecha${s(delAnio.length)} en ${anio} en vez de ${min === max ? min : `${min} o ${max}`}`));
