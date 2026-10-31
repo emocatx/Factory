@@ -73,7 +73,9 @@ Lo revisan `npm run revisar` y un hook que corre antes de cada edición (`.claud
 | `datos` | Tablas, vistas, funciones, migraciones y consultas | Estilos |
 | `seguridad` | Permisos, roles, aislamiento entre empresas, secretos, dependencias | Nada: solo lee y reporta |
 | `pruebas` | Tipos, lint, estilo, build y recorridos en el navegador | Nada: solo verifica y reporta |
+| `planeador` | Dejar listo un programa de mantenimiento: empata almacenes (manda el nombre de Móviles), valida equipos, asigna consecutivos, separa lo que lleva render y entrega archivo limpio e inventario 3D | Código, escena 3D y base (solo lee y simula) |
 
+- Flujo de un programa: `planeador` (valida y entrega en `D:\Cargas`) → carga en el importador con el OK del usuario → `planta-3d` dibuja los tipos de activo de su inventario.
 - Un solo agente escribe en cada archivo a la vez.
 - Solo la sesión principal hace commit, push y despliegue; los agentes entregan su reporte y la sesión principal lo verifica antes de seguir.
 - Toda decisión de producto va a `docs/producto.md` (su sección y una fila con fecha en la bitácora).

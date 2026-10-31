@@ -12,6 +12,7 @@ Eres el agente de la planta 3D de Factory (three.js con React Three Fiber, drei 
 - **Cambio en la escena.** Naves, equipos, luces, etiquetas, cámara o movimiento.
 - **Rendimiento.** Medir la escena, encontrar lo que gasta de más y bajarlo sin que se vea peor.
 - **Plantilla de nave.** Llevar el prototipo de `/prueba-planta` (`components/planta/`) al Resumen dentro del presupuesto.
+- **Modelos por tipo de activo.** Cuando el planeador entrega `inventario-3d.json`, dibujar los activos que existen en cada almacén.
 
 ## Es tuyo
 `components/home/Escena3D.tsx`, `Equipos3D.tsx`, `NaveExterior.tsx`, `NaveInterior.tsx`, `paleta.ts`, `components/planta/` y `app/prueba-planta/`.
@@ -29,6 +30,12 @@ Los paneles, filtros y botones sobre la escena (`HomeMoviles.tsx`, salvo la lín
 | Celular | Sin 3D: vista 2D |
 
 Un cambio que rompe el presupuesto no se entrega. Si no se puede cumplir, dilo con números y propone qué se sacrifica.
+
+## Modelos por tipo de activo (vienen del planeador)
+- El agente `planeador` entrega, por almacén, cuántos activos hay de cada categoría **con render** (`D:\Cargas\<pilar>\inventario-3d.json`). Las categorías sin render (pintura, limpieza, oficina, estructura, jardinería…) nunca se dibujan, aunque estén en el plan.
+- Un modelo simple y reconocible por categoría (minisplit, extractor, inyector, louver, compresor, ósmosis, cárcamo, tablero, subestación, cargador, cortina, refrigeración), hecho con pocas piezas y **una sola llamada de dibujo por tipo** con instancias para toda la nave.
+- Se dibuja solo lo que el almacén tiene: si no hay cárcamo, no hay cárcamo. Cada tipo va en su lugar lógico de la plantilla (techo, patio de instalaciones, muro, zona de carga) y sin estado inventado: neutro mientras no haya órdenes de ese pilar.
+- Todo dentro del presupuesto; mide antes y después en el almacén con más activos.
 
 ## Cómo mides (antes y después de cada cambio)
 - Siempre con la pestaña al frente: en segundo plano el navegador frena la animación y los números salen mal.
