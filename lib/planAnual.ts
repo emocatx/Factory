@@ -30,9 +30,11 @@ export const CON_RENDER = new Set<Categoria>(["montacargas", "transpaleta", "pat
 /**
  * Una actividad, no un equipo: "Revisión y reparación andén CDNL 203", "Resane y pintura andén CDNF 03". Es otra fila
  * del plan con su propia clave; no se junta con el equipo que nombra ni se dibuja. Los equipos se nombran
- * EQUIPO ALMACÉN NÚMERO ("Andén SMO 01").
+ * EQUIPO ALMACÉN NÚMERO ("Andén SMO 01"). Lo que pertenece a un área ("Mobiliario oficinas 01 CDNF", "Baños
+ * oficinas CDNF", "Instalaciones eléctricas andenes") también es servicio.
  */
-export const SERVICIO = /^(revi[sc]i?on|reparacion|in[ps]{1,3}e?cc?i?on|resane|pintura|pintra|limpieza|cal[ae]fateo|re?emplazo|analisis|mantenimiento|balizamiento|impermeabilizacion)\b/;
+export const SERVICIO = /^(revi[sc]i?on|reparacion|in[ps]{1,3}e?cc?i?on|resane|pintura|pintra|limpieza|cal[ae]fateo|re?emplazo|analisis|mantenimiento|balizamiento|impermeabilizacion|instalacion(es)?|luminarias?)\b/;
+const AREAS = new Set<Categoria>(["taller", "vestidor", "bano", "comedor", "oficina", "area", "estructura", "balizamiento", "exterior", "jardineria", "limpieza", "pintura", "servicio"]);
 
 // El orden importa: primero el tipo de activo y después el tipo de trabajo. Las actividades ("Resane y pintura
 // andén…") no toman la categoría del equipo que nombran: van a pintura, limpieza o servicios generales.
@@ -43,7 +45,7 @@ const REGLAS: [Categoria, RegExp][] = [
   ["restregadora", /^(restregadora|barredora|lavadora de piso)/],
   ["osmosis", /osmosis|cloracion/], ["carcamo", /carcamo/],
   ["climatizacion", /mini ?splits?|cass?ett?e|casette|\buma\b|hvac|condensador|aire acondicionado|chiller|fan ?coil|paquete de aire|unidad paquete|adiabatico/],
-  ["refrigeracion", /congela|refrigera|camara fria|cuarto frio|enfriador|antecamara|precamara|multipack/],
+  ["refrigeracion", /congela|refrigera|camara fria|mesa fria|cuarto frio|enfriador|antecamara|precamara|multipack/],
   ["compresor", /compresor/],
   ["louver", /louver/], ["extractor", /extractor/], ["inyector", /inyector/], ["racks", /\brack|proteccion/], ["anden", /\banden/],
   ["cortina", /cortina|porton/], ["puerta", /puerta|salida/], ["taller", /taller/], ["vestidor", /vestidor|lock/],
@@ -61,7 +63,7 @@ const REGLAS: [Categoria, RegExp][] = [
 export const normalizar = (v: unknown) =>
   String(v ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
 
-export const esServicio = (denominacion: string) => SERVICIO.test(normalizar(denominacion));
+export const esServicio = (denominacion: string) => SERVICIO.test(normalizar(denominacion)) || AREAS.has(categoriaDe(denominacion));
 
 export function categoriaDe(denominacion: string): Categoria {
   const d = normalizar(denominacion);

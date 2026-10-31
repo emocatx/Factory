@@ -214,7 +214,8 @@ Presupuesto de rendimiento del módulo 3D (equipo de oficina con gráficos integ
 - Fechas con errores de captura: "0CT", "25MAY", "OCT26", "264M", "18 MOV", "EN".
 - **Equipo o servicio (2026-10-31).** Un equipo se nombra EQUIPO ALMACÉN NÚMERO ("Andén SMO 01"). Una fila que empieza
   con la actividad (revisión, reparación, inspección, resane, pintura, limpieza, balizamiento…; `SERVICIO`) es un
-  servicio aparte: no se junta con el equipo que nombra, no cuenta para la ficha ni se dibuja (categoría pintura,
+  servicio aparte (también lo que pertenece a un área: "Mobiliario oficinas 01", "Baños oficinas", instalaciones,
+  luminarias): no se junta con el equipo que nombra, no cuenta para la ficha ni se dibuja (categoría pintura,
   limpieza o "Servicios generales"), y si no trae SAP su clave hace de número (INF-11). Un **equipo** sin SAP se carga
   con su consecutivo y queda "Falta alta SAP" en Equipos hasta que se capture.
 - La plantilla Factory todavía admite varias actividades con la misma frecuencia en un equipo (filas con el mismo
@@ -319,3 +320,4 @@ El Resumen de Móviles y la barra lateral marcan el estilo de toda la app; las d
 | 2026-10-30 | Plantilla 3D: taller que crece con los equipos en Mantto, andenes en dos lados con más de 40, tipo por categoría y luego modelo, Críticos neutros en Móviles |
 | 2026-10-30 | Agente planeador y reglas del importador: consecutivos de 4 dígitos, andenes con número romano, fechas mal escritas y varias actividades con la misma frecuencia por equipo |
 | 2026-10-31 | Equipo y servicio son filas distintas: "Resane y pintura andén CDNF 03" no es un servicio del andén CDNF 3; los servicios usan su clave como SAP y sin render; los equipos sin SAP quedan por dar de alta |
+| 2026-10-31 | Lo que pertenece a un área (mobiliario, baños, instalaciones, luminarias) es servicio; louvers y cortinas sin SAP son equipos por dar de alta |

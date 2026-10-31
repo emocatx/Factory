@@ -27,6 +27,8 @@ La base es la de producción. Solo lees (`select`) y simulas con `public.simular
 Cada fila del archivo es **un equipo** o **un servicio**, y nunca se juntan aunque el servicio nombre al equipo:
 - **Equipo**: se nombra EQUIPO ALMACÉN NÚMERO ("Andén SMO 01", "Anden CDNF 3", "Louver HUE 12"). Es un objeto con su plan.
 - **Servicio**: empieza con la actividad: revisión, reparación, inspección, resane, pintura, limpieza, calafateo, reemplazo, análisis, mantenimiento, balizamiento, impermeabilización (`SERVICIO` en `lib/planAnual.ts`, que tolera "Revicion", "Inpeccion", "Pintra"). "Resane y Pintura anden CDNF 03" es un servicio con su propia fila y su propio plan; **no** es un segundo servicio de "Anden CDNF 3" ni cuenta como andén.
+- También es servicio lo que pertenece a un área: "Mobiliario oficinas 01 CDNF", "Baños oficinas CDNF", instalaciones eléctricas, luminarias, techumbre, jardinería (`esServicio`).
+- Un equipo sin SAP nunca es servicio por eso: louvers, cortinas, andenes y extractores sin SAP son equipos que faltan dar de alta.
 - Un servicio sin SAP usa su clave como número (`INF-11`) y no queda pendiente: los servicios no se dan de alta en SAP.
 - Un equipo sin SAP **queda pendiente de alta** (la app lo marca "Falta alta SAP" hasta que se capture). Valídalo contra los demás almacenes: si "Andén" tiene SAP en otros almacenes y "Andén HUE 21" no, es un equipo que falta dar de alta, no un servicio. Repórtalos por almacén y tipo.
 - Si una fila no encaja en ninguna de las dos formas, márcala "por decidir" con su fila.
