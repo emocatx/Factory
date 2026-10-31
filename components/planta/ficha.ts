@@ -3,7 +3,7 @@
 // de SAP (contando AND###, PAS### y viendo qué zonas existen) o de un formulario en la configuración.
 // Coordenadas en metros: x de poniente a oriente, z de norte (andenes) a sur; el centro de la nave es 0,0.
 import type { TipoEquipo } from "@/components/home/Equipos3D";
-import { categoriaDe, normalizar } from "@/lib/planAnual";
+import { ANDEN, categoriaDe, normalizar } from "@/lib/planAnual";
 
 /**
  * Ficha de una nave como llega del servidor: la de `almacenes.ficha` (la llena el programa anual o, después, un
@@ -12,6 +12,8 @@ import { categoriaDe, normalizar } from "@/lib/planAnual";
  */
 export type FichaNave = {
   andenes?: number; pasillos?: number; zonas?: string[];
+  /** Andenes en los dos lados de la nave; si falta, se decide por la cantidad. */
+  dosLados?: boolean;
   techo?: { louvers?: number; extractores?: number; inyectores?: number };
   compresores?: number; tableros?: number; minisplits?: number; cargadores?: number;
   fuente?: string; actualizado?: string;
@@ -29,7 +31,7 @@ export type EquipoNombre = { nombre: string; categoria: string | null };
  */
 export function fichaDesdeEquipos(equipos: EquipoNombre[]): FichaNave | null {
   const n = equipos.map((e) => ({ d: normalizar(e.nombre), c: e.categoria ?? categoriaDe(e.nombre) }));
-  const andenes = n.filter((e) => /^anden [a-z]{2,6} ?\d+/.test(e.d)).length;
+  const andenes = n.filter((e) => ANDEN.test(e.d)).length;
   const pasillos = new Set(n.flatMap((e) => { const m = e.d.match(/\bpasillo (\d+)/); return m ? [Number(m[1])] : []; })).size;
   if (!andenes && !pasillos) return null;
   const hay = (c: string) => n.some((e) => e.c === c);
@@ -141,7 +143,9 @@ export function fichaDeBase(id: string, nombre: string, base: FichaNave): FichaA
     if (k) zonas[k] = true;
   }
   const tope = (v: unknown, max: number) => Math.min(max, entero(v));
-  return { id, nombre, andenes, dosLados: andenes > ANDENES_DOS_LADOS, pasillos, zonas, minisplits: tope(base.minisplits, 40), tableros: tope(base.tableros, 30), compresores: tope(base.compresores, 6), cargadores: tope(base.cargadores, 52) || undefined, fuente: base.fuente };
+  // la ficha puede decir cuántos lados tiene; si no, se decide por la cantidad de andenes
+  const dosLados = typeof base.dosLados === "boolean" ? base.dosLados : andenes > ANDENES_DOS_LADOS;
+  return { id, nombre, andenes, dosLados, pasillos, zonas, minisplits: tope(base.minisplits, 40), tableros: tope(base.tableros, 30), compresores: tope(base.compresores, 6), cargadores: tope(base.cargadores, 52) || undefined, fuente: base.fuente };
 }
 
 /**

@@ -58,7 +58,7 @@ export type Activo = {
   fila: number;
   almacen: string;        // como viene en el archivo (CDN1, MTY 2, AGRO…)
   sap: string;
-  /** Sin número SAP real: vacío o un consecutivo interno (1, 2, 3… menos de 4 dígitos). */
+  /** Sin número SAP real: vacío, menos de 4 dígitos o parte de la serie 1, 2, 3… del archivo (ver serieConsecutiva). */
   sinSap: boolean;
   /** Clave interna que trae el archivo (plantilla Factory); si no, el consecutivo hace de clave. */
   clave?: string;
@@ -71,6 +71,8 @@ export type Activo = {
   servicio?: Partial<Record<Frecuencia, string>>;
   /** Último servicio hecho por frecuencia (plantilla Factory): de ahí se cuenta el siguiente. */
   ultimo?: Partial<Record<Frecuencia, string>>;
+  /** Más servicios con una frecuencia que ya tiene (p. ej. un andén con "Revisión" y "Pintura" cuatrimestrales). */
+  extras?: { f: Frecuencia; servicio: string; ultimo?: string }[];
   lanzamientos: number | null;
   /** Horas por servicio ("tiempo por frecuencia"), sumando las frecuencias que tenga. */
   horas: number | null;
@@ -132,19 +134,27 @@ function columnas(tabla: Celda[][]) {
 }
 
 const MESES: Record<string, number> = { ENE: 1, FEB: 2, MAR: 3, ABR: 4, MAY: 5, JUN: 6, JUL: 7, AGO: 8, SEP: 9, SET: 9, OCT: 10, NOV: 11, DIC: 12 };
+/** Meses mal escritos que aparecen en los programas ("18 MOV", "EN"). */
+const MESES_ERRATAS: Record<string, number> = { MOV: 11, EN: 1, SEPT: 9, AGTO: 8 };
 const p2 = (n: number) => String(n).padStart(2, "0");
 
 /** "04 FEB 26 4M" → { fecha: "2026-02-04", frecuencias: ["4M"] }; "06 MAY 26 3M-6M" trae dos; también acepta fechas de Excel. */
 export function fechaProgramada(c: Celda): { fecha: string; frecuencias: Frecuencia[] } | null {
   if (c instanceof Date) return { fecha: `${c.getUTCFullYear()}-${p2(c.getUTCMonth() + 1)}-${p2(c.getUTCDate())}`, frecuencias: [] };
-  const m = String(c ?? "").trim().toUpperCase().match(/^(\d{1,2})\s+([A-Z]{3})\.?\s+(\d{2}|\d{4})(?:\s+([\dM\s,/-]+))?$/);
-  if (!m || !MESES[m[2]]) return null;
+  // errores de captura comunes: "0CT" (cero), "25MAY", "OCT26", "264M" (año pegado a la frecuencia)
+  const t = String(c ?? "").trim().toUpperCase()
+    .replace(/(^|[\s\d])0CT/g, "$1OCT")
+    .replace(/(\d)([A-Z]{2,4}\b)/g, "$1 $2")
+    .replace(/\b([A-Z]{2,4})(\d)/g, "$1 $2");
+  const m = t.match(/^(\d{1,2})\s+([A-Z]{2,4})\.?\s+(\d{4}|\d{2})(?:\s*([\dM\s,/-]+))?$/);
+  const mes = m ? MESES[m[2]] ?? MESES_ERRATAS[m[2]] : undefined;
+  if (!m || !mes) return null;
   const anio = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
   const frecuencias = (m[4] ?? "").split(/[\s,/-]+/).filter((f): f is Frecuencia => FRECUENCIAS.includes(f as Frecuencia));
   // "31 SEP 26" quiere decir fin de mes: el día se ajusta al último del mes
-  const dia = Math.min(Number(m[1]), new Date(Date.UTC(anio, MESES[m[2]], 0)).getUTCDate());
+  const dia = Math.min(Number(m[1]), new Date(Date.UTC(anio, mes, 0)).getUTCDate());
   if (dia < 1) return null;
-  return { fecha: `${anio}-${p2(MESES[m[2]])}-${p2(dia)}`, frecuencias };
+  return { fecha: `${anio}-${p2(mes)}-${p2(dia)}`, frecuencias };
 }
 
 export function leerPlanAnual(tabla: Celda[][], hoja = ""): Lectura | null {
@@ -181,11 +191,15 @@ export function leerPlanAnual(tabla: Celda[][], hoja = ""): Lectura | null {
 
 /** Fichas, planes propuestos y problemas a partir de los activos leídos (común a los dos lectores). */
 export function armarLectura(formato: Lectura["formato"], hoja: string, activos: Activo[], extra: Problema[] = [], tareas: Record<string, string> = {}): Lectura {
+  // Un número de 4 dígitos o más que sigue la serie 1, 2, 3… del archivo es consecutivo, no SAP
+  const tope = serieConsecutiva(activos.filter((a) => !a.clave).map((a) => a.sap));
+  for (const a of activos) if (!a.sinSap && /^\d+$/.test(a.sap) && Number(a.sap) <= tope) a.sinSap = true;
+
   // Fichas por almacén: andenes (activos "Andén XXX n"), pasillos ("racks pasillo n"), zonas y techo
   const fichas: FichaArchivo[] = [];
   for (const almacen of [...new Set(activos.map((a) => a.almacen))]) {
     const de = activos.filter((a) => a.almacen === almacen);
-    const andenes = de.filter((a) => /^anden [a-z]{2,6} ?\d+/.test(normalizar(a.denominacion))).length;
+    const andenes = de.filter((a) => ANDEN.test(normalizar(a.denominacion))).length;
     const pasillos = new Set(de.flatMap((a) => { const m = normalizar(a.denominacion).match(/\bpasillo (\d+)/); return m ? [Number(m[1])] : []; })).size;
     const zonas = (["taller", "oficina", "bano", "vestidor", "comedor"] as Categoria[]).filter((z) => de.some((a) => a.categoria === z));
     const n = (k: Categoria) => de.filter((a) => a.categoria === k).length;
@@ -195,8 +209,7 @@ export function armarLectura(formato: Lectura["formato"], hoja: string, activos:
 
   // Planes propuestos: uno por categoría y frecuencia ("Andén · cuatrimestral"), o el servicio que diga el archivo
   const mapa = new Map<string, PlanPropuesto>();
-  for (const a of activos) for (const f of a.frecuencias) {
-    const nombre = planDe(a, f);
+  for (const a of activos) for (const { f, nombre } of serviciosDe(a)) {
     const k = normalizar(nombre);
     const p = mapa.get(k) ?? { nombre, categoria: a.categoria, frecuencia: f, cada_dias: DIAS_FRECUENCIA[f], activos: 0, codigos: [], ...(tareas[k] ? { tareas: tareas[k] } : {}) };
     p.activos++;
@@ -256,6 +269,29 @@ export function sugerirAlmacen(codigo: string, almacenes: { id: string; nombre: 
 /** Nombre del plan para una categoría y frecuencia ("Andén · cuatrimestral"). */
 export function nombrePlan(categoria: Categoria, f: Frecuencia) {
   return `${CATEGORIAS[categoria]} · ${NOMBRE_FRECUENCIA[f]}`;
+}
+
+/** Andén con su clave y número, también con número romano en medio ("Anden MTY II 01"). */
+export const ANDEN = /^anden [a-z]{2,6} ?(?:[ivx]+ )?\d+/;
+
+/**
+ * Hasta dónde llega la serie 1, 2, 3… con que el archivo numera lo que no tiene SAP: el número más alto tal que
+ * al menos el 90 % de 1…n aparece. En CAB Inmueble la serie va de 1 a 2127 y los SAP reales son de 5 dígitos;
+ * en Móviles cada almacén numera desde 1 y los SAP de 4 dígitos (3816…) quedan fuera de la serie.
+ */
+export function serieConsecutiva(numeros: string[]) {
+  const n = [...new Set(numeros.filter((s) => /^\d+$/.test(s)).map(Number))].filter((x) => x > 0).sort((a, b) => a - b);
+  let tope = 0;
+  n.forEach((v, i) => { if ((i + 1) / v >= 0.9) tope = v; });
+  return tope;
+}
+
+/** Todos los servicios del activo: uno por frecuencia más los extra con la misma frecuencia. */
+export function serviciosDe(a: Activo): { f: Frecuencia; nombre: string; extra: boolean; ultimo?: string }[] {
+  return [
+    ...a.frecuencias.map((f) => ({ f, nombre: planDe(a, f), extra: false })),
+    ...(a.extras ?? []).map((e) => ({ f: e.f, nombre: e.servicio, extra: true, ultimo: e.ultimo })),
+  ];
 }
 
 /** Plan del activo en esa frecuencia: el servicio que diga el archivo o "Categoría · frecuencia". */
@@ -325,7 +361,7 @@ export function armarCarga(l: Lectura, empates: Record<string, string>, hoy: str
     if (clave && claves.has(clave)) { clave = null; clavesQuitadas++; }
     if (clave) claves.add(clave);
     activos.push({ i, alm, sap, cons: consUnico && a.sinSap && /^\d+$/.test(a.sap) ? Number(a.sap) : null, clave, nombre: a.denominacion, cat: a.categoria });
-    for (const f of a.frecuencias) asignaciones.push({ i, n: planDe(a, f), f: inicioDePlan(a, f, hoy) });
+    for (const s of serviciosDe(a)) asignaciones.push({ i, n: s.nombre, f: s.extra ? s.ultimo ?? null : inicioDePlan(a, s.f, hoy) });
   });
   // solo los planes que usa algún activo que sí se carga
   const usados = new Set(asignaciones.map((x) => normalizar(x.n)));

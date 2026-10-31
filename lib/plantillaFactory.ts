@@ -3,7 +3,7 @@
 // se unen a estos campos una vez y el mapeo queda guardado para la empresa (tenants.mapeos_importacion).
 import { leerFecha } from "./historial";
 import {
-  armarLectura, CATEGORIAS, categoriaDe, DIAS_FRECUENCIA, fechaProgramada, FRECUENCIAS, NOMBRE_FRECUENCIA, nombrePlan, normalizar, restarDias,
+  armarLectura, CATEGORIAS, categoriaDe, planDe, DIAS_FRECUENCIA, fechaProgramada, FRECUENCIAS, NOMBRE_FRECUENCIA, nombrePlan, normalizar, restarDias,
   type Activo, type Categoria, type Frecuencia, type Lectura, type Problema,
 } from "./planAnual";
 import { libroXlsx } from "./xlsx";
@@ -120,8 +120,17 @@ export function leerPlantilla(tabla: string[][], filaEnc: number, m: Mapeo, hoja
     const proxima = dia(v(r, "proxima")), ultimo = dia(v(r, "ultimo"));
     if (proxima === undefined || ultimo === undefined) fechasMalas++;
     for (const f of fs) {
-      if (!a.frecuencias.includes(f)) a.frecuencias = FRECUENCIAS.filter((x) => x === f || a!.frecuencias.includes(x));
       const servicio = v(r, "servicio"), planSap = v(r, "planSap"), t = v(r, "tareas");
+      // otra actividad con una frecuencia que el activo ya tiene (andén con "Revisión" y "Pintura" cuatrimestrales): servicio aparte
+      const actual = a.frecuencias.includes(f) ? normalizar(planDe(a, f)) : null;
+      if (actual && servicio && normalizar(servicio) !== actual) {
+        if (!(a.extras ??= []).some((e) => normalizar(e.servicio) === normalizar(servicio))) {
+          a.extras.push({ f, servicio, ...(ultimo ? { ultimo } : proxima ? { ultimo: restarDias(proxima, DIAS_FRECUENCIA[f]) } : {}) });
+        }
+        if (t) tareas[normalizar(servicio)] = t;
+        continue;
+      }
+      if (!a.frecuencias.includes(f)) a.frecuencias = FRECUENCIAS.filter((x) => x === f || a!.frecuencias.includes(x));
       if (servicio) a.servicio![f] = servicio;
       if (planSap) a.planes[f] = planSap;
       if (t) tareas[normalizar(servicio || nombrePlan(a.categoria, f))] = t;

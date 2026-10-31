@@ -206,6 +206,15 @@ Presupuesto de rendimiento del módulo 3D (equipo de oficina con gráficos integ
 | Memoria de GPU | < 150 MB |
 | Celular | Sin 3D: vista 2D |
 
+**Reglas de lectura (2026-10-30, con el programa de Inmueble de CAB):**
+- Un número que sigue la serie 1, 2, 3… del archivo es consecutivo, aunque tenga 4 dígitos (`serieConsecutiva`: el
+  número más alto con al menos el 90 % de 1…n presente). En Inmueble la serie llega a 2127 y los SAP son de 5 dígitos;
+  en Móviles (tope 158) y Críticos (tope 92) los SAP de 4 dígitos quedan fuera de la serie.
+- Andenes con número romano en medio ("Anden MTY II 01") cuentan para la ficha.
+- Fechas con errores de captura: "0CT", "25MAY", "OCT26", "264M", "18 MOV", "EN".
+- Un equipo puede tener varias actividades con la misma frecuencia (andén con "Revisión y reparación" y "Pintura"
+  cuatrimestrales): en la plantilla Factory van como filas con el mismo equipo y otro Servicio.
+
 ### Plantilla de nave (en el Resumen; motor en `components/planta/Nave.tsx`, pruebas en `/prueba-planta`)
 
 **Cómo se arma cada almacén (sin código por almacén).** Al entrar a un almacén en el Resumen se ve su nave armada con
@@ -303,3 +312,4 @@ El Resumen de Móviles y la barra lateral marcan el estilo de toda la app; las d
 | 2026-10-30 | Movimiento y celular según las skills de Emil Kowalski: entrada de página de 200 ms, menús que crecen desde su botón, campos de 16 px en pantallas táctiles, toque inmediato y altura `dvh` |
 | 2026-10-30 | Plantilla de nave para todos los almacenes: ficha capturada → derivada de sus equipos → estimada por flota; flota real adentro; escena a pedido |
 | 2026-10-30 | Plantilla 3D: taller que crece con los equipos en Mantto, andenes en dos lados con más de 40, tipo por categoría y luego modelo, Críticos neutros en Móviles |
+| 2026-10-30 | Agente planeador y reglas del importador: consecutivos de 4 dígitos, andenes con número romano, fechas mal escritas y varias actividades con la misma frecuencia por equipo |
