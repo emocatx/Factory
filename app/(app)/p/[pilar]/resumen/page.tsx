@@ -12,6 +12,8 @@ import type { OrdenDetalle } from "@/lib/tipos";
 import { Encabezado, Segmentado, Tarjeta } from "@/components/ui";
 import { TarjetaHallazgos } from "@/components/Hallazgos";
 import { hallazgosDe } from "@/lib/hallazgosDatos";
+import { resumenPrograma } from "@/lib/programaDatos";
+import { cumplimiento as cumplimientoPrograma } from "@/lib/programa";
 
 export const metadata = { title: "Resumen" };
 
@@ -70,7 +72,8 @@ export default async function Resumen({
   const inicioSemanas = lunes(ahora) - (SEMANAS - 1) * 7 * DIA;
   const supabase = await createClient();
 
-  const [{ count: activos }, { data: det }, { data: filas }, { data: rec }, hallazgos] = await Promise.all([
+  const anio = new Date(ahora + OFFSET).getUTCFullYear();
+  const [{ count: activos }, { data: det }, { data: filas }, { data: rec }, hallazgos, programa] = await Promise.all([
     supabase.from("equipos").select("id_equipo", { count: "exact", head: true }).eq("tipo_pilar", pilar).neq("estatus", "baja"),
     supabase.from("v_ordenes_detalle").select("folio_ticket, fecha_ingreso, descripcion_falla, nombre_equipo, nombre_almacen, nombre_linea")
       .eq("pilar", pilar).in("estatus_orden", abiertas).order("fecha_ingreso", { ascending: true }).limit(1000),
@@ -81,6 +84,8 @@ export default async function Resumen({
     supabase.from("v_ordenes_detalle").select("id_orden, folio_ticket, fecha_cierre, notas_cierre, nombre_equipo, nombre_almacen, nombre_linea")
       .eq("pilar", pilar).eq("estatus_orden", "cerrada").order("fecha_cierre", { ascending: false }).limit(5),
     hallazgosDe({ pilar, rol: perfil.rol, alcance: infoPilar(pilar).etiqueta }),
+    // null mientras no esté aplicada la migración del programa: entonces no se muestra la tarjeta
+    resumenPrograma(pilar, `${anio}-01-01`, `${anio}-12-31`),
   ]);
 
   const detenidos = (det ?? []) as Pick<OrdenDetalle, "folio_ticket" | "fecha_ingreso" | "descripcion_falla" | "nombre_equipo" | "nombre_almacen" | "nombre_linea">[];
@@ -176,6 +181,26 @@ export default async function Resumen({
           <TarjetaHallazgos hallazgos={hallazgos} alcance={infoPilar(pilar).etiqueta} />
         </div>
       )}
+
+      {programa?.totales?.total ? (
+        <section className="entrar entrar-3 mt-6 caja-panel flex flex-wrap items-center gap-x-10 gap-y-4 p-5">
+          <div className="min-w-0 flex-1 basis-56">
+            <h2 className="text-[17px] font-semibold">Programa preventivo {anio}</h2>
+            <p className="mt-0.5 text-[13px] text-suave">
+              {programa.totales.programados ? `${num(programa.totales.completados)} de ${num(programa.totales.programados)} servicios completados a la fecha` : "Sin servicios a la fecha"}
+            </p>
+          </div>
+          <div>
+            <p className="text-[13px] text-suave">Cumplimiento</p>
+            <p className="cifra mt-1">{pct(cumplimientoPrograma(programa.totales))}</p>
+          </div>
+          <div>
+            <p className="text-[13px] text-suave">Vencidos</p>
+            <p className={`cifra mt-1 ${programa.totales.vencidos ? "text-paro-texto" : ""}`}>{num(programa.totales.vencidos)}</p>
+          </div>
+          <Link href={`/p/${pilar}/planes?vista=semana`} className="enlace text-[14px]">Ver la semana ›</Link>
+        </section>
+      ) : null}
 
       <div className="entrar entrar-3 mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
         <section className="caja-panel p-5">

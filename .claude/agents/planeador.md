@@ -41,6 +41,13 @@ Por almacén y categoría (la de la columna Categoría o, si falta, `categoriaDe
 - **Categoría "otro"**: lista sus denominaciones para que se corrija la regla o el archivo.
 - **Equipo que ya existe** con otro almacén o con otro nombre: repórtalo; el importador lo actualizaría.
 
+## Paso 2c. Fechas del programa: la base del cumplimiento
+Cada fecha programada del archivo (las columnas de semana, lunes a domingo; `Activo.programadas` y `fechasDe`) se vuelve un servicio del programa semanal con su estatus, y contra ellas se mide el cumplimiento. Revísalas:
+- Total por semana ISO y por almacén (cuántos mantenimientos tiene la semana 1, 2…), para que el usuario lo compare con su archivo.
+- Fechas fuera del año del programa (p. ej. 2018 o 2025 en un programa 2026), fechas ilegibles y planes con frecuencia pero sin ninguna fecha.
+- Fechas que no cuadran con su frecuencia (un 4M con 5 fechas en el año, dos fechas de la misma frecuencia en la misma semana).
+- En el archivo limpio van en la columna "Fechas programadas" (AAAA-MM-DD separadas por coma) de cada fila de activo y frecuencia; verifica que la relectura da el mismo número de fechas que el original.
+
 ## Paso 3. Qué se dibuja y qué solo va al plan
 Todo entra al plan y al seguimiento de cumplimiento. Pero no todo es un objeto en la planta 3D:
 - **Con render** (equipos físicos con lugar en la nave): montacargas y su flota, cargador, cambiador y batería, minisplit y climatización, refrigeración, extractor, inyector, louver, compresor, ósmosis, cárcamo, tablero y subestación (eléctrico), andén, cortina y puerta, rack.

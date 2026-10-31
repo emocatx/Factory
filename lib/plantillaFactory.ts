@@ -17,6 +17,7 @@ export const CAMPOS = [
   { clave: "frecuencia", etiqueta: "Frecuencia", requerido: true, alias: ["frecuencia", "frecuencia del mantenimiento", "frecuencia de mantenimiento", "periodicidad", "cada", "cada dias"], ayuda: "1M, 2M, 3M, 4M, 6M o 12M (también «mensual», «bimestral»…). Una fila por frecuencia." },
   { clave: "proxima", etiqueta: "Próxima fecha", alias: ["proxima", "proxima fecha", "fecha programada", "fecha inicio", "fecha de inicio", "programado", "fecha"], ayuda: "Cuándo toca el próximo servicio (dd/mm/aaaa)." },
   { clave: "ultimo", etiqueta: "Último servicio", alias: ["ultimo", "ultimo servicio", "fecha ultimo servicio", "ultima fecha"], ayuda: "En lugar de la próxima fecha: cuándo se hizo el último." },
+  { clave: "fechas", etiqueta: "Fechas programadas", alias: ["fechas", "fechas programadas", "calendario", "programa"], ayuda: "Todas las fechas del año en que toca este servicio, separadas por coma (AAAA-MM-DD). Se guardan en el programa semanal." },
   { clave: "servicio", etiqueta: "Servicio", alias: ["servicio", "nombre del plan", "plan", "nombre plan"], ayuda: "Nombre del plan. Si va vacío: «Categoría · frecuencia» (p. ej. «Montacargas · bimestral»)." },
   { clave: "planSap", etiqueta: "Plan SAP", alias: ["plan sap", "codigo de plan", "codigo plan", "plan de mantenimiento"], ayuda: "Código del plan en SAP, como referencia." },
   { clave: "tareas", etiqueta: "Tareas", alias: ["tareas", "actividades", "checklist"], ayuda: "Tareas del plan separadas por punto y coma." },
@@ -119,14 +120,25 @@ export function leerPlantilla(tabla: string[][], filaEnc: number, m: Mapeo, hoja
     if (textoFrec && !fs.length) desconocidas.set(textoFrec, (desconocidas.get(textoFrec) ?? 0) + 1);
     const proxima = dia(v(r, "proxima")), ultimo = dia(v(r, "ultimo"));
     if (proxima === undefined || ultimo === undefined) fechasMalas++;
+    // calendario: "2026-02-04, 2026-06-03" (también dd/mm/aaaa o "04 FEB 26"); las que no se entiendan se cuentan
+    const calendario: string[] = [];
+    for (const t of v(r, "fechas").split(/[,;\n]+/).map((x) => x.trim()).filter(Boolean)) {
+      const d = dia(t);
+      if (d) calendario.push(d); else fechasMalas++;
+    }
     for (const f of fs) {
       const servicio = v(r, "servicio"), planSap = v(r, "planSap"), t = v(r, "tareas");
       // otra actividad con una frecuencia que el activo ya tiene (andén con "Revisión" y "Pintura" cuatrimestrales): servicio aparte
       const actual = a.frecuencias.includes(f) ? normalizar(planDe(a, f)) : null;
       if (actual && servicio && normalizar(servicio) !== actual) {
-        if (!(a.extras ??= []).some((e) => normalizar(e.servicio) === normalizar(servicio))) {
-          a.extras.push({ f, servicio, ...(ultimo ? { ultimo } : proxima ? { ultimo: restarDias(proxima, DIAS_FRECUENCIA[f]) } : {}) });
-        }
+        const previo = (a.extras ??= []).find((e) => normalizar(e.servicio) === normalizar(servicio));
+        const suyas = [...(proxima ? [proxima] : []), ...calendario];
+        if (!previo) {
+          a.extras.push({
+            f, servicio, ...(ultimo ? { ultimo } : proxima ? { ultimo: restarDias(proxima, DIAS_FRECUENCIA[f]) } : {}),
+            ...(suyas.length ? { programadas: [...new Set(suyas)].sort() } : {}),
+          });
+        } else if (suyas.length) previo.programadas = [...new Set([...(previo.programadas ?? []), ...suyas])].sort();
         if (t) tareas[normalizar(servicio)] = t;
         continue;
       }
@@ -137,6 +149,7 @@ export function leerPlantilla(tabla: string[][], filaEnc: number, m: Mapeo, hoja
       // la próxima fecha se guarda como "último = próxima − cada", así un servicio vencido sigue vencido
       if (proxima) { a.programadas.push({ fecha: proxima, frecuencias: [f] }); a.ultimo![f] = restarDias(proxima, DIAS_FRECUENCIA[f]); }
       if (ultimo) a.ultimo![f] = ultimo;
+      for (const fecha of calendario) if (!a.programadas.some((p) => p.fecha === fecha && p.frecuencias.includes(f))) a.programadas.push({ fecha, frecuencias: [f] });
     }
   }
   if (!activos.size) return null;
@@ -169,10 +182,10 @@ export function plantillaXlsx(pilar: string, almacenes: string[]) {
   return libroXlsx([
     {
       nombre: "Programa", fijarEncabezado: true,
-      anchos: [16, 12, 12, 34, 22, 12, 15, 15, 26, 11, 40],
+      anchos: CAMPOS.map((c) => ({ almacen: 16, denominacion: 34, categoria: 22, proxima: 15, ultimo: 15, fechas: 40, servicio: 26, planSap: 11, tareas: 40 } as Partial<Record<Campo, number>>)[c.clave] ?? 12),
       filas: [
         CAMPOS.map((c) => c.etiqueta),
-        fila({ almacen: alm, sap, denominacion: den, categoria: cat, frecuencia: "2M", proxima: "15/01/2027" }),
+        fila({ almacen: alm, sap, denominacion: den, categoria: cat, frecuencia: "2M", fechas: "2027-01-15, 2027-03-15, 2027-05-17, 2027-07-15, 2027-09-15, 2027-11-15" }),
         fila({ almacen: alm, sap, denominacion: den, categoria: cat, frecuencia: "12M", proxima: "10/06/2027" }),
       ],
       listas: [

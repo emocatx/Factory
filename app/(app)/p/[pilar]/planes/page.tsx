@@ -10,6 +10,7 @@ import { Encabezado, Seccion, Segmentado, Tarjeta } from "@/components/ui";
 import { ImportarPrograma } from "@/components/importar/ImportarPrograma";
 import { PanelPlanes } from "./PanelPlanes";
 import { BotonHecho, SelectorAlmacen } from "./Controles";
+import { VistaSemana } from "./VistaSemana";
 import { cargarProgramaAnual, recordarImportacion, simularProgramaAnual } from "./acciones";
 import type { MapeosGuardados } from "@/lib/plantillaFactory";
 import type { PlanEquipo, PlanMantenimiento } from "@/lib/tipos";
@@ -28,14 +29,25 @@ export default async function Planes({
   searchParams,
 }: {
   params: Promise<{ pilar: string }>;
-  searchParams: Promise<{ almacen?: string; vista?: string; mes?: string; nuevo?: string }>;
+  searchParams: Promise<{ almacen?: string; vista?: string; mes?: string; nuevo?: string; semana?: string; resp?: string; estatus?: string }>;
 }) {
   const { pilar: p } = await params;
   const { perfil, pilar } = await sesionDePilar(p);
   const f = await searchParams;
   const almacen = esUuid(f.almacen) ? f.almacen : "";
-  const vista = f.vista === "calendario" ? "calendario" : "planes";
+  const vista = f.vista === "calendario" || f.vista === "semana" ? f.vista : "planes";
   const editar = puedeAsignar(perfil.rol);
+  // Vista, conservando el almacén elegido (Planes | Calendario | Semana).
+  const segmentado = (actual: string) => (
+    <Segmentado etiqueta="Vista" actual={actual} scroll={false}
+      opciones={[
+        { v: "planes", t: "Planes", href: `?${new URLSearchParams(almacen ? { almacen } : {})}` },
+        { v: "calendario", t: "Calendario", href: `?${new URLSearchParams({ ...(almacen ? { almacen } : {}), vista: "calendario" })}` },
+        { v: "semana", t: "Semana", href: `?${new URLSearchParams({ ...(almacen ? { almacen } : {}), vista: "semana" })}` },
+      ]} />
+  );
+  // Programa semanal: su propia consulta (no necesita los planes ni las asignaciones de abajo).
+  if (vista === "semana") return <VistaSemana pilar={pilar} perfil={perfil} f={{ ...f, almacen }} segmentado={segmentado} />;
   const supabase = await createClient();
 
   const [{ data: planesData }, { data: todas }, cat, { data: empresa }] = await Promise.all([
@@ -102,8 +114,7 @@ export default async function Planes({
     <>
       <Encabezado titulo="Planes de mantenimiento" sub={`Preventivos e inspecciones de ${infoPilar(pilar).etiqueta}, por almacén.`}>
         <SelectorAlmacen valor={almacen} vista={vista} opciones={opcionesAlmacen} />
-        <Segmentado etiqueta="Vista" actual={vista} scroll={false}
-          opciones={[{ v: "planes", t: "Planes", href: qs({}) }, { v: "calendario", t: "Calendario", href: qs({ vista: "calendario" }) }]} />
+        {segmentado(vista)}
       </Encabezado>
 
       {vista === "calendario" ? (

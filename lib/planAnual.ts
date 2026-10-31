@@ -92,7 +92,7 @@ export type Activo = {
   /** Último servicio hecho por frecuencia (plantilla Factory): de ahí se cuenta el siguiente. */
   ultimo?: Partial<Record<Frecuencia, string>>;
   /** Más servicios con una frecuencia que ya tiene (p. ej. un andén con "Revisión" y "Pintura" cuatrimestrales). */
-  extras?: { f: Frecuencia; servicio: string; ultimo?: string }[];
+  extras?: { f: Frecuencia; servicio: string; ultimo?: string; programadas?: string[] }[];
   lanzamientos: number | null;
   /** Horas por servicio ("tiempo por frecuencia"), sumando las frecuencias que tenga. */
   horas: number | null;
@@ -307,10 +307,10 @@ export function serieConsecutiva(numeros: string[]) {
 }
 
 /** Todos los servicios del activo: uno por frecuencia más los extra con la misma frecuencia. */
-export function serviciosDe(a: Activo): { f: Frecuencia; nombre: string; extra: boolean; ultimo?: string }[] {
+export function serviciosDe(a: Activo): { f: Frecuencia; nombre: string; extra: boolean; ultimo?: string; programadas?: string[] }[] {
   return [
     ...a.frecuencias.map((f) => ({ f, nombre: planDe(a, f), extra: false })),
-    ...(a.extras ?? []).map((e) => ({ f: e.f, nombre: e.servicio, extra: true, ultimo: e.ultimo })),
+    ...(a.extras ?? []).map((e) => ({ f: e.f, nombre: e.servicio, extra: true, ultimo: e.ultimo, programadas: e.programadas })),
   ];
 }
 
@@ -356,6 +356,8 @@ export type Carga = {
   activos: { i: number; alm: string; sap: string | null; cons: number | null; clave: string | null; nombre: string; cat: Categoria }[];
   planes: { n: string; d: number; t: string }[];
   asignaciones: { i: number; n: string; f: string | null }[];
+  /** Fechas programadas del calendario: i = activo, n = plan, f = fecha (AAAA-MM-DD). Van a programa_mantenimiento. */
+  programa: { i: number; n: string; f: string }[];
   fichas: { alm: string; ficha: Record<string, unknown> }[];
 };
 
@@ -371,6 +373,7 @@ export function armarCarga(l: Lectura, empates: Record<string, string>, hoy: str
   let sinAlmacen = 0, sapQuitados = 0, clavesQuitadas = 0;
   const activos: Carga["activos"] = [];
   const asignaciones: Carga["asignaciones"] = [];
+  const programa: Carga["programa"] = [];
   l.activos.forEach((a, i) => {
     const alm = empates[a.almacen];
     if (!alm || alm === OMITIR) { sinAlmacen++; return; }
@@ -387,7 +390,12 @@ export function armarCarga(l: Lectura, empates: Record<string, string>, hoy: str
       if (propia && !vistos.has(propia)) { sap = propia; vistos.add(propia); }
     }
     activos.push({ i, alm, sap, cons, clave, nombre: a.denominacion, cat: a.categoria });
-    for (const s of serviciosDe(a)) asignaciones.push({ i, n: s.nombre, f: s.extra ? s.ultimo ?? null : inicioDePlan(a, s.f, hoy) });
+    for (const s of serviciosDe(a)) {
+      asignaciones.push({ i, n: s.nombre, f: s.extra ? s.ultimo ?? null : inicioDePlan(a, s.f, hoy) });
+      // un servicio extra usa sus propias fechas; si no trae, las del calendario de esa frecuencia
+      const fechas = s.extra && s.programadas?.length ? s.programadas : fechasDe(a, s.f);
+      for (const f of new Set(fechas)) programa.push({ i, n: s.nombre, f });
+    }
   });
   // solo los planes que usa algún activo que sí se carga
   const usados = new Set(asignaciones.map((x) => normalizar(x.n)));
@@ -405,5 +413,5 @@ export function armarCarga(l: Lectura, empates: Record<string, string>, hoy: str
       fuente: "programa-anual", actualizado: hoy,
     },
   }));
-  return { carga: { archivo, activos, planes, asignaciones, fichas }, sinAlmacen, sapQuitados, clavesQuitadas };
+  return { carga: { archivo, activos, planes, asignaciones, programa, fichas }, sinAlmacen, sapQuitados, clavesQuitadas };
 }

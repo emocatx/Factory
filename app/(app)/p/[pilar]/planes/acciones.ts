@@ -22,6 +22,8 @@ function traducir(m: string) {
   if (m.includes("planes_frecuencia")) return "Solo los planes de proveedor pueden ir sin frecuencia.";
   if (m.includes("equipos_clave_unq")) return "dos activos quedarían con la misma clave interna.";
   if (m.includes("equipos_sap_unq")) return "dos activos quedarían con el mismo número SAP.";
+  if (m.includes("programa_mantenimiento") && m.includes("does not exist")) return "falta aplicar la migración del programa de mantenimiento.";
+  if (m.includes("invalid input syntax for type date")) return "una fecha programada no es válida.";
   return m;
 }
 
@@ -79,6 +81,8 @@ export async function quitarPlan(pilar: string, idPlan: string, equipos: string[
 export type ResumenCarga = {
   equipos_nuevos: number; equipos_actualizados: number; sap_en_otro_pilar: number;
   planes_nuevos: number; asignaciones_nuevas: number; fichas: number;
+  /** Fechas del calendario guardadas en el programa (programa_mantenimiento). */
+  programadas_nuevas: number;
 };
 
 /**
@@ -97,7 +101,7 @@ export async function cargarProgramaAnual(pilar: string, carga: Carga): Promise<
   const r = data as ResumenCarga;
   return {
     ok: true, resumen: r,
-    mensaje: `Programa cargado: ${r.equipos_nuevos} equipos nuevos, ${r.equipos_actualizados} actualizados, ${r.planes_nuevos} planes nuevos y ${r.asignaciones_nuevas} asignaciones.`,
+    mensaje: `Programa cargado: ${r.equipos_nuevos} equipos nuevos, ${r.equipos_actualizados} actualizados, ${r.planes_nuevos} planes nuevos, ${r.asignaciones_nuevas} asignaciones y ${r.programadas_nuevas ?? 0} fechas programadas.`,
   };
 }
 
@@ -109,6 +113,8 @@ export type Simulacion = ResumenCarga & {
   existentes_antes: number; cambios_total: number; cambios: CambioEquipo[];
   cambios_por: { nombre: number; categoria: number; almacen: number };
   agenda: { vencidos: number; proximos_30: number; despues: number };
+  /** Cómo queda el programa del pilar después de la carga: total, primera y última fecha, fechas por mes ("2026-02"). */
+  programa: { total: number; desde: string | null; hasta: string | null; por_mes: Record<string, number> };
 };
 
 /** Corre la carga completa en la base y la deshace: dice qué va a pasar sin guardar nada. */

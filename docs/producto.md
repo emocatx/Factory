@@ -93,6 +93,23 @@ hay evidencia suficiente. Se ordenan por urgencia y, dentro de la misma, por hor
 | Programa anual en el formato CABLOMTO-F01 | Hecho: **importador único** con plantilla Factory, mapeo de columnas guardado por empresa y CABLOMTO como traductor |
 | Textos y folios pensados para CAB | Configuración por empresa |
 
+### Programa semanal de mantenimiento preventivo (2026-10-31)
+
+Cada fecha programada de cada plan en cada equipo es un servicio del programa (`programa_mantenimiento`), con su
+responsable y estatus. Lo llena el importador con las fechas del archivo (columnas de semana del CABLOMTO o la columna
+"Fechas programadas" de la plantilla Factory); el planeador las revisa antes (semana por semana, años mal capturados,
+frecuencias que no cuadran).
+- Estatus: programado → asignado (técnico o supervisor del pilar y almacén) → en ejecución → completado (fecha real,
+  no futura; recorre el último servicio del plan). También reprogramado (nueva fecha y motivo; se guarda la original)
+  y no realizado (motivo). Vencido no se captura: es lo abierto de semanas anteriores.
+- Asignan admin, supervisor y coordinador; el técnico solo cambia lo asignado a él (funciones `asignar_programa` y
+  `cambiar_estatus_programa`, que validan rol, empresa, pilar y almacén).
+- Cumplimiento: completados entre programados a la fecha, medido contra la fecha original del programa (reprogramar
+  no oculta el atraso); a tiempo = completado a más tardar el domingo de su semana. Avance de la semana y del mes,
+  vencidos y reprogramados, por almacén y por responsable (`resumen_programa`).
+- Dónde: Planes → "Semana" (lista por día, selección múltiple, barra de acciones) y franja en el Resumen de Críticos
+  e Infraestructura.
+
 ### Importador único (en Planes, solo admin)
 
 Un solo recuadro, **Importar programa de mantenimiento**, en tres pasos con indicador: **Subir archivo → Revisar →
@@ -321,3 +338,4 @@ El Resumen de Móviles y la barra lateral marcan el estilo de toda la app; las d
 | 2026-10-30 | Agente planeador y reglas del importador: consecutivos de 4 dígitos, andenes con número romano, fechas mal escritas y varias actividades con la misma frecuencia por equipo |
 | 2026-10-31 | Equipo y servicio son filas distintas: "Resane y pintura andén CDNF 03" no es un servicio del andén CDNF 3; los servicios usan su clave como SAP y sin render; los equipos sin SAP quedan por dar de alta |
 | 2026-10-31 | Lo que pertenece a un área (mobiliario, baños, instalaciones, luminarias) es servicio; louvers y cortinas sin SAP son equipos por dar de alta |
+| 2026-10-31 | Programa semanal de preventivos: cada fecha del programa es un servicio con responsable y estatus (programado, asignado, en ejecución, completado, reprogramado, no realizado); cumplimiento contra la fecha original |

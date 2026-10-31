@@ -26,6 +26,8 @@ type Props = {
   buscar?: boolean;
   /** Envía el formulario al elegir una opción (barras de filtros). */
   autoEnviar?: boolean;
+  /** Abre la lista hacia arriba (p. ej. en una barra fija al pie de la pantalla). */
+  arriba?: boolean;
   className?: string;
 };
 
@@ -37,7 +39,7 @@ const PUNTO = { paro: "bg-paro", ok: "bg-ok", alerta: "bg-alerta" } as const;
  */
 export function Desplegable({
   opciones, name, value, defaultValue, onChange, placeholder = "Selecciona…", id, icono, required, disabled,
-  invalido, describedBy, compacto, etiqueta, buscar, autoEnviar, className = "",
+  invalido, describedBy, compacto, etiqueta, buscar, autoEnviar, arriba, className = "",
 }: Props) {
   const propio = useId();
   const idBoton = id ?? `dd-${propio}`;
@@ -151,7 +153,7 @@ export function Desplegable({
       </button>
 
       {abierto && (
-        <div className={`absolute left-0 z-50 mt-2 min-w-full overflow-hidden rounded-[18px] ${etiqueta ? "w-max max-w-[340px]" : "right-0"} bg-panel shadow-[0_12px_40px_rgb(0_0_0/0.14),0_0_0_1px_rgb(0_0_0/0.04)] origin-top motion-safe:animate-[abrir_150ms_var(--ease-salida)]`}>
+        <div className={`absolute left-0 z-50 min-w-full overflow-hidden rounded-[18px] ${arriba ? "bottom-full mb-2 origin-bottom" : "mt-2 origin-top"} ${etiqueta ? "w-max max-w-[340px]" : "right-0"} bg-panel shadow-[0_12px_40px_rgb(0_0_0/0.14),0_0_0_1px_rgb(0_0_0/0.04)] motion-safe:animate-[abrir_150ms_var(--ease-salida)]`}>
           {conBuscador && (
             <div className="border-b border-papel p-2">
               <input autoFocus value={filtro} onChange={(e) => { setFiltro(e.target.value); setActivo(0); }} placeholder="Buscar…"
