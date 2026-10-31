@@ -49,7 +49,7 @@ export default async function Equipos({
   const conteos = [
     { etiqueta: equipos.length === 1 ? "equipo" : "equipos", valor: equipos.length, fuerte: true },
     ...PROPIEDADES.map((x) => ({ etiqueta: x.etiqueta.toLowerCase(), valor: equipos.filter((e) => e.propiedad === x.valor).length, fuerte: false })),
-    { etiqueta: "sin SAP", valor: equipos.filter((e) => !e.sap_id).length, fuerte: false },
+    { etiqueta: "por dar de alta en SAP", valor: equipos.filter((e) => !e.sap_id).length, fuerte: false },
     ...(f.bajas ? [{ etiqueta: "de baja", valor: equipos.filter((e) => e.estatus === "baja").length, fuerte: false }] : []),
   ].filter((c) => c.fuerte || c.valor > 0);
 
@@ -127,7 +127,7 @@ export default async function Equipos({
                             {e.propiedad !== "propio" && <span className="chip ml-2 bg-panel-2 align-middle text-[12px] text-tinta">{e.propiedad === "renta" ? "Renta" : "Leasing"}</span>}
                           </p>
                           <p className="text-[13px] text-suave">
-                            {e.sap_id ? <span className="font-mono">SAP {e.sap_id}</span> : <span className="chip bg-alerta-suave text-[12px] text-alerta-texto">Sin SAP</span>}
+                            {e.sap_id ? <span className="font-mono">SAP {e.sap_id}</span> : <span className="chip bg-alerta-suave text-[12px] text-alerta-texto">Falta alta SAP</span>}
                             {[e.serie && `Serie ${e.serie}`, e.modelo, e.clave_id].filter(Boolean).map((v) => <span key={v} className="font-mono"> · {v}</span>)}
                           </p>
                         </td>

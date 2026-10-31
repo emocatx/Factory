@@ -19,11 +19,23 @@ export const CATEGORIAS = {
   puerta: "Puertas y salidas", taller: "Taller", vestidor: "Vestidores", bano: "Baños", comedor: "Comedor", oficina: "Oficinas",
   area: "Áreas operativas", estructura: "Muros y pisos", balizamiento: "Balizamiento", electrico: "Instalación eléctrica",
   hidraulico: "Instalación hidráulica", exterior: "Exterior y cubierta", jardineria: "Jardinería",
-  limpieza: "Limpieza", pintura: "Pintura", otro: "Otro",
+  limpieza: "Limpieza", pintura: "Pintura", servicio: "Servicios generales", otro: "Otro",
 } as const;
 export type Categoria = keyof typeof CATEGORIAS;
 
-// El orden importa: primero el tipo de activo y después el tipo de trabajo ("Pintura andén" es un andén).
+/** Categorías que son un objeto en la nave (se dibujan en 3D); las demás son áreas o actividades. */
+export const CON_RENDER = new Set<Categoria>(["montacargas", "transpaleta", "patineta", "bateria", "cargador", "cambiador", "diablo", "plataforma", "restregadora",
+  "climatizacion", "refrigeracion", "compresor", "osmosis", "carcamo", "louver", "extractor", "inyector", "racks", "anden", "cortina", "puerta", "electrico"]);
+
+/**
+ * Una actividad, no un equipo: "Revisión y reparación andén CDNL 203", "Resane y pintura andén CDNF 03". Es otra fila
+ * del plan con su propia clave; no se junta con el equipo que nombra ni se dibuja. Los equipos se nombran
+ * EQUIPO ALMACÉN NÚMERO ("Andén SMO 01").
+ */
+export const SERVICIO = /^(revi[sc]i?on|reparacion|in[ps]{1,3}e?cc?i?on|resane|pintura|pintra|limpieza|cal[ae]fateo|re?emplazo|analisis|mantenimiento|balizamiento|impermeabilizacion)\b/;
+
+// El orden importa: primero el tipo de activo y después el tipo de trabajo. Las actividades ("Resane y pintura
+// andén…") no toman la categoría del equipo que nombran: van a pintura, limpieza o servicios generales.
 // Los equipos móviles van al inicio y anclados al principio del nombre ("Cargador LI…", no "Área de cargadores").
 const REGLAS: [Categoria, RegExp][] = [
   ["montacargas", /^montacarga/], ["transpaleta", /^(transpaleta|patin\b)/], ["patineta", /^patineta/],
@@ -49,9 +61,15 @@ const REGLAS: [Categoria, RegExp][] = [
 export const normalizar = (v: unknown) =>
   String(v ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
 
+export const esServicio = (denominacion: string) => SERVICIO.test(normalizar(denominacion));
+
 export function categoriaDe(denominacion: string): Categoria {
   const d = normalizar(denominacion);
-  return REGLAS.find(([, r]) => r.test(d))?.[0] ?? "otro";
+  const c = REGLAS.find(([, r]) => r.test(d))?.[0] ?? "otro";
+  if (!SERVICIO.test(d)) return c;
+  if (/^(resane|pint)/.test(d)) return "pintura";
+  if (/^limpieza/.test(d)) return "limpieza";
+  return CON_RENDER.has(c) ? "servicio" : c;
 }
 
 export type Activo = {
@@ -221,10 +239,10 @@ export function armarLectura(formato: Lectura["formato"], hoja: string, activos:
 
   // Problemas que conviene limpiar antes de guardar
   const problemas: Problema[] = [];
-  const sinSap = activos.filter((a) => a.sinSap);
+  const sinSap = activos.filter((a) => a.sinSap && !esServicio(a.denominacion));
   if (sinSap.length) {
     const por = [...new Set(sinSap.map((a) => a.almacen))].map((x) => `${x}: ${sinSap.filter((a) => a.almacen === x).length}`).join(", ");
-    problemas.push({ tipo: "sin-sap", texto: `${sinSap.length} activo${sinSap.length === 1 ? "" : "s"} sin número SAP (${por}). Se cargan con su consecutivo o clave como clave interna; puedes agregar el SAP después.` });
+    problemas.push({ tipo: "sin-sap", texto: `${sinSap.length} equipo${sinSap.length === 1 ? "" : "s"} sin número SAP, por dar de alta (${por}). Se cargan con su consecutivo como clave interna y quedan marcados en Equipos hasta que se capture su SAP.` });
   }
   const cuenta = new Map<string, number>();
   activos.filter((a) => !a.sinSap).forEach((a) => cuenta.set(a.sap, (cuenta.get(a.sap) ?? 0) + 1));
@@ -344,7 +362,7 @@ export type Carga = {
  * su primera aparición. El consecutivo de los activos sin SAP es su clave (INF-784) solo si no se repite en el
  * archivo: en Móviles cada almacén numera desde 1, y ahí esos activos se reconocen por almacén y nombre.
  */
-export function armarCarga(l: Lectura, empates: Record<string, string>, hoy: string, archivo: string): { carga: Carga; sinAlmacen: number; sapQuitados: number; clavesQuitadas: number } {
+export function armarCarga(l: Lectura, empates: Record<string, string>, hoy: string, archivo: string, pilar = ""): { carga: Carga; sinAlmacen: number; sapQuitados: number; clavesQuitadas: number } {
   const vistos = new Set<string>(), claves = new Set<string>();
   const consecutivos = l.activos.filter((a) => a.sinSap && /^\d+$/.test(a.sap)).map((a) => Number(a.sap));
   const consUnico = new Set(consecutivos).size === consecutivos.length;
@@ -360,7 +378,13 @@ export function armarCarga(l: Lectura, empates: Record<string, string>, hoy: str
     let clave = a.clave || null;
     if (clave && claves.has(clave)) { clave = null; clavesQuitadas++; }
     if (clave) claves.add(clave);
-    activos.push({ i, alm, sap, cons: consUnico && a.sinSap && /^\d+$/.test(a.sap) ? Number(a.sap) : null, clave, nombre: a.denominacion, cat: a.categoria });
+    const cons = consUnico && a.sinSap && /^\d+$/.test(a.sap) ? Number(a.sap) : null;
+    // Un servicio no se da de alta en SAP: su clave hace de número (INF-11) y no queda como pendiente
+    if (!sap && esServicio(a.denominacion)) {
+      const propia = clave ?? (cons !== null && pilar ? `${pilar.slice(0, 3).toUpperCase()}-${cons}` : null);
+      if (propia && !vistos.has(propia)) { sap = propia; vistos.add(propia); }
+    }
+    activos.push({ i, alm, sap, cons, clave, nombre: a.denominacion, cat: a.categoria });
     for (const s of serviciosDe(a)) asignaciones.push({ i, n: s.nombre, f: s.extra ? s.ultimo ?? null : inicioDePlan(a, s.f, hoy) });
   });
   // solo los planes que usa algún activo que sí se carga

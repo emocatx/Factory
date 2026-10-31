@@ -84,7 +84,7 @@ export function ImportarPrograma({ pilar, almacenes, mapeos, cargar, simular, re
   }, [lectura]);
   const filtrados = useMemo(() => (lectura?.activos ?? []).filter((a) => (!filtroAlm || a.almacen === filtroAlm) && (!filtroCat || a.categoria === filtroCat)), [lectura, filtroAlm, filtroCat]);
   const nombreAlm = (id: string) => almacenes.find((a) => a.id === id)?.nombre;
-  const preparado = useMemo(() => (lectura && !sinEmpatar ? armarCarga(lectura, empates, hoy, fuente?.archivo ?? "") : null), [lectura, empates, sinEmpatar, hoy, fuente]);
+  const preparado = useMemo(() => (lectura && !sinEmpatar ? armarCarga(lectura, empates, hoy, fuente?.archivo ?? "", pilar) : null), [lectura, empates, sinEmpatar, hoy, fuente, pilar]);
   // Solo el programa de inmueble describe la nave (andenes, pasillos); en los demás no se pide la ficha.
   const conNave = !!lectura?.fichas.some((f) => f.andenes || f.pasillos);
   const conCodigos = !!lectura?.planes.some((p) => p.codigos.length);

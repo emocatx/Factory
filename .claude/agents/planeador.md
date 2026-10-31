@@ -23,7 +23,15 @@ La base es la de producción. Solo lees (`select`) y simulas con `public.simular
 - Cada empate lleva su nivel: **seguro** (uno solo, exacto o abreviatura), **probable** (parcial o por palabra, una opción) o **dudoso** (varias opciones o ninguna). Los dudosos no se adivinan: los listas con sus opciones para que decida el usuario (por ejemplo AGRO → Insumos, PT Nave B o PT Nave D).
 - Un almacén del archivo que no existe en Factory no se crea: se reporta como "falta en Factory" con cuántos activos tiene.
 
-## Paso 2. Equipos: listar y validar
+## Paso 2. Equipo o servicio: no confundirlos
+Cada fila del archivo es **un equipo** o **un servicio**, y nunca se juntan aunque el servicio nombre al equipo:
+- **Equipo**: se nombra EQUIPO ALMACÉN NÚMERO ("Andén SMO 01", "Anden CDNF 3", "Louver HUE 12"). Es un objeto con su plan.
+- **Servicio**: empieza con la actividad: revisión, reparación, inspección, resane, pintura, limpieza, calafateo, reemplazo, análisis, mantenimiento, balizamiento, impermeabilización (`SERVICIO` en `lib/planAnual.ts`, que tolera "Revicion", "Inpeccion", "Pintra"). "Resane y Pintura anden CDNF 03" es un servicio con su propia fila y su propio plan; **no** es un segundo servicio de "Anden CDNF 3" ni cuenta como andén.
+- Un servicio sin SAP usa su clave como número (`INF-11`) y no queda pendiente: los servicios no se dan de alta en SAP.
+- Un equipo sin SAP **queda pendiente de alta** (la app lo marca "Falta alta SAP" hasta que se capture). Valídalo contra los demás almacenes: si "Andén" tiene SAP en otros almacenes y "Andén HUE 21" no, es un equipo que falta dar de alta, no un servicio. Repórtalos por almacén y tipo.
+- Si una fila no encaja en ninguna de las dos formas, márcala "por decidir" con su fila.
+
+## Paso 2b. Equipos: listar y validar
 Por almacén y categoría (la de la columna Categoría o, si falta, `categoriaDe(denominación)`), lista cuántos activos hay y revisa:
 - **SAP repetido** dentro del archivo o contra la base (`equipos.sap_id` de la empresa): di cuáles filas chocan y si es el mismo equipo repetido por frecuencia (normal: una fila por frecuencia) o dos equipos distintos con el mismo número (error).
 - **Sin SAP**: se les asigna un **consecutivo interno** único por pilar con prefijo (`MOV-`, `CRI-`, `INF-` + 4 dígitos, p. ej. `INF-0001`), que no choque con claves que ya existan en la base. Va en la columna Clave; el SAP queda vacío.
@@ -34,6 +42,7 @@ Por almacén y categoría (la de la columna Categoría o, si falta, `categoriaDe
 ## Paso 3. Qué se dibuja y qué solo va al plan
 Todo entra al plan y al seguimiento de cumplimiento. Pero no todo es un objeto en la planta 3D:
 - **Con render** (equipos físicos con lugar en la nave): montacargas y su flota, cargador, cambiador y batería, minisplit y climatización, refrigeración, extractor, inyector, louver, compresor, ósmosis, cárcamo, tablero y subestación (eléctrico), andén, cortina y puerta, rack.
+- **Ningún servicio lleva render** (revisión, reparación, inspección, resane…), aunque nombre un equipo con render.
 - **Sin render** (actividades o áreas): pintura, limpieza, jardinería, estructura (muros, pisos, losas), exterior (techumbre, impermeabilización, estacionamiento), mantenimiento de oficina, baño, comedor y vestidor, balizamiento, hidráulico general, "área" y "otro".
 - Si una categoría no es clara, márcala "por decidir" y explica por qué.
 
