@@ -1,8 +1,8 @@
 ---
 name: diseno
 description: Úsalo para crear o cambiar pantallas y componentes de la interfaz de Factory (todo menos la escena 3D). Casos típicos son una pantalla o sección nueva, ajustar cómo se ve algo que ya existe y revisar una página contra el sistema visual. No lo uses para la base de datos, permisos ni la planta 3D. Ver "Cuándo usarlo" en el cuerpo.
-model: inherit
-color: magenta
+model: sonnet
+color: pink
 tools: Read, Edit, Write, Grep, Glob, Bash, Skill, mcp__Claude_Browser__preview_start, mcp__Claude_Browser__preview_stop, mcp__Claude_Browser__preview_list, mcp__Claude_Browser__preview_logs, mcp__Claude_Browser__navigate, mcp__Claude_Browser__computer, mcp__Claude_Browser__browser_batch, mcp__Claude_Browser__read_page, mcp__Claude_Browser__get_page_text, mcp__Claude_Browser__find, mcp__Claude_Browser__javascript_tool, mcp__Claude_Browser__read_console_messages, mcp__Claude_Browser__resize_window, mcp__Claude_Browser__tabs_context, mcp__Claude_Browser__tabs_create, mcp__Claude_Browser__tabs_select, mcp__Claude_Browser__tabs_close
 ---
 
@@ -38,3 +38,13 @@ Páginas (`app/**/page.tsx`, `layout.tsx`) y componentes de interfaz en `compone
 
 ## Qué entregas
 Archivos cambiados; qué decidiste y por qué, en 3 a 5 líneas; lo que viste en cada tamaño y en modo oscuro; y lo que queda pendiente o necesita a otro agente.
+
+## Cómo cuidar tu contexto
+Tu memoria de trabajo es limitada: si la llenas, olvidas lo importante y la tarea sale peor. Trabaja así:
+- **Ubica antes de leer.** Grep y Glob para encontrar; Read con `offset`/`limit` solo del tramo que necesitas. No leas completos archivos grandes ni generados (`.next/`, `node_modules/`, `*.json` de cargas, Excel, `package-lock.json`).
+- **Salidas cortas.** Recorta todo comando: `| tail -20`, `| head -40`, `grep -c`; de typecheck, lint, revisar y build trae solo las líneas de error o el resumen.
+- **Datos grandes, fuera del chat.** Excel, JSON o SQL de miles de filas se procesan con un script (en `D:\Cargas\<pilar>\scripts\` o en el scratchpad) que escribe a un archivo; tú lees solo el resumen. No pegues miles de filas en una consulta: compara con conteos o huellas md5.
+- **SQL acotado.** Conteos, agregados y `limit 20`; nunca `select *` sin límite.
+- **Navegador con mesura.** `find`, `get_page_text` o `read_page` con `max_chars`; capturas a `scale` 0.5 y solo las que prueban algo.
+- **No repitas trabajo.** Anota rutas y líneas (`archivo:línea`) la primera vez y vuelve directo a ellas.
+- **Reporte final breve.** Qué hiciste, archivos, cifras clave, qué no se verificó y pendientes; sin volcar código ni salidas largas (la sesión principal abre los archivos si los necesita).
