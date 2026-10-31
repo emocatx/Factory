@@ -104,7 +104,7 @@ export type FichaArchivo = { almacen: string; activos: number; andenes: number; 
 export type PlanPropuesto = { nombre: string; categoria: Categoria; frecuencia: Frecuencia; cada_dias: number; activos: number; codigos: string[]; tareas?: string };
 export type TipoProblema =
   | "sin-sap" | "sap-repetido" | "sin-frecuencia" | "frecuencia-desconocida" | "fecha-invalida" | "fila-incompleta"
-  | "fechas-corregidas" | "fechas-fuera" | "sin-fechas" | "frecuencia-no-cuadra" | "sin-pasillos" | "sin-andenes";
+  | "fechas-corregidas" | "fechas-fuera" | "fecha-otra-columna" | "sin-fechas" | "frecuencia-no-cuadra" | "sin-pasillos" | "sin-andenes";
 /** Una fila del archivo detrás de un problema, para mostrarla en la lista desplegable del aviso. */
 export type FilaProblema = { fila: number; almacen: string; denominacion: string; detalle: string };
 /**
@@ -306,7 +306,9 @@ export function leerPlanAnual(tabla: Celda[][], hoja = ""): Lectura | null {
 
   // Una fecha de otro año cuya columna es de una semana del programa tiene el año mal capturado ("15 JUL 25" en la
   // semana 29 de 2026): se corrige. Si no se puede saber, no se carga y queda como problema.
-  const corregidas: FilaProblema[] = [], fuera: FilaProblema[] = [];
+  // Una fecha escrita en la columna de otra semana ("04 MAR" en la semana 3 de enero) casi siempre es una celda
+  // copiada o arrastrada: se carga la fecha escrita y se avisa con la semana que dice la columna.
+  const corregidas: FilaProblema[] = [], fuera: FilaProblema[] = [], otraColumna: FilaProblema[] = [];
   for (const { a, fechas } of leidos) {
     const fila = (detalle: string): FilaProblema => ({ fila: a.fila, almacen: a.almacen, denominacion: a.denominacion, detalle });
     for (const f of fechas) {
@@ -316,6 +318,10 @@ export function leerPlanAnual(tabla: Celda[][], hoja = ""): Lectura | null {
         const l = lunes.get(f.col), sem = l ? ` (semana ${semanaDe(msDe(l))})` : "";
         if (enSuSemana(nueva, f.col)) { corregidas.push(fila(`«${f.texto}» → ${fechaTexto(nueva)}${sem}`)); fecha = nueva; }
         else { fuera.push(fila(`«${f.texto}»${l ? ` en la columna de la semana ${semanaDe(msDe(l))}` : ""}`)); continue; }
+      }
+      const l = lunes.get(f.col);
+      if (l && !enSuSemana(fecha, f.col)) {
+        otraColumna.push(fila(`«${f.texto}» escrita en la semana ${semanaDe(msDe(l))} (${fechaTexto(l)} al ${fechaTexto(isoDe(msDe(l) + 6 * DIA_MS))})`));
       }
       a.programadas.push({ fecha, frecuencias: f.frecuencias });
     }
@@ -327,6 +333,10 @@ export function leerPlanAnual(tabla: Celda[][], hoja = ""): Lectura | null {
   if (corregidas.length) extra.push({
     tipo: "fechas-corregidas", nivel: "info", filas: corregidas,
     texto: `${corregidas.length} fecha${s(corregidas.length)} con año mal capturado corregida${s(corregidas.length)} a ${anio}: su columna es de una semana de ${anio}.`,
+  });
+  if (otraColumna.length) extra.push({
+    tipo: "fecha-otra-columna", nivel: "aviso", filas: otraColumna,
+    texto: `${otraColumna.length} fecha${s(otraColumna.length)} escrita${s(otraColumna.length)} en la columna de otra semana (celda copiada o arrastrada): se carga${s(otraColumna.length, "", "n")} con la fecha escrita. Revisa si manda la fecha o la columna.`,
   });
   if (fuera.length) extra.push({
     tipo: "fechas-fuera", nivel: "error", filas: fuera,
