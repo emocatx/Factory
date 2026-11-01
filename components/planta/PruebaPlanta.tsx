@@ -1,10 +1,13 @@
 "use client";
 
 // Página de prueba del prototipo de planta: elegir ficha de almacén y vista por pilar, con medidor.
+// También carga la distribución real de una nave desde un archivo local (el JSON del planeador en
+// D:\Cargas\Planos), sin base de datos: la página solo existe en desarrollo y el archivo no sale del navegador.
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTema, InterruptorTema } from "@/components/Tema";
-import { distribuir, FICHAS } from "./ficha";
+import { andenesQueOperan, compactarDistribucion } from "@/lib/distribucion";
+import { distribuir, FICHAS, type FichaAlmacen } from "./ficha";
 import type { Medicion, Vista } from "./Planta3D";
 
 const Planta3D = dynamic(() => import("./Planta3D"), { ssr: false, loading: () => <p className="p-8 text-suave">Cargando la planta…</p> });
@@ -18,7 +21,31 @@ export function PruebaPlanta() {
   const [id, setId] = useState(FICHAS[0].id);
   const [vista, setVista] = useState<Vista>("moviles");
   const [m, setM] = useState<Medicion | null>(null);
-  const ficha = FICHAS.find((f) => f.id === id)!;
+  // naves con su plano: la flota, los activos y las instalaciones de muestra de CDN 5 sobre la distribución real
+  const [planos, setPlanos] = useState<FichaAlmacen[]>([]);
+  const [error, setError] = useState("");
+  const fichas = useMemo(() => [...FICHAS, ...planos], [planos]);
+  const ficha = fichas.find((f) => f.id === id) ?? FICHAS[0];
+  // pasa por compactarDistribucion, igual que al guardarla en la configuración
+  const cargar = useCallback((crudo: unknown, nombre: string) => {
+    const r = compactarDistribucion(crudo, new Date().toISOString().slice(0, 10));
+    if ("error" in r) { setError(`${nombre}: ${r.error}`); return; }
+    setError("");
+    const nueva: FichaAlmacen = { ...FICHAS[0], id: `plano-${nombre}`, nombre: `${nombre} · plano real`, andenes: andenesQueOperan(r.distribucion), plano: r.distribucion, fuente: "plano" };
+    setPlanos((ps) => [...ps.filter((x) => x.id !== nueva.id), nueva]);
+    setId(nueva.id);
+  }, []);
+  const leer = (archivo: File | undefined) => {
+    if (!archivo) return;
+    archivo.text().then((t) => cargar(JSON.parse(t), archivo.name.replace(/\.distribucion\.json$|\.json$/i, "")))
+      .catch(() => setError(`${archivo.name}: no es un JSON válido.`));
+  };
+  // para medir desde la consola o una prueba automática sin elegir archivo
+  useEffect(() => {
+    const w = window as unknown as { __cargarDistribucion?: typeof cargar };
+    w.__cargarDistribucion = cargar;
+    return () => { delete w.__cargarDistribucion; };
+  }, [cargar]);
   const d = useMemo(() => distribuir(ficha), [ficha]);
   const enTaller = d.montacargas.filter((x) => x.estado === "paro").length;
   const fallas = d.activos.filter((a) => a.estado === "paro").length + d.andenes.filter((a) => a.estado === "paro").length;
@@ -32,17 +59,24 @@ export function PruebaPlanta() {
           <p className="text-[12px] text-suave">Prototipo · plantilla de nave</p>
           <h1 className="text-[22px] font-semibold tracking-tight">{ficha.nombre}</h1>
           <p className="mt-1 text-[13px] text-suave">
-            {ficha.andenes} andenes{ficha.dosLados ? " (2 lados)" : ""} · {ficha.pasillos} pasillos · {Math.round(d.ancho)} × {Math.round(d.fondo)} m
+            {ficha.plano
+              ? `${d.andenes.length} cortinas (${ficha.andenes} operan) · ${d.racks.length} bloques de racks · ${d.zonas.length} zonas · ${Math.round(ficha.plano.nave.largo)} × ${Math.round(ficha.plano.nave.ancho)} m`
+              : `${ficha.andenes} andenes${ficha.dosLados ? " (2 lados)" : ""} · ${ficha.pasillos} pasillos · ${Math.round(d.ancho)} × ${Math.round(d.fondo)} m`}
           </p>
+          {error && <p role="alert" className="mt-1 text-[13px] text-paro-texto">{error}</p>}
           <p className="text-[13px] text-suave">{d.montacargas.length} montacargas ({enTaller} en Mantto) · {d.activos.length} activos · {fallas} activos o andenes en falla</p>
         </div>
         <div className="pointer-events-auto flex flex-wrap items-center gap-2">
           <div className="inline-flex items-center gap-2 rounded-full vidrio py-1 pl-4 pr-1">
             <label htmlFor="ficha" className="text-[13px] text-suave">Almacén</label>
             <select id="ficha" value={id} onChange={(e) => setId(e.target.value)} className="selector min-h-9 w-auto rounded-full border-0 bg-panel-2 py-0 pl-3.5 text-[14px] font-semibold">
-              {FICHAS.map((f) => <option key={f.id} value={f.id}>{f.nombre}</option>)}
+              {fichas.map((f) => <option key={f.id} value={f.id}>{f.nombre}</option>)}
             </select>
           </div>
+          <label className="inline-flex min-h-11 cursor-pointer items-center rounded-full vidrio px-4 text-[14px] font-semibold focus-within:ring-2 focus-within:ring-azul">
+            Cargar plano (JSON)
+            <input type="file" accept=".json,application/json" className="sr-only" onChange={(e) => leer(e.target.files?.[0])} />
+          </label>
           <nav aria-label="Vista por pilar" className="inline-flex rounded-full vidrio p-1">
             {VISTAS.map((x) => (
               <button key={x.v} type="button" onClick={() => setVista(x.v)} aria-pressed={vista === x.v}

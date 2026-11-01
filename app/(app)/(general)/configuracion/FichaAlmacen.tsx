@@ -4,9 +4,11 @@
 // Sale del programa anual de Infraestructura; lo que se captura aquí queda como manual y el programa ya no lo cambia.
 import { useState, useTransition } from "react";
 import { enteroFicha } from "@/lib/planAnual";
+import type { Distribucion } from "@/lib/distribucion";
 import { guardarFichaAlmacen } from "./acciones";
+import { DistribucionPlano } from "./DistribucionPlano";
 
-export type Ficha = { andenes?: number; pasillos?: number; dosLados?: boolean; manual?: string[]; fuente?: string; actualizado?: string } | null;
+export type Ficha = { andenes?: number; pasillos?: number; dosLados?: boolean; manual?: string[]; fuente?: string; actualizado?: string; distribucion?: Distribucion } | null;
 
 const ETIQUETA: Record<string, string> = { andenes: "andenes", pasillos: "pasillos", dosLados: "dos lados" };
 
@@ -78,6 +80,7 @@ export function FichaAlmacen({ id, nombre, ficha, editable }: { id: string; nomb
           {msg && <p role="alert" className="w-full text-[13px] text-paro-texto">{msg.texto}</p>}
         </form>
       )}
+      <DistribucionPlano id={id} nombre={nombre} actual={ficha?.distribucion} editable={editable} />
     </div>
   );
 }

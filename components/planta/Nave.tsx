@@ -13,7 +13,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { Mat, type TipoEquipo } from "@/components/home/Equipos3D";
 import { useReloj } from "@/components/home/Movimiento";
 import type { Paleta } from "@/components/home/paleta";
-import { PILAR_DE, pose, type Activo, type Categoria, type Distribucion, type Estado, type Montacargas, type Pilar } from "./ficha";
+import { PILAR_DE, pose, type Activo, type Anden, type Categoria, type Distribucion, type Estado, type Lado, type Montacargas, type Pilar } from "./ficha";
 
 type V3 = [number, number, number];
 export type Vista = Pilar | "todos";
@@ -89,9 +89,12 @@ function useLiberar(t: { dispose: () => void }) {
 }
 
 // ── Piezas ────────────────────────────────────────────────────────────────────────────────────────
-function Etiqueta({ texto, x, z, y = 0.08, p, alto = 2.6 }: { texto: string; x: number; z: number; y?: number; p: Paleta; alto?: number }) {
+/** Etiqueta de piso; con `ancho` se achica para caber en su zona y, si queda ilegible (menos de 1.2 m), no se pone. */
+function Etiqueta({ texto, x, z, y = 0.08, p, alto: altoMax = 2.6, ancho }: { texto: string; x: number; z: number; y?: number; p: Paleta; alto?: number; ancho?: number }) {
   const { t, aspecto } = useTexturaTexto(texto, p.oscuro ? "#e8ecea" : "#3a3a3c");
   useLiberar(t);
+  const alto = ancho === undefined ? altoMax : Math.min(altoMax, ancho / aspecto);
+  if (alto < 1.2) return null;
   return (
     <mesh position={[x, y, z]} rotation={[-Math.PI / 2, 0, 0]}>
       <planeGeometry args={[alto * aspecto, alto]} />
@@ -134,6 +137,28 @@ function Lote({ items, args, r = 0.55, m = 0, sombra = true, glow }: { items: It
   );
 }
 
+/** Hacia afuera de cada muro y a lo largo de él, en la escena (norte = -z). */
+const NORMAL: Record<Lado, [number, number]> = { N: [0, -1], S: [0, 1], E: [1, 0], O: [-1, 0] };
+const TANGENTE: Record<Lado, [number, number]> = { N: [1, 0], S: [1, 0], E: [0, 1], O: [0, 1] };
+
+/** Las piezas de los andenes, cada una en su muro: `adentro` metros hacia dentro de la nave y `lado` a lo largo. */
+function piezasAndenes(lista: Anden[], p: Paleta, ver: boolean, neutro: string) {
+  const en = (a: Anden, adentro: number, y: number, lado = 0): V3 => {
+    const [nx, nz] = NORMAL[a.lado], [tx, tz] = TANGENTE[a.lado];
+    return [a.x - nx * adentro + tx * lado, y, a.z - nz * adentro + tz * lado];
+  };
+  const rot = (a: Anden) => (a.lado === "E" || a.lado === "O" ? Math.PI / 2 : 0);
+  const opera = lista.filter((a) => a.tipo !== "no_operativo");
+  const conTrailer = lista.filter((a, i) => a.tipo !== "no_operativo" && a.tipo !== "rampa" && Math.abs(Math.sin(i * 7.31)) > 0.45);
+  return {
+    cortinas: lista.map((a): Item => ({ pos: en(a, 0.35, 1.6), rot: rot(a), escala: [(a.ancho ?? 3) / 3, 1, 1], color: ver && a.tipo !== "no_operativo" ? p.estructuraClara : neutro })),
+    niveladoras: opera.filter((a) => a.tipo !== "rampa").map((a): Item => ({ pos: en(a, 1.6, 0.04), rot: rot(a), color: ver ? p.amarillo : neutro })),
+    rampas: opera.filter((a) => a.tipo === "rampa").map((a): Item => ({ pos: en(a, -4.5, 0.06), rot: rot(a), escala: [(a.ancho ?? 3) + 1.2, 1, 1], color: ver ? p.amarillo : neutro })),
+    luces: opera.map((a): Item => ({ pos: en(a, 0.4, 2.9, 1.9 * ((a.ancho ?? 3) / 3)), rot: rot(a), color: !ver || !a.estado ? neutro : a.estado === "paro" ? p.paro : p.ok })),
+    traileres: conTrailer.map((a): Item => ({ pos: en(a, -8.5, 2.1), rot: rot(a), color: !ver ? neutro : p.oscuro ? "#4a5257" : "#f4f5f7" })),
+  };
+}
+
 function Estructura({ d, p, vista, patio, onTaller }: { d: Distribucion; p: Paleta; vista: Vista; patio: boolean; onTaller?: () => void }) {
   const n = neutros(p);
   const tonos = p.oscuro ? TONOS.oscuro : TONOS.claro;
@@ -142,17 +167,22 @@ function Estructura({ d, p, vista, patio, onTaller }: { d: Distribucion; p: Pale
   useLiberar(tex);
   const verRacks = vista === "todos" || vista === "inmuebles";
   const verAndenes = verRacks;
-  // la textura se repite cada 13.5 m (5 bahías)
-  useEffect(() => { tex.repeat.set(Math.max(1, d.fondo / 13.5 * 0.8), 1); tex.needsUpdate = true; }, [tex, d.fondo]);
+  // la textura (5 bahías) se repite cada 11.3 m del rack más largo
+  const largoRack = d.racks.reduce((a, r) => Math.max(a, r.largo), 0);
+  useEffect(() => { tex.repeat.set(Math.max(1, largoRack / 11.3), 1); tex.needsUpdate = true; }, [tex, largoRack]);
   const muros: { pos: V3; args: V3 }[] = [
     { pos: [0, ALTO_MURO / 2, z0 - 0.15], args: [d.ancho + 0.3, ALTO_MURO, 0.3] },
     { pos: [0, ALTO_MURO / 2, z1 + 0.15], args: [d.ancho + 0.3, ALTO_MURO, 0.3] },
     { pos: [x0 - 0.15, ALTO_MURO / 2, 0], args: [0.3, ALTO_MURO, d.fondo] },
     { pos: [x1 + 0.15, ALTO_MURO / 2, 0], args: [0.3, ALTO_MURO, d.fondo] },
   ];
-  const traileres = d.andenes.filter((_, i) => Math.abs(Math.sin(i * 7.31)) > 0.45);
-  const itemsRacks = useMemo(() => d.racks.map((r): Item => ({ pos: [r.x, ALTO_RACK / 2, r.z + r.largo / 2], escala: [1, 1, r.largo] })), [d.racks]);
+  // racks a lo largo de z o, con `eo`, de x (girados): la pieza mide ANCHO_RACK × 1 y se escala a su bloque
+  const itemsRacks = useMemo(() => d.racks.map((r): Item => {
+    const escala: V3 = [(r.ancho ?? ANCHO_RACK) / ANCHO_RACK, 1, r.largo];
+    return r.eo ? { pos: [r.x + r.largo / 2, ALTO_RACK / 2, r.z], rot: Math.PI / 2, escala } : { pos: [r.x, ALTO_RACK / 2, r.z + r.largo / 2], escala };
+  }), [d.racks]);
   const racks = useInstancias(itemsRacks);
+  const andenes = useMemo(() => piezasAndenes(d.andenes, p, verAndenes, n.objeto), [d.andenes, p, verAndenes, n.objeto]);
   // clic en el taller: abre la lista de equipos en Mantto (como en el interior genérico)
   const clicTaller = onTaller ? {
     onClick: (e: { stopPropagation: () => void }) => { e.stopPropagation(); onTaller(); },
@@ -172,11 +202,12 @@ function Estructura({ d, p, vista, patio, onTaller }: { d: Distribucion; p: Pale
         <planeGeometry args={[d.ancho, d.fondo]} />
         <meshStandardMaterial color={p.pisoNave} roughness={0.6} />
       </mesh>
-      {d.zonas.map((z) => {
+      {d.zonas.map((z, i) => {
         const pilar = PILAR_TONO[z.tono as keyof typeof tonos];
         const color = vista === "todos" || !pilar || pilar === vista ? tonos[z.tono as keyof typeof tonos] ?? n.piso : n.piso;
+        // cada zona un poco más arriba que la anterior: las que se enciman (zonas del plano) no parpadean
         return (
-          <mesh key={z.id} position={[z.x + z.w / 2, 0.02, z.z + z.d / 2]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow {...(z.tono === "taller" ? clicTaller : {})}>
+          <mesh key={z.id} position={[z.x + z.w / 2, 0.02 + Math.min(i, 15) * 0.003, z.z + z.d / 2]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow {...(z.tono === "taller" ? clicTaller : {})}>
             <planeGeometry args={[z.w, z.d]} />
             <meshStandardMaterial color={color} roughness={0.7} />
           </mesh>
@@ -192,7 +223,7 @@ function Estructura({ d, p, vista, patio, onTaller }: { d: Distribucion; p: Pale
       {/* oficinas y baños como bloques bajos */}
       {d.zonas.filter((z) => z.tono === "oficina").map((z) => (
         <mesh key={`ofi-${z.id}`} position={[z.x + z.w / 2, 1.3, z.z + z.d / 2]} castShadow receiveShadow>
-          <boxGeometry args={[z.w - 1, 2.6, z.d - 1]} />
+          <boxGeometry args={[Math.max(0.5, z.w - 1), 2.6, Math.max(0.5, z.d - 1)]} />
           <meshStandardMaterial color={vista === "todos" || vista === "inmuebles" ? p.muro : n.objeto} roughness={0.6} transparent opacity={0.92} />
         </mesh>
       ))}
@@ -212,11 +243,13 @@ function Estructura({ d, p, vista, patio, onTaller }: { d: Distribucion; p: Pale
           ) : <meshStandardMaterial color={n.rack} roughness={0.8} />}
         </instancedMesh>
       )}
-      {/* andenes: cortina, rampa niveladora y tráileres afuera */}
-      <Lote items={d.andenes.map((a) => ({ pos: [a.x, 1.6, a.norte ? a.z + 0.35 : a.z - 0.35], color: verAndenes ? p.estructuraClara : n.objeto }))} args={[3, 3.2, 0.12]} sombra={false} />
-      <Lote items={d.andenes.map((a) => ({ pos: [a.x, 0.04, a.norte ? a.z + 1.6 : a.z - 1.6], color: verAndenes ? p.amarillo : n.objeto }))} args={[2.6, 0.08, 2.4]} sombra={false} />
-      <Lote items={d.andenes.map((a) => ({ pos: [a.x + 1.9, 2.9, a.norte ? a.z + 0.4 : a.z - 0.4], color: !verAndenes || !a.estado ? n.objeto : a.estado === "paro" ? p.paro : p.ok }))} args={[0.35, 0.35, 0.12]} sombra={false} glow={verAndenes && d.andenes.some((a) => a.estado)} />
-      <Lote items={traileres.map((a) => ({ pos: [a.x, 2.1, a.norte ? a.z - 8.5 : a.z + 8.5], color: !verAndenes ? n.objeto : p.oscuro ? "#4a5257" : "#f4f5f7" }))} args={[2.5, 3.6, 15]} r={0.4} />
+      {/* andenes: cortina, rampa niveladora y tráileres afuera; las rampas a nivel de piso llevan su losa amarilla
+          afuera y sin tráiler; los no operativos son cortina cerrada gris, sin niveladora ni luz */}
+      <Lote items={andenes.cortinas} args={[3, 3.2, 0.12]} sombra={false} />
+      <Lote items={andenes.niveladoras} args={[2.6, 0.08, 2.4]} sombra={false} />
+      <Lote items={andenes.rampas} args={[1, 0.12, 9]} sombra={false} />
+      <Lote items={andenes.luces} args={[0.35, 0.35, 0.12]} sombra={false} glow={verAndenes && d.andenes.some((a) => a.estado)} />
+      <Lote items={andenes.traileres} args={[2.5, 3.6, 15]} r={0.4} />
       {/* rayas de cajones del taller */}
       {d.zonas.filter((z) => z.tono === "taller").map((z) => (
         <mesh key={`raya-${z.id}`} position={[z.x + z.w / 2, 0.03, z.z + z.d / 2]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -224,7 +257,7 @@ function Estructura({ d, p, vista, patio, onTaller }: { d: Distribucion; p: Pale
           <meshBasicMaterial color={vista === "todos" || vista === "moviles" ? p.paro : n.objeto} transparent opacity={0.08} toneMapped={false} />
         </mesh>
       ))}
-      {d.etiquetas.map((e, i) => <Etiqueta key={i} texto={e.texto} x={e.x} z={e.z} y={e.y} p={p} alto={e.texto.length > 18 ? 3.2 : 3.8} />)}
+      {d.etiquetas.map((e, i) => <Etiqueta key={i} texto={e.texto} x={e.x} z={e.z} y={e.y} p={p} alto={e.texto.length > 18 ? 3.2 : 3.8} ancho={e.ancho} />)}
     </group>
   );
 }
@@ -472,7 +505,7 @@ export function marcasDe(d: Distribucion, vista: Vista): Marca[] {
     if (!unico && a.estado !== "paro") continue;
     r.push({ id: a.id, texto: `${NOMBRE[a.categoria] ?? a.categoria} · ${a.estado === "paro" ? "falla" : "OK"}`, x: a.x, y: a.categoria === "osmosis" ? 6 : 4, z: a.z, falla: a.estado === "paro" });
   }
-  if (ver("anden")) d.andenes.forEach((a, i) => { if (a.estado === "paro") r.push({ id: `and${i}`, texto: `Andén ${i + 1} · falla`, x: a.x, y: 4, z: a.z, falla: true }); });
+  if (ver("anden")) d.andenes.forEach((a, i) => { if (a.estado === "paro") r.push({ id: `and${i}`, texto: `Andén ${a.num ?? i + 1} · falla`, x: a.x, y: 4, z: a.z, falla: true }); });
   return r;
 }
 

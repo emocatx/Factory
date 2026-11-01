@@ -2,7 +2,10 @@
 // distribución completa, sin dibujar plano por plano. La ficha puede salir de las ubicaciones técnicas
 // de SAP (contando AND###, PAS### y viendo qué zonas existen) o de un formulario en la configuración.
 // Coordenadas en metros: x de poniente a oriente, z de norte (andenes) a sur; el centro de la nave es 0,0.
+// Si la nave tiene su distribución real (almacenes.ficha.distribucion, sacada del plano), manda sobre la plantilla:
+// ver `distribuirPlano`.
 import type { TipoEquipo } from "@/components/home/Equipos3D";
+import { andenesQueOperan, compactarDistribucion, type Distribucion as Plano, type Muro, type TipoAnden } from "@/lib/distribucion";
 import { ANDEN, categoriaDe, normalizar } from "@/lib/planAnual";
 
 /**
@@ -17,6 +20,8 @@ export type FichaNave = {
   techo?: { louvers?: number; extractores?: number; inyectores?: number };
   compresores?: number; tableros?: number; minisplits?: number; cargadores?: number;
   fuente?: string; actualizado?: string;
+  /** Distribución real sacada del plano (lib/distribucion.ts): la nave se dibuja a su medida. */
+  distribucion?: Plano;
 };
 
 /** Lo mínimo de un equipo para derivar la ficha: su nombre (denominación) y su categoría si la tiene. */
@@ -67,6 +72,8 @@ export type FichaAlmacen = {
   cargadores?: number;
   /** De dónde salió: "programa-anual", "equipos", "estimada" (por tamaño de flota) o vacío en las muestras. */
   fuente?: string;
+  /** Distribución real del plano: con ella la nave mide lo que dice y sus andenes, racks y zonas van en su lugar. */
+  plano?: Plano;
 };
 
 export type Categoria = "montacargas" | "cargador" | "minisplit" | "osmosis" | "carcamo" | "tablero" | "compresor" | "subestacion" | "anden" | "rack";
@@ -94,13 +101,22 @@ export const FICHAS: FichaAlmacen[] = [
 
 type Rect = { x: number; z: number; w: number; d: number };
 export type ZonaPiso = Rect & { id: string; nombre: string; tono: "embarque" | "recepcion" | "taller" | "carga" | "oficina" | "patio" | "tarimas" | "neutro"; pilar?: Pilar };
-export type Rack = { x: number; z: number; largo: number };
-/** `estado` vacío = sin dato: se dibuja neutro y sin luz de estado (con datos reales nada se inventa). */
-export type Anden = { x: number; z: number; norte: boolean; estado?: Estado };
-/** Ruta de un equipo que opera: ida y vuelta en su pasillo, o circuito cerrado en embarque (todos en el mismo
- *  sentido y separados, así nunca se enciman). */
+/**
+ * Fila o bloque de racks. A lo largo de z (lo normal): `x` es su centro y `z` su orilla norte. Con `eo` corre a lo
+ * largo de x: `x` es su orilla poniente y `z` su centro. `ancho` falta en la plantilla (un rack de doble fondo).
+ */
+export type Rack = { x: number; z: number; largo: number; ancho?: number; eo?: boolean };
+/** Lado de la nave (en la escena el norte es -z). */
+export type Lado = Muro;
+/**
+ * Cortina de un andén sobre su muro (x, z en la línea del muro). `estado` vacío = sin dato: se dibuja neutro y sin
+ * luz de estado (con datos reales nada se inventa). `tipo`, `ancho` y `num` solo vienen del plano.
+ */
+export type Anden = { x: number; z: number; lado: Lado; estado?: Estado; tipo?: TipoAnden; ancho?: number; num?: number };
+/** Ruta de un equipo que opera: ida y vuelta en su pasillo (a lo largo de z, o de x con `eje`), o circuito cerrado
+ *  en embarque (todos en el mismo sentido y separados, así nunca se enciman). */
 export type Ruta =
-  | { tipo: "pasillo"; desde: number; hasta: number; fase: number }
+  | { tipo: "pasillo"; desde: number; hasta: number; fase: number; eje?: "x" }
   | { tipo: "circuito"; x0: number; x1: number; za: number; zb: number; s0: number };
 export type Montacargas = { id: string; tipo: TipoEquipo; estado: Estado; x: number; z: number; rot: number; ruta?: Ruta };
 export type Activo = { id: string; categoria: Categoria; estado?: Estado; x: number; z: number; rot?: number };
@@ -111,8 +127,8 @@ export type Distribucion = {
   ancho: number; fondo: number;
   zonas: ZonaPiso[]; racks: Rack[]; andenes: Anden[];
   montacargas: Montacargas[]; activos: Activo[];
-  /** Puntos para las etiquetas de zona. */
-  etiquetas: { texto: string; x: number; z: number; y?: number }[];
+  /** Puntos para las etiquetas de zona (`ancho`: lo más que puede medir la etiqueta, en metros). */
+  etiquetas: { texto: string; x: number; z: number; y?: number; ancho?: number }[];
   /** Rectángulo de todo lo que se dibuja (nave, tráileres y patio), para encuadrar y centrar. */
   huella: { cx: number; cz: number; ancho: number; fondo: number };
   /** Equipos en Mantto que no caben en los cajones del taller (no se dibujan; la marca del taller sí los cuenta). */
@@ -135,8 +151,11 @@ const ZONA_DE_BASE: Record<string, Zona> = {
  */
 export function fichaDeBase(id: string, nombre: string, base: FichaNave): FichaAlmacen | null {
   const entero = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.min(300, Math.round(v)) : 0);
-  const andenes = entero(base.andenes), pasillos = entero(base.pasillos);
-  if (!andenes && !pasillos) return null;
+  // la distribución del plano se vuelve a validar aquí: la ficha es JSON libre en la base
+  const r = base.distribucion ? compactarDistribucion(base.distribucion, base.distribucion.actualizado ?? "") : null;
+  const plano = r && "distribucion" in r ? r.distribucion : undefined;
+  const andenes = plano ? andenesQueOperan(plano) : entero(base.andenes), pasillos = entero(base.pasillos);
+  if (!andenes && !pasillos && !plano) return null;
   const zonas: FichaAlmacen["zonas"] = { taller: true };
   for (const z of Array.isArray(base.zonas) ? base.zonas : []) {
     const k = typeof z === "string" ? ZONA_DE_BASE[z] : undefined;
@@ -145,7 +164,7 @@ export function fichaDeBase(id: string, nombre: string, base: FichaNave): FichaA
   const tope = (v: unknown, max: number) => Math.min(max, entero(v));
   // la ficha puede decir cuántos lados tiene; si no, se decide por la cantidad de andenes
   const dosLados = typeof base.dosLados === "boolean" ? base.dosLados : andenes > ANDENES_DOS_LADOS;
-  return { id, nombre, andenes, dosLados, pasillos, zonas, minisplits: tope(base.minisplits, 40), tableros: tope(base.tableros, 30), compresores: tope(base.compresores, 6), cargadores: tope(base.cargadores, 52) || undefined, fuente: base.fuente };
+  return { id, nombre, andenes, dosLados, pasillos, zonas, minisplits: tope(base.minisplits, 40), tableros: tope(base.tableros, 30), compresores: tope(base.compresores, 6), cargadores: tope(base.cargadores, 52) || undefined, fuente: base.fuente, plano };
 }
 
 /**
@@ -184,6 +203,7 @@ export function pose(m: Montacargas, t: number): [number, number, number] {
   if (!r) return [m.x, m.z, m.rot];
   if (r.tipo === "pasillo") {
     const a = t * 0.12 + r.fase;
+    if (r.eje === "x") return [r.desde + (r.hasta - r.desde) * (0.5 + 0.5 * Math.sin(a)), m.z, Math.cos(a) >= 0 ? 0 : Math.PI];
     return [m.x, r.desde + (r.hasta - r.desde) * (0.5 + 0.5 * Math.sin(a)), Math.cos(a) >= 0 ? -Math.PI / 2 : Math.PI / 2];
   }
   // circuito: carril norte hacia el oriente, carril sur hacia el poniente
@@ -215,6 +235,7 @@ const ANDENES_DOS_LADOS = 40;  // mantenimiento al oriente y oficinas al ponient
  * demás activos van sin estado (no hay dato); sin ella (prototipo) se inventan flota y estados de muestra.
  */
 export function distribuir(f: FichaAlmacen, flotaReal?: EquipoFlota[]): Distribucion {
+  if (f.plano) return distribuirPlano(f, f.plano, flotaReal);
   const inventar = !flotaReal;
   // El taller crece para que quepan todos los equipos en Mantto (cajones de 3 × 4 m)
   const nMantto = (flotaReal ?? inventada(f)).filter((e) => e.estado === "paro").length;
@@ -258,7 +279,7 @@ export function distribuir(f: FichaAlmacen, flotaReal?: EquipoFlota[]): Distribu
     const paso = largo / Math.max(1, n);
     for (let i = 0; i < n; i++) {
       const h = azar(i, norte ? 1 : 2, f.andenes);
-      andenes.push({ x: ax0 + (i + 0.5) * paso, z: norte ? z0 : z1, norte, estado: inventar ? (h < 0.05 ? "paro" : "ok") : undefined });
+      andenes.push({ x: ax0 + (i + 0.5) * paso, z: norte ? z0 : z1, lado: norte ? "N" : "S", estado: inventar ? (h < 0.05 ? "paro" : "ok") : undefined });
     }
   }
   if (f.zonas.tarimas && !f.dosLados) {
@@ -370,15 +391,153 @@ export function distribuir(f: FichaAlmacen, flotaReal?: EquipoFlota[]): Distribu
   etiquetas.push({ texto: `${f.pasillos} pasillos de racks`, x: (rx0 + rx1) / 2 + ancho * 0.18, z: (rz0 + rz1) / 2 });
   // huella: la nave, los tráileres de los andenes (16 m) y el patio de instalaciones al sur
   const patioSur = activos.some((a) => ["osmosis", "carcamo", "subestacion", "compresor"].includes(a.categoria));
-  const hz0 = z0 - (andenes.some((a) => a.norte) ? 17 : 3);
-  const hz1 = z1 + (andenes.some((a) => !a.norte) || patioSur ? 17 : 3);
+  const hz0 = z0 - (andenes.some((a) => a.lado === "N") ? 17 : 3);
+  const hz1 = z1 + (andenes.some((a) => a.lado === "S") || patioSur ? 17 : 3);
   const huella = { cx: 0, cz: (hz0 + hz1) / 2, ancho: ancho + 6, fondo: hz1 - hz0 };
   return { ancho, fondo, zonas, racks, andenes, montacargas, activos, etiquetas, huella, sinLugar: Math.max(0, enMantto.length - cajones.length) };
 }
 
-/** Cajones del taller: la rejilla de siempre (12) y, con más equipos en Mantto, una más apretada (3 × 4 m). */
-function cajonesDe(t: ZonaPiso, n: number, dosLados: boolean): { x: number; z: number }[] {
-  if (n <= 12) {
+// ── Nave con su distribución real (plano) ─────────────────────────────────────────────────────────
+/** Tono de piso de cada tipo de zona del plano (baños y comedor son bloques bajos, como las oficinas). */
+const TONO_PLANO: Record<string, ZonaPiso["tono"]> = {
+  embarque: "embarque", recepcion: "recepcion", taller: "taller", carga: "carga", tarimas: "tarimas",
+  oficina: "oficina", bano: "oficina", comedor: "oficina",
+};
+/** Cuartos de vuelta (contra reloj) que llevan cada muro al norte de la escena, donde la plantilla pone los andenes. */
+const GIRO: Record<Lado, number> = { N: 0, E: 1, S: 2, O: 3 };
+/** Hacia dónde mira cada muro en el plano (este, norte). */
+const DIR: Record<Lado, [number, number]> = { N: [0, 1], E: [1, 0], S: [0, -1], O: [-1, 0] };
+
+/**
+ * Distribución de la escena desde el plano. La nave mide lo que dice el plano y se gira para que el muro con más
+ * andenes quede al norte, como en la plantilla: así el encuadre, el circuito de embarque y el patio de instalaciones
+ * al sur quedan donde siempre. Andenes, racks y zonas van en su lugar; lo que el plano no trae (flota, cargadores,
+ * tableros, minisplits, instalaciones del patio) se acomoda con las reglas de la plantilla sobre la nave real.
+ * El contorno se toma como rectángulo (largo × ancho): los planos de CAB lo son.
+ */
+function distribuirPlano(f: FichaAlmacen, pl: Plano, flotaReal?: EquipoFlota[]): Distribucion {
+  const inventar = !flotaReal;
+  const cuenta: Record<Lado, number> = { N: 0, S: 0, E: 0, O: 0 };
+  pl.andenes.forEach((a) => { cuenta[a.muro]++; });
+  const k = GIRO[(["N", "S", "E", "O"] as Lado[]).reduce((a, b) => (cuenta[b] > cuenta[a] ? b : a), "N")];
+  const L = pl.nave.largo, W = pl.nave.ancho;
+  const gira = (e: number, n: number): [number, number] => { for (let i = 0; i < k; i++) [e, n] = [-n, e]; return [e, n]; };
+  /** Punto del plano (origen SO, y al norte) → escena (centro de la nave, norte en -z). */
+  const punto = (x: number, y: number): [number, number] => { const [e, n] = gira(x - L / 2, y - W / 2); return [e, -n]; };
+  const rect = (x: number, y: number, dx: number, dy: number) => {
+    const [ax, az] = punto(x, y), [bx, bz] = punto(x + dx, y + dy);
+    return { x: Math.min(ax, bx), z: Math.min(az, bz), w: Math.abs(bx - ax), d: Math.abs(bz - az) };
+  };
+  const ladoDe = (m: Lado): Lado => { const [e, n] = gira(...DIR[m]); return n > 0.5 ? "N" : n < -0.5 ? "S" : e > 0.5 ? "E" : "O"; };
+  const ancho = k % 2 ? W : L, fondo = k % 2 ? L : W;
+  const x0 = -ancho / 2, z0 = -fondo / 2, x1 = ancho / 2, z1 = fondo / 2;
+
+  // Zonas: las grandes primero (las chicas que quedan encima se dibujan después y un poco más arriba)
+  const zonas: ZonaPiso[] = [];
+  const etiquetas: Distribucion["etiquetas"] = [];
+  [...pl.zonas].sort((a, b) => b.largo * b.ancho - a.largo * a.ancho).forEach((z, i) => {
+    const r = rect(z.x, z.y, z.largo, z.ancho);
+    const tono = TONO_PLANO[z.tipo] ?? "neutro";
+    const nombre = z.nombre.split(" (")[0];
+    zonas.push({ id: `z${i}`, nombre, tono, ...r });
+    etiquetas.push({ texto: nombre, x: r.x + r.w / 2, z: r.z + r.d / 2, y: tono === "oficina" ? 2.7 : undefined, ancho: r.w - 1 });
+  });
+
+  const andenes: Anden[] = pl.andenes.map((a, i) => {
+    const [x, z] = punto(a.x, a.y);
+    const opera = a.tipo !== "no_operativo";
+    return { x, z, lado: ladoDe(a.muro), tipo: a.tipo, ancho: a.ancho, num: a.num, estado: inventar && opera ? (azar(i, 1, pl.andenes.length) < 0.05 ? "paro" : "ok") : undefined };
+  });
+
+  const racks: Rack[] = pl.racks.map((r) => {
+    const s = r.orientacion === "N-S" ? rect(r.x, r.y, r.ancho, r.largo) : rect(r.x, r.y, r.largo, r.ancho);
+    const aLoLargoDeZ = (r.orientacion === "N-S") === (k % 2 === 0);
+    return aLoLargoDeZ ? { x: s.x + s.w / 2, z: s.z, largo: s.d, ancho: s.w } : { x: s.x, z: s.z + s.d / 2, largo: s.w, ancho: s.d, eo: true };
+  });
+  // Pasillos: el hueco entre dos bloques vecinos paralelos, en el tramo donde los dos corren juntos
+  const pasillos: { eje: "x" | "z"; c: number; desde: number; hasta: number }[] = [];
+  for (const eo of [false, true]) {
+    const lista = racks.filter((r) => !!r.eo === eo).map((r) => {
+      const a = r.ancho ?? 0;
+      return eo ? { a: r.z - a / 2, b: r.z + a / 2, i: r.x, f: r.x + r.largo } : { a: r.x - a / 2, b: r.x + a / 2, i: r.z, f: r.z + r.largo };
+    }).sort((p, q) => p.a - q.a);
+    for (let j = 1; j < lista.length; j++) {
+      const p = lista[j - 1], q = lista[j];
+      const desde = Math.max(p.i, q.i), hasta = Math.min(p.f, q.f);
+      if (q.a - p.b >= 2 && hasta - desde >= 12) pasillos.push({ eje: eo ? "x" : "z", c: (p.b + q.a) / 2, desde, hasta });
+    }
+  }
+
+  // Activos que el plano no trae: cargadores en su zona de carga, tableros en el muro sur, minisplits en oficinas
+  // y las instalaciones en el patio sur (como en la plantilla)
+  const activos: Activo[] = [];
+  const estadoDe = (h: number, umbral: number): Estado | undefined => (inventar ? (h < umbral ? "paro" : "ok") : undefined);
+  const cargas = zonas.filter((z) => z.tono === "carga");
+  let porPoner = cargas.length ? (f.cargadores ?? 24) : 0;
+  for (const c of cargas) {
+    const cols = Math.max(1, Math.floor((c.w - 1) / 2.2)), filas = Math.max(1, Math.floor((c.d - 1) / 4));
+    for (let i = 0; i < cols * filas && porPoner > 0; i++, porPoner--) {
+      activos.push({ id: `car${activos.length}`, categoria: "cargador", estado: estadoDe(azar(activos.length, 7), 0.06), x: c.x + 1.6 + (i % cols) * 2.2, z: c.z + 1.5 + Math.floor(i / cols) * 4 });
+    }
+  }
+  const patioZ = z1 + 8;
+  let px = x0 + ancho * 0.25;
+  if (f.zonas.osmosis) { activos.push({ id: "osm", categoria: "osmosis", estado: inventar ? "ok" : undefined, x: px, z: patioZ }); etiquetas.push({ texto: "Ósmosis", x: px, z: patioZ + 7 }); px += 22; }
+  if (f.zonas.carcamo) { activos.push({ id: "car", categoria: "carcamo", estado: inventar ? "paro" : undefined, x: px, z: patioZ }); etiquetas.push({ texto: "Cárcamo", x: px, z: patioZ + 7 }); }
+  if (f.zonas.subestacion) { activos.push({ id: "sub", categoria: "subestacion", estado: inventar ? "ok" : undefined, x: x1 - 20, z: patioZ }); etiquetas.push({ texto: "Subestación", x: x1 - 20, z: patioZ + 7 }); }
+  for (let i = 0; i < f.compresores; i++) activos.push({ id: `cmp${i}`, categoria: "compresor", estado: inventar ? "ok" : undefined, x: x1 - 40 - i * 7, z: patioZ });
+  for (let i = 0; i < f.tableros; i++) activos.push({ id: `tab${i}`, categoria: "tablero", estado: inventar ? (i === 2 ? "paro" : "ok") : undefined, x: x0 + ((i + 0.5) / f.tableros) * ancho, z: z1 - 1.2 });
+  const ofis = zonas.filter((z) => z.tono === "oficina" && z.w > 5 && z.d > 4);
+  for (let i = 0; i < f.minisplits && ofis.length; i++) {
+    const o = ofis[i % ofis.length], k2 = Math.floor(i / ofis.length), util = Math.max(1, o.w - 4);
+    activos.push({ id: `ms${i}`, categoria: "minisplit", estado: estadoDe(azar(i, 3), 0.15), x: o.x + 3 + (k2 * 7) % util, z: Math.min(o.z + o.d - 1, o.z + 1.5 + Math.floor((k2 * 7) / util) * 5) });
+  }
+
+  // Flota: Mantto en los cajones del taller del plano; reach y doble fondo en los pasillos entre racks; los demás
+  // en un circuito frente a los racks, del lado de los andenes
+  const flota = flotaReal ?? inventada(f);
+  const montacargas: Montacargas[] = [];
+  const taller = zonas.find((z) => z.tono === "taller");
+  const enMantto = flota.filter((e) => e.estado === "paro");
+  const cajones = taller ? cajonesDe(taller, enMantto.length, false, true) : [];
+  enMantto.slice(0, cajones.length).forEach((e, i) => montacargas.push({ id: `t${i}`, tipo: e.tipo, estado: "paro", x: cajones[i].x, z: cajones[i].z, rot: Math.PI / 2 }));
+  const operan = flota.filter((e) => e.estado !== "paro");
+  const dePasillo = pasillos.length ? operan.filter((e) => e.tipo === "reach" || e.tipo === "doble") : [];
+  const deCircuito = operan.filter((e) => !dePasillo.includes(e));
+  const P = pasillos.length, n = dePasillo.length;
+  dePasillo.forEach((e, j) => {
+    const p = n <= P ? Math.floor(((j + 0.5) * P) / n) : j % P;
+    const tramos = n <= P ? 1 : Math.floor((n - 1 - p) / P) + 1;
+    const s = n <= P ? 0 : Math.floor(j / P);
+    const a = pasillos[p];
+    const largo = (a.hasta - a.desde - 6) / tramos;
+    const desde = a.desde + 3 + s * largo, hasta = desde + largo - (tramos > 1 ? 3 : 0);
+    const ruta: Ruta = { tipo: "pasillo", desde, hasta, fase: azar(j, 11) * Math.PI * 2, ...(a.eje === "x" ? { eje: "x" as const } : {}) };
+    montacargas.push(a.eje === "x" ? { id: `p${j}`, tipo: e.tipo, estado: e.estado, x: desde, z: a.c, rot: 0, ruta } : { id: `p${j}`, tipo: e.tipo, estado: e.estado, x: a.c, z: desde, rot: Math.PI / 2, ruta });
+  });
+  const frenteRacks = racks.length ? Math.min(...racks.map((r) => (r.eo ? r.z - (r.ancho ?? 0) / 2 : r.z))) : z0 + 12;
+  const zb = Math.max(z0 + 5, frenteRacks - 1.5), za = Math.max(z0 + 2, zb - 5);
+  const perimetro = 2 * (ancho - 12) + 2 * (zb - za);
+  deCircuito.forEach((e, j) => montacargas.push({ id: `c${j}`, tipo: e.tipo, estado: e.estado, x: 0, z: za, rot: 0, ruta: { tipo: "circuito", x0: x0 + 6, x1: x1 - 6, za, zb, s0: (j * perimetro) / deCircuito.length } }));
+
+  // Huella: la nave, sus zonas (también las de fuera, como oficinas anexas), los tráileres y el patio sur
+  let hx0 = x0 - 3, hx1 = x1 + 3, hz0 = z0 - 3, hz1 = z1 + 3;
+  for (const z of zonas) { hx0 = Math.min(hx0, z.x); hx1 = Math.max(hx1, z.x + z.w); hz0 = Math.min(hz0, z.z); hz1 = Math.max(hz1, z.z + z.d); }
+  const conTrailer = new Set(andenes.filter((a) => a.tipo !== "no_operativo").map((a) => a.lado));
+  if (conTrailer.has("N")) hz0 = Math.min(hz0, z0 - 17);
+  if (conTrailer.has("S") || activos.some((a) => ["osmosis", "carcamo", "subestacion", "compresor"].includes(a.categoria))) hz1 = Math.max(hz1, z1 + 17);
+  if (conTrailer.has("O")) hx0 = Math.min(hx0, x0 - 17);
+  if (conTrailer.has("E")) hx1 = Math.max(hx1, x1 + 17);
+  const huella = { cx: (hx0 + hx1) / 2, cz: (hz0 + hz1) / 2, ancho: hx1 - hx0, fondo: hz1 - hz0 };
+  return { ancho, fondo, zonas, racks, andenes, montacargas, activos, etiquetas, huella, sinLugar: Math.max(0, enMantto.length - cajones.length) };
+}
+
+/**
+ * Cajones del taller: la rejilla de siempre (12) y, con más equipos en Mantto o en un taller del plano (que puede
+ * ser chico), una más apretada de 3 × 4 m que nunca se sale de la zona.
+ */
+function cajonesDe(t: ZonaPiso, n: number, dosLados: boolean, apretados = false): { x: number; z: number }[] {
+  if (n <= 12 && !apretados) {
     return Array.from({ length: 12 }, (_, i) => dosLados
       ? { x: t.x + 4 + (i % 4) * 9, z: t.z + 7 + Math.floor(i / 4) * 10 }
       : { x: t.x + 4 + (i % 6) * 7.2, z: t.z + 3.5 + Math.floor(i / 6) * 6.5 });

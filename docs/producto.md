@@ -255,6 +255,19 @@ Presupuesto de rendimiento del módulo 3D (equipo de oficina con gráficos integ
 - La plantilla Factory todavía admite varias actividades con la misma frecuencia en un equipo (filas con el mismo
   equipo y otro Servicio), pero el planeador ya no fusiona servicios del archivo con sus equipos.
 
+### Distribución real desde el plano (2026-10-31)
+
+El planeador saca de cada plano de AutoCAD (mejor DXF que PDF: trae metros, capas y nombres) la nave, los andenes en
+su muro, los bloques de racks y las zonas, y deja `D:\Cargas\Planos\<almacén>.distribucion.json`. El admin la carga en
+Configuración → Almacenes → "Distribución del plano" (vista previa antes de guardar); queda compacta en
+`almacenes.ficha.distribucion` (`lib/distribucion.ts`) y los andenes que operan pasan a ser dato manual.
+- Con distribución, la nave del Resumen sale a su medida: el muro con más andenes queda al norte de la escena; andén de
+  carga con niveladora y tráiler, rampa como losa amarilla hacia afuera, andén que no opera como cortina gris cerrada;
+  racks instanciados con su largo y orientación; zonas como losas (oficinas, baños y comedor como bloques bajos).
+- Lo que el plano no trae (equipos, estado, cargadores, techo) sigue con las reglas de la plantilla, sobre la nave real.
+- Piloto: Monterrey 1 (DXF, 9 min), Monterrey 2 y CDN 2 (PDF y luego DXF, ~9 min cada uno). Para los demás: DWG o DXF
+  con la planta de racks dibujada, una sola planta por archivo y el andén con número y estado.
+
 ### Plantilla de nave (en el Resumen; motor en `components/planta/Nave.tsx`, pruebas en `/prueba-planta`)
 
 **Cómo se arma cada almacén (sin código por almacén).** Al entrar a un almacén en el Resumen se ve su nave armada con
@@ -359,3 +372,4 @@ El Resumen de Móviles y la barra lateral marcan el estilo de toda la app; las d
 | 2026-10-31 | Programa semanal, ajustes de seguridad y rendimiento: completar con fecha de hasta 7 días atrás (técnico) o 90 (editores), reprogramar hasta 30 días (técnico) o 366 (editores), alta y borrado directos solo del admin, bitácora de cada cambio y vencidos sin límite de año |
 | 2026-10-31 | El importador lee el original CABLOMTO sin plantilla: corrige el año mal capturado, avisa por nivel con renglones; la ficha de nave capturada a mano manda sobre el programa |
 | 2026-10-31 | Una visita de frecuencia mayor cubre a la menor al revisar el calendario (3 trimestrales + 1 anual = 4 visitas); si el archivo marca "3M-12M" el mismo día, se cargan los dos servicios tal como vienen |
+| 2026-10-31 | La nave del 3D sale del plano real (DXF/PDF de AutoCAD) cuando el almacén tiene distribución; se carga en Configuración y se guarda en almacenes.ficha |

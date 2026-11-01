@@ -7,6 +7,7 @@ import { exigirRol } from "@/lib/sesion";
 import { esPilar, PILARES } from "@/lib/catalogos";
 import { esUuid } from "@/lib/filtros";
 import { enteroFicha } from "@/lib/planAnual";
+import { andenesQueOperan, compactarDistribucion } from "@/lib/distribucion";
 
 function volver(msg: string, error = false, ancla = ""): never {
   revalidatePath("/", "layout");
@@ -111,6 +112,37 @@ export async function importarAlmacenes(filas: Record<string, string>[]): Promis
     mensaje: `${nuevos.length} almacén(es) creados${omitidos.length ? `, ${omitidos.length} ya existían y se omitieron` : ""}.`,
     detalle: omitidos.length ? omitidos.slice(0, 50).map((o) => `Ya existía: ${o}`) : undefined,
   };
+}
+
+/**
+ * Guarda la distribución real de la nave (el JSON que deja el planeador desde el plano DXF o PDF) en
+ * almacenes.ficha.distribucion, compacta y validada. También fija los andenes que operan como dato manual, para que
+ * el programa anual no los pise. Solo admin (lo exige también la RLS de almacenes).
+ */
+export async function guardarDistribucionAlmacen(idAlmacen: string, texto: string): Promise<{ ok: boolean; mensaje: string }> {
+  await exigirRol(["admin"]);
+  if (!esUuid(idAlmacen)) return { ok: false, mensaje: "Almacén no válido." };
+  if (typeof texto !== "string" || !texto.length || texto.length > 300_000) return { ok: false, mensaje: "El archivo está vacío o pesa más de 300 KB." };
+  let crudo: unknown;
+  try { crudo = JSON.parse(texto); } catch { return { ok: false, mensaje: "El archivo no es un JSON válido." }; }
+  const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+  const r = compactarDistribucion(crudo, hoy);
+  if ("error" in r) return { ok: false, mensaje: r.error };
+  const andenes = andenesQueOperan(r.distribucion);
+
+  const supabase = await createClient();
+  const { data, error: e1 } = await supabase.from("almacenes").select("ficha, nombre_almacen").eq("id_almacen", idAlmacen).maybeSingle();
+  if (e1) return { ok: false, mensaje: traducir(e1.message) };
+  if (!data) return { ok: false, mensaje: "No se encontró el almacén." };
+  const actual = data.ficha && typeof data.ficha === "object" && !Array.isArray(data.ficha) ? (data.ficha as Record<string, unknown>) : {};
+  const previas = Array.isArray(actual.manual) ? actual.manual.filter((x): x is string => typeof x === "string") : [];
+  const { error } = await supabase.from("almacenes")
+    .update({ ficha: { ...actual, distribucion: r.distribucion, andenes, manual: [...new Set([...previas, "andenes", "distribucion"])], fuente: "manual", actualizado: hoy } })
+    .eq("id_almacen", idAlmacen);
+  if (error) return { ok: false, mensaje: traducir(error.message) };
+  revalidatePath("/", "layout");
+  const d = r.distribucion;
+  return { ok: true, mensaje: `Distribución de ${data.nombre_almacen} guardada: nave de ${d.nave.largo} × ${d.nave.ancho} m, ${andenes} andenes y rampas, ${d.racks.length} bloques de racks y ${d.zonas.length} zonas.` };
 }
 
 /** Lo que se captura a mano de la ficha de un almacén (la nave en 3D se arma con esto). */
