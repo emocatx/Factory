@@ -10,6 +10,8 @@ import type { TipoPlan } from "@/lib/tipos";
 import { ALMACENES_ELEGIDOS, type Campo, type MapeosGuardados } from "@/lib/plantillaFactory";
 import { OMITIR, type Carga } from "@/lib/planAnual";
 import { esUuid } from "@/lib/filtros";
+import { todasLasPaginas } from "@/lib/datos";
+import { validarEquipos, type EquipoFactory, type Validacion } from "@/lib/validarEquipos";
 
 type Resultado = { ok: boolean; mensaje: string; detalle?: string[] };
 const EDITORES = ["admin", "supervisor", "coordinador"] as const;
@@ -125,6 +127,25 @@ export async function simularProgramaAnual(pilar: string, carga: Carga): Promise
   const { data, error } = await (await createClient()).rpc("simular_programa_anual", { p_pilar: pilar, p_datos: carga });
   if (error) return { ok: false, mensaje: `La carga fallaría: ${traducir(error.message)}` };
   return { ok: true, mensaje: "Simulación lista.", simulacion: data as Simulacion };
+}
+
+/**
+ * Valida los equipos del programa contra los que ya están en Factory (ver lib/validarEquipos.ts): cuáles coinciden,
+ * cuáles cambian, cuáles son nuevos o parecen repetidos y cuáles de Factory no vienen en el archivo. Solo lee.
+ */
+export async function validarEquiposPrograma(pilar: string, activos: Carga["activos"]): Promise<Resultado & { validacion?: Validacion }> {
+  await exigirRol(["admin"]);
+  if (!esPilar(pilar)) return { ok: false, mensaje: "Pilar inválido." };
+  if (!Array.isArray(activos) || !activos.length || activos.length > 20000) return { ok: false, mensaje: "La carga no trae activos." };
+  if (activos.some((a) => !esUuid(a?.alm) || typeof a.nombre !== "string" || !Number.isInteger(a.i))) return { ok: false, mensaje: "La carga no tiene el formato esperado." };
+  const supabase = await createClient();
+  const { data, error } = await todasLasPaginas<{ id_equipo: string; tipo_pilar: string; id_almacen: string | null; sap_id: string | null; clave_id: string | null; nombre_equipo: string; categoria: string | null; estatus: string }>(
+    (desde, hasta) => supabase.from("equipos").select("id_equipo, tipo_pilar, id_almacen, sap_id, clave_id, nombre_equipo, categoria, estatus").order("id_equipo").range(desde, hasta));
+  if (error) return { ok: false, mensaje: `No se pudieron leer los equipos de Factory: ${traducir(error.message)}` };
+  const existentes: EquipoFactory[] = data.map((e) => ({
+    id: e.id_equipo, pilar: e.tipo_pilar, alm: e.id_almacen, sap: e.sap_id, clave: e.clave_id, nombre: e.nombre_equipo, cat: e.categoria, estatus: e.estatus,
+  }));
+  return { ok: true, mensaje: "Validación lista.", validacion: validarEquipos(activos, existentes, pilar) };
 }
 
 /**

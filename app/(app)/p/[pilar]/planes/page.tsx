@@ -11,7 +11,7 @@ import { ImportarPrograma } from "@/components/importar/ImportarPrograma";
 import { PanelPlanes } from "./PanelPlanes";
 import { BotonHecho, SelectorAlmacen } from "./Controles";
 import { VistaSemana } from "./VistaSemana";
-import { cargarProgramaAnual, recordarImportacion, simularProgramaAnual } from "./acciones";
+import { cargarProgramaAnual, recordarImportacion, simularProgramaAnual, validarEquiposPrograma } from "./acciones";
 import type { MapeosGuardados } from "@/lib/plantillaFactory";
 import type { PlanEquipo, PlanMantenimiento } from "@/lib/tipos";
 
@@ -236,7 +236,7 @@ export default async function Planes({
             {/* Un solo importador: plantilla Factory, CABLOMTO-F01 o tabla propia; crea equipos, así que solo el administrador */}
             {perfil.rol === "admin" && (
               <ImportarPrograma pilar={pilar} almacenes={cat.almacenes.map((a) => ({ id: a.id_almacen, nombre: a.nombre_almacen }))}
-                mapeos={(empresa?.mapeos_importacion ?? {}) as MapeosGuardados} cargar={cargarProgramaAnual} simular={simularProgramaAnual} recordar={recordarImportacion} />
+                mapeos={(empresa?.mapeos_importacion ?? {}) as MapeosGuardados} cargar={cargarProgramaAnual} simular={simularProgramaAnual} validar={validarEquiposPrograma} recordar={recordarImportacion} />
             )}
             <PanelPlanes
               key={f.nuevo ?? ""}

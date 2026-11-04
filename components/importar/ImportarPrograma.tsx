@@ -16,6 +16,8 @@ import {
 import type { Simulacion } from "@/app/(app)/p/[pilar]/planes/acciones";
 import { guardarFichaAlmacen } from "@/app/(app)/(general)/configuracion/acciones";
 import { Barra } from "@/components/ui";
+import type { Validacion } from "@/lib/validarEquipos";
+import { ValidacionEquipos } from "./ValidacionEquipos";
 
 type Almacen = { id: string; nombre: string };
 type Respuesta = { ok: boolean; mensaje: string };
@@ -55,12 +57,13 @@ async function leer(archivo: File): Promise<Fuente | "sin-encabezados" | null> {
   return fila < 0 ? "sin-encabezados" : { archivo: archivo.name, tipo: "tabla", tabla, fila };
 }
 
-export function ImportarPrograma({ pilar, almacenes, mapeos, cargar, simular, recordar: recordarEnEmpresa }: {
+export function ImportarPrograma({ pilar, almacenes, mapeos, cargar, simular, validar, recordar: recordarEnEmpresa }: {
   pilar: string;
   almacenes: Almacen[];
   mapeos: MapeosGuardados;
   cargar: (pilar: string, carga: Carga) => Promise<Respuesta>;
   simular: (pilar: string, carga: Carga) => Promise<Respuesta & { simulacion?: Simulacion }>;
+  validar: (pilar: string, activos: Carga["activos"]) => Promise<Respuesta & { validacion?: Validacion }>;
   recordar: (firma: string | null, mapeo: Partial<Record<Campo, string>> | null, almacenes: Record<string, string>) => Promise<Respuesta>;
 }) {
   const [paso, setPaso] = useState<1 | 2 | 3>(1);
@@ -131,6 +134,21 @@ export function ImportarPrograma({ pilar, almacenes, mapeos, cargar, simular, re
     return () => { vigente = false; };
   }, [carga, sim, simular, pilar]);
   const simulacion = sim && sim.carga === carga ? sim.r : null;
+
+  // En Revisar se comparan los equipos del archivo con los de Factory (solo lectura); espera a que dejen de cambiar los almacenes
+  const activosCarga = paso === 2 ? preparado?.carga.activos : undefined;
+  const [val, setVal] = useState<{ activos: Carga["activos"]; r: Respuesta & { validacion?: Validacion } } | null>(null);
+  useEffect(() => {
+    if (!activosCarga || val?.activos === activosCarga) return;
+    let vigente = true;
+    const t = setTimeout(() => {
+      validar(pilar, activosCarga)
+        .catch(() => ({ ok: false, mensaje: "No se pudo comparar con los equipos de Factory. Revisa tu conexión." }))
+        .then((r) => { if (vigente) setVal({ activos: activosCarga, r }); });
+    }, 400);
+    return () => { vigente = false; clearTimeout(t); };
+  }, [activosCarga, val, validar, pilar]);
+  const validacion = val && val.activos === activosCarga ? val.r : null;
 
   function reiniciar() {
     setPaso(1); setFuente(null); setMapeo({}); setElegidos({}); setAjustes({}); setError(null); setResultado(null); setFiltroAlm(""); setFiltroCat("");
@@ -405,6 +423,8 @@ export function ImportarPrograma({ pilar, almacenes, mapeos, cargar, simular, re
                     </p>
                   )}
                 </section>
+
+                {preparado && <ValidacionEquipos estado={validacion} activos={lectura.activos} nombreAlm={nombreAlm} reintentar={() => setVal(null)} />}
 
                 <section aria-labelledby="imp-planes">
                   <h3 id="imp-planes" className="mb-1 text-[17px] font-semibold">Planes</h3>

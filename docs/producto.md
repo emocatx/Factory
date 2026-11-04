@@ -373,3 +373,4 @@ El Resumen de Móviles y la barra lateral marcan el estilo de toda la app; las d
 | 2026-10-31 | El importador lee el original CABLOMTO sin plantilla: corrige el año mal capturado, avisa por nivel con renglones; la ficha de nave capturada a mano manda sobre el programa |
 | 2026-10-31 | Una visita de frecuencia mayor cubre a la menor al revisar el calendario (3 trimestrales + 1 anual = 4 visitas); si el archivo marca "3M-12M" el mismo día, se cargan los dos servicios tal como vienen |
 | 2026-10-31 | La nave del 3D sale del plano real (DXF/PDF de AutoCAD) cuando el almacén tiene distribución; se carga en Configuración y se guarda en almacenes.ficha |
+| 2026-11-04 | El importador valida los equipos del archivo contra los de Factory antes de cargar (mismo empate que la carga: SAP, clave, nombre en el almacén): coinciden, con diferencias, nuevos, posibles duplicados, repetidos, dados de baja, SAP de otro pilar y los de Factory que el archivo no trae. Solo lee |
