@@ -1,14 +1,19 @@
 // Validador del programa contra lo que ya está en Factory: antes de cargar, dice qué equipos del archivo ya existen
 // (y si coinciden), cuáles son nuevos, cuáles parecen repetidos y qué equipos de Factory no vienen en el archivo.
 // Empata igual que cargar_programa_anual: SAP del mismo pilar → clave → almacén + nombre exacto (sin mayúsculas).
-// Solo compara; no guarda nada.
+// También cruza el historial: cuántas órdenes de Mantto tiene cada equipo, para ver que el plan caiga en los equipos
+// que ya tienen historial y no cree otros. Solo compara; no guarda nada.
 
 import { normalizar, type Carga } from "./planAnual";
 
 export type EquipoFactory = {
   id: string; pilar: string; alm: string | null; sap: string | null; clave: string | null;
   nombre: string; cat: string | null; estatus: string;
+  /** Órdenes de Mantto ligadas al equipo (su historial). */
+  ordenes: number;
 };
+
+type Ficha = { sap: string | null; clave: string | null; nombre: string; alm: string | null; cat: string | null; ordenes: number };
 
 export type Diferencia = "almacen" | "nombre" | "categoria";
 
@@ -20,14 +25,16 @@ export type Coincidencia = {
   por?: "sap" | "clave" | "nombre";
   diferencias?: Diferencia[];
   /** Equipo de Factory con el que empató o al que se parece. */
-  equipo?: { sap: string | null; clave: string | null; nombre: string; alm: string | null; cat: string | null };
+  equipo?: Ficha;
 };
 
 export type Validacion = {
   conteo: Record<Coincidencia["tipo"], number>;
   coincidencias: Coincidencia[];
   /** Equipos activos de Factory, del pilar y de los almacenes del archivo, que el archivo no trae. */
-  sinArchivo: { sap: string | null; clave: string | null; nombre: string; alm: string | null; cat: string | null }[];
+  sinArchivo: Ficha[];
+  /** Equipos con órdenes y cuántas órdenes: los que el plan liga, los que no trae y los de almacenes que no vienen en el archivo. */
+  historial: Record<"ligado" | "sinArchivo" | "fuera" | "parecido", { equipos: number; ordenes: number }>;
 };
 
 /** Nombre para buscar parecidos: sin acentos, mayúsculas, espacios, guiones ni puntos ("Montacargas 01" = "MONTACARGAS-01"). */
@@ -46,7 +53,7 @@ export function validarEquipos(activos: Carga["activos"], existentes: EquipoFact
     if (e.estatus !== "baja" && !parecidos.has(p)) parecidos.set(p, e);
   }
   const sapAjeno = new Set(existentes.filter((e) => e.pilar !== pilar && e.sap).map((e) => e.sap!));
-  const ficha = (e: EquipoFactory) => ({ sap: e.sap, clave: e.clave, nombre: e.nombre, alm: e.alm, cat: e.cat });
+  const ficha = (e: EquipoFactory): Ficha => ({ sap: e.sap, clave: e.clave, nombre: e.nombre, alm: e.alm, cat: e.cat, ordenes: e.ordenes });
 
   const usados = new Map<string, number>(), ids: (string | null)[] = [], parecidosUsados = new Set<string>();
   const coincidencias: Coincidencia[] = activos.map((a, k) => {
@@ -69,7 +76,8 @@ export function validarEquipos(activos: Carga["activos"], existentes: EquipoFact
     const diferencias: Diferencia[] = [];
     if (e.alm !== a.alm) diferencias.push("almacen");
     if (e.nombre.trim() !== nombre) diferencias.push("nombre");
-    if ((e.cat ?? null) !== a.cat) diferencias.push("categoria");
+    // sin categoría en Factory no es diferencia: la carga solo se la pone
+    if (e.cat && e.cat !== a.cat) diferencias.push("categoria");
     const tipo = e.estatus === "baja" ? "baja" : diferencias.length ? "diferente" : "igual";
     return { i: a.i, tipo, por, diferencias, equipo: ficha(e) };
   });
@@ -90,7 +98,16 @@ export function validarEquipos(activos: Carga["activos"], existentes: EquipoFact
     .filter((e) => e.estatus !== "baja" && !empatados.has(e.id) && e.alm && almacenes.has(e.alm))
     .map(ficha);
 
+  const suma = (es: { ordenes: number }[]) => ({ equipos: es.length, ordenes: es.reduce((t, e) => t + e.ordenes, 0) });
+  const conOrdenes = delPilar.filter((e) => e.ordenes > 0);
+  const historial = {
+    ligado: suma(conOrdenes.filter((e) => usados.has(e.id))),
+    parecido: suma(conOrdenes.filter((e) => parecidosUsados.has(e.id))),
+    sinArchivo: suma(sinArchivo.filter((e) => e.ordenes > 0)),
+    fuera: suma(conOrdenes.filter((e) => !e.alm || !almacenes.has(e.alm))),
+  };
+
   const conteo = { igual: 0, diferente: 0, baja: 0, nuevo: 0, "posible-duplicado": 0, "sap-otro-pilar": 0, repetido: 0 };
   for (const c of coincidencias) conteo[c.tipo]++;
-  return { conteo, coincidencias, sinArchivo };
+  return { conteo, coincidencias, sinArchivo, historial };
 }

@@ -142,8 +142,15 @@ export async function validarEquiposPrograma(pilar: string, activos: Carga["acti
   const { data, error } = await todasLasPaginas<{ id_equipo: string; tipo_pilar: string; id_almacen: string | null; sap_id: string | null; clave_id: string | null; nombre_equipo: string; categoria: string | null; estatus: string }>(
     (desde, hasta) => supabase.from("equipos").select("id_equipo, tipo_pilar, id_almacen, sap_id, clave_id, nombre_equipo, categoria, estatus").order("id_equipo").range(desde, hasta));
   if (error) return { ok: false, mensaje: `No se pudieron leer los equipos de Factory: ${traducir(error.message)}` };
+  // historial: órdenes de Mantto del pilar por equipo
+  const ordenes = await todasLasPaginas<{ id_equipo: string | null }>(
+    (desde, hasta) => supabase.from("ordenes_mantenimiento").select("id_equipo").eq("pilar", pilar).order("id_orden").range(desde, hasta));
+  if (ordenes.error) return { ok: false, mensaje: `No se pudo leer el historial de órdenes: ${traducir(ordenes.error.message)}` };
+  const porEquipo = new Map<string, number>();
+  for (const o of ordenes.data) if (o.id_equipo) porEquipo.set(o.id_equipo, (porEquipo.get(o.id_equipo) ?? 0) + 1);
   const existentes: EquipoFactory[] = data.map((e) => ({
     id: e.id_equipo, pilar: e.tipo_pilar, alm: e.id_almacen, sap: e.sap_id, clave: e.clave_id, nombre: e.nombre_equipo, cat: e.categoria, estatus: e.estatus,
+    ordenes: porEquipo.get(e.id_equipo) ?? 0,
   }));
   return { ok: true, mensaje: "Validación lista.", validacion: validarEquipos(activos, existentes, pilar) };
 }

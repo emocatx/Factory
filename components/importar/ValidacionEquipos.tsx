@@ -20,6 +20,7 @@ const TIPOS: { tipo: Tipo; etiqueta: string; clase: string }[] = [
 ];
 const DIF: Record<Diferencia, string> = { almacen: "almacén", nombre: "nombre", categoria: "categoría" };
 const lista = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(", ")} y ${xs.at(-1)}` : xs[0] ?? "");
+const ordenesTxt = (k: number) => `${n(k)} ${k === 1 ? "orden" : "órdenes"}`;
 const POR = { sap: "SAP", clave: "clave", nombre: "nombre en el mismo almacén" } as const;
 
 function quePasa(c: Coincidencia) {
@@ -28,7 +29,7 @@ function quePasa(c: Coincidencia) {
     case "diferente": return `Ya existe (por ${POR[c.por!]}) con otro ${lista((c.diferencias ?? []).map((d) => DIF[d]))}: la carga lo cambia al del archivo.`;
     case "baja": return "Ya existe pero está dado de baja: se le ligaría el plan igual.";
     case "nuevo": return "No existe en Factory: se da de alta.";
-    case "posible-duplicado": return "No empata por SAP, clave ni nombre exacto, pero se parece a uno del mismo almacén: se daría de alta otro.";
+    case "posible-duplicado": return `No empata por SAP, clave ni nombre exacto, pero se parece a uno del mismo almacén${c.equipo?.ordenes ? ` que tiene ${ordenesTxt(c.equipo.ordenes)}` : ""}: se daría de alta otro y el historial no pasaría al nuevo.`;
     case "sap-otro-pilar": return "Su SAP ya lo usa un equipo de otro pilar: se da de alta sin SAP.";
     case "repetido": return "Otra fila del archivo ya cae en este mismo equipo de Factory: se juntarían en uno.";
   }
@@ -82,6 +83,16 @@ export function ValidacionEquipos({ estado, activos, nombreAlm, reintentar }: {
             ))}
           </dl>
 
+          <div className="mt-3 rounded-[18px] bg-papel p-4 text-[14px]">
+            <h4 className="font-semibold">Historial de órdenes</h4>
+            <ul className="mt-1 list-disc space-y-1 pl-5">
+              <li><strong className="font-semibold tabular-nums">{n(v.historial.ligado.equipos)}</strong> {v.historial.ligado.equipos === 1 ? "equipo con historial queda ligado" : "equipos con historial quedan ligados"} al plan, con {ordenesTxt(v.historial.ligado.ordenes)}.</li>
+              {v.historial.parecido.equipos > 0 && <li className="text-paro-texto">{n(v.historial.parecido.equipos)} con historial ({ordenesTxt(v.historial.parecido.ordenes)}) se parecen a una fila del archivo pero no empatan: revisa los posibles duplicados.</li>}
+              {v.historial.sinArchivo.equipos > 0 && <li className="text-alerta-texto">{n(v.historial.sinArchivo.equipos)} con historial ({ordenesTxt(v.historial.sinArchivo.ordenes)}) están en almacenes del archivo pero no vienen en él.</li>}
+              {v.historial.fuera.equipos > 0 && <li className="text-suave">{n(v.historial.fuera.equipos)} con historial ({ordenesTxt(v.historial.fuera.ordenes)}) son de almacenes que el archivo no trae: se quedan sin plan.</li>}
+            </ul>
+          </div>
+
           <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Ver equipos por resultado">
             {TIPOS.filter((t) => v.conteo[t.tipo] > 0).map((t) => (
               <button key={t.tipo} type="button" aria-pressed={tipo === t.tipo} onClick={() => { setElegido(t.tipo); setTodos(false); }}
@@ -115,6 +126,7 @@ export function ValidacionEquipos({ estado, activos, nombreAlm, reintentar }: {
                                 <span className="block text-[13px] text-suave">
                                   {e.sap ?? e.clave ?? "sin SAP"} · <span className={marca("almacen")}>{nombreAlm(e.alm ?? "") ?? "otro almacén"}</span>
                                   {" · "}<span className={marca("categoria")}>{e.cat ? CATEGORIAS[e.cat as Categoria] ?? e.cat : "sin categoría"}</span>
+                                  {" · "}{e.ordenes ? <span className="font-medium text-tinta">{ordenesTxt(e.ordenes)}</span> : "sin historial"}
                                 </span>
                               </>
                             ) : <span className="text-suave">—</span>}
@@ -148,7 +160,7 @@ export function ValidacionEquipos({ estado, activos, nombreAlm, reintentar }: {
                       {es.map((e, k) => (
                         <li key={`${e.sap ?? e.clave ?? e.nombre}-${k}`} className="flex flex-wrap items-baseline justify-between gap-x-3 py-1">
                           <span className="min-w-0 break-words">{e.nombre}</span>
-                          <span className="tabular-nums text-suave">{e.sap ?? e.clave ?? "sin SAP"}</span>
+                          <span className="tabular-nums text-suave">{e.sap ?? e.clave ?? "sin SAP"}{e.ordenes ? ` · ${ordenesTxt(e.ordenes)}` : ""}</span>
                         </li>
                       ))}
                     </ul>
